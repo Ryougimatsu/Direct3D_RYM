@@ -6,6 +6,17 @@ using namespace DirectX;
 #include <fstream>
 #include "shader_field.h"
 
+struct VS_CONSTANT_BUFFER_AMBIENT
+{
+	XMFLOAT4 ambient_color;
+};
+
+struct VS_CONSTANT_BUFFER_DIRECTIONAL
+{
+	XMFLOAT4 directional_vector;
+	XMFLOAT4 directional_color;
+};
+
 namespace
 {
 	ID3D11VertexShader* g_pVertexShader = nullptr;
@@ -13,6 +24,8 @@ namespace
 	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer1 = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer2 = nullptr;
+	ID3D11Buffer* g_pVSConstantBuffer3 = nullptr;
+	ID3D11Buffer* g_pVSConstantBuffer4 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
 	ID3D11SamplerState* g_pSamplerState = nullptr;
 
@@ -68,7 +81,7 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 	//頂点レイアウトの定義
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
@@ -90,11 +103,20 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 	D3D11_BUFFER_DESC buffer_desc{};
 	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4); // バッファのサイズは行列一つ分
 	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; // 定数バッファとして使用
+	buffer_desc.Usage = D3D11_USAGE_DEFAULT; // 書き換えはほとんどしない
 
+	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4);
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0); // World
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer1); // View
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer2); // Projection
 
+	// b3 (Ambient)
+	buffer_desc.ByteWidth = sizeof(VS_CONSTANT_BUFFER_AMBIENT); // 16 bytes
+	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer3);
+
+	// b4 (Directional)
+	buffer_desc.ByteWidth = sizeof(VS_CONSTANT_BUFFER_DIRECTIONAL); // 32 bytes
+	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer4);
 
 	// ピクセルシェーダーの読み込み
 	std::ifstream ifs_ps("resource/shader/shader_pixel_field.cso", std::ios::binary);
@@ -121,6 +143,20 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 		return false;
 	}
 
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP; // 設為 WRAP (平鋪)
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP; // 設為 WRAP (平鋪)
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	hr = g_pDevice->CreateSamplerState(&sampDesc, &g_pSamplerState);
+	if (FAILED(hr)) {
+		hal::dout << "Shader_field_Initialize() : 採樣器狀態的創建に失敗しました" << std::endl;
+		return false;
+	}
+
 	return true;
 }
 
@@ -128,10 +164,13 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 
 void Shader_field_Finalize()
 {
+	SAFE_RELEASE(g_pSamplerState);
 	SAFE_RELEASE(g_pPixelShader);
 	SAFE_RELEASE(g_pVSConstantBuffer0);
 	SAFE_RELEASE(g_pVSConstantBuffer1);
 	SAFE_RELEASE(g_pVSConstantBuffer2);
+	SAFE_RELEASE(g_pVSConstantBuffer3);
+	SAFE_RELEASE(g_pVSConstantBuffer4);
 	SAFE_RELEASE(g_pInputLayout);
 	SAFE_RELEASE(g_pVertexShader);
 }
@@ -187,6 +226,21 @@ void Shader_field_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
 
 }
 
+void Shader_field_SetAmbientColor(const XMFLOAT4& color)
+{
+	VS_CONSTANT_BUFFER_AMBIENT data;
+	data.ambient_color = color;
+	g_pContext->UpdateSubresource(g_pVSConstantBuffer3, 0, nullptr, &data, 0, 0);
+}
+
+void Shader_field_SetDirectionalLight(const XMFLOAT4& vector, const XMFLOAT4& color)
+{
+	VS_CONSTANT_BUFFER_DIRECTIONAL data;
+	data.directional_vector = vector;
+	data.directional_color = color;
+	g_pContext->UpdateSubresource(g_pVSConstantBuffer4, 0, nullptr, &data, 0, 0);
+}
+
 void Shader_field_Begin()
 {
 	//頂点シェーダーとピクセルシェーダーを描画パイプラインに設定
@@ -200,7 +254,9 @@ void Shader_field_Begin()
 	g_pContext->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
 	g_pContext->VSSetConstantBuffers(1, 1, &g_pVSConstantBuffer1);
 	g_pContext->VSSetConstantBuffers(2, 1, &g_pVSConstantBuffer2);
+	g_pContext->VSSetConstantBuffers(3, 1, &g_pVSConstantBuffer3);
+	g_pContext->VSSetConstantBuffers(4, 1, &g_pVSConstantBuffer4);
 
 	//サンプラーステートを描画パイプラインに設定
-	//g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
+	g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
 }
