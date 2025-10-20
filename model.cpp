@@ -1,8 +1,18 @@
-#include "directx.h"
+#include <assert.h>
+#include "direct3d.h"
 #include "texture.h"
 #include "model.h"
+#include <DirectXMath.h>
+using namespace DirectX;
 
 
+struct Vertex3D
+{
+	XMFLOAT3 position; // 頂点座標
+	XMFLOAT3 normal;   // 法線ベクトル
+	XMFLOAT4 color;
+	XMFLOAT2 uv; // uv座標
+};
 
 
 MODEL* ModelLoad( const char *FileName )
@@ -25,12 +35,12 @@ MODEL* ModelLoad( const char *FileName )
 
 		// ���_�o�b�t�@����
 		{
-			Vertex* vertex = new Vertex[mesh->mNumVertices];
+			Vertex3D* vertex = new Vertex3D[mesh->mNumVertices];
 
 			for (unsigned int v = 0; v < mesh->mNumVertices; v++)
 			{
-				vertex[v].pos = XMFLOAT3(mesh->mVertices[v].x, -mesh->mVertices[v].z, mesh->mVertices[v].y);
-				vertex[v].texcoord = XMFLOAT2( mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y);
+				vertex[v].position = XMFLOAT3(mesh->mVertices[v].x, -mesh->mVertices[v].z, mesh->mVertices[v].y);
+				vertex[v].normal = XMFLOAT2( mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y);
 				vertex[v].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 				vertex[v].normal = XMFLOAT3(mesh->mNormals[v].x, -mesh->mNormals[v].z, mesh->mNormals[v].y);
 			}
@@ -38,7 +48,7 @@ MODEL* ModelLoad( const char *FileName )
 			D3D11_BUFFER_DESC bd;
 			ZeroMemory(&bd, sizeof(bd));
 			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = sizeof(Vertex) * mesh->mNumVertices;
+			bd.ByteWidth = sizeof(Vertex3D) * mesh->mNumVertices;
 			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -46,7 +56,7 @@ MODEL* ModelLoad( const char *FileName )
 			ZeroMemory(&sd, sizeof(sd));
 			sd.pSysMem = vertex;
 
-			DirectXGetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
+			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
 
 			delete[] vertex;
 		}
