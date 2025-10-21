@@ -30,8 +30,8 @@ void Game_Update(double elapsed_time)
 void Game_Draw()
 {
 	
-	Light_SetAmbient({ 0.0f,0.0f,0.0f});
-	Light_SetDirectionalWorld({ 1.0f,0.0f,0.0f,0.0f }, { 1.0f,1.0f,1.0f,1.0f });
+	Light_SetAmbient({ 0.3f,0.3f,0.3f});//环境光照颜色
+	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 0.4f,0.4f,0.4f,1.0f });//方向光
 	//Grid_Draw();
 	XMMATRIX mtxWorld = XMMatrixIdentity();
 	Cube_Draw(mtxWorld);

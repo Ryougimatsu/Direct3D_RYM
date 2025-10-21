@@ -56,7 +56,7 @@ VS_OUT main(VS_IN vi)
 
     float4 normalW = mul(float4(vi.normalL.xyz, 0.0f), world);
     normalW = normalize(normalW);
-    float dl = dot(-directional_vector, normalW);
+    float dl = max(0,dot(-directional_vector, normalW));
     
     vo.color = vi.color;
 

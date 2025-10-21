@@ -1,10 +1,10 @@
 #include "Light.h"
 using namespace DirectX;
 
-static ID3D11Device* g_pDevice = nullptr;
-static ID3D11DeviceContext* g_pContext = nullptr;
 namespace {
 	ID3D11Buffer* g_pVSConstantBuffer3 = nullptr;
+	ID3D11DeviceContext* g_pContext = nullptr;
+	ID3D11Device* g_pDevice = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer4 = nullptr;
 }
 
@@ -33,7 +33,14 @@ void Light_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 
 void Light_Finalize(void)
 {
-
+	if (g_pVSConstantBuffer4) {
+		g_pVSConstantBuffer4->Release();
+		g_pVSConstantBuffer4 = nullptr;
+	}
+	if (g_pVSConstantBuffer3) {
+		g_pVSConstantBuffer3->Release();
+		g_pVSConstantBuffer3 = nullptr;
+	}
 }
 
 void Light_SetAmbient(const DirectX :: XMFLOAT3& color)
