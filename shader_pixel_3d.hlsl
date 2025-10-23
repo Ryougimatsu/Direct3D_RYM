@@ -1,3 +1,8 @@
+cbuffer PS_CONSTANT_BUFFER : register(b0)
+{
+    float4 color;
+
+}
 
 struct PS_IN
 {
@@ -11,5 +16,5 @@ SamplerState samplerState;
 
 float4 main(PS_IN ps_in) : SV_TARGET
 {
-    return tex.Sample(samplerState, ps_in.uv)*ps_in.color;
+    return tex.Sample(samplerState, ps_in.uv)*ps_in.color * color;
 }

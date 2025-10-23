@@ -170,6 +170,7 @@
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Meshfield.cpp" />
+    <ClCompile Include="model.cpp" />
     <ClCompile Include="mouse.cpp" />
     <ClCompile Include="polygon.cpp" />
     <ClCompile Include="Sampler.cpp" />
@@ -203,6 +204,7 @@
     <ClInclude Include="key_logger.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Meshfield.h" />
+    <ClInclude Include="model.h" />
     <ClInclude Include="mouse.h" />
     <ClInclude Include="polygon.h" />
     <ClInclude Include="Sampler.h" />

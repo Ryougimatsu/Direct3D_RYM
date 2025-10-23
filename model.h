@@ -1,7 +1,7 @@
 #pragma once
 
 #include <unordered_map>
-
+#include <DirectXMath.h>
 #include "assimp/cimport.h"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
@@ -21,6 +21,8 @@ struct MODEL
 };
 
 
-MODEL* ModelLoad(const char* FileName);
+MODEL* ModelLoad(const char* FileName,float size);
 void ModelRelease(MODEL* model);
+
+void ModelDraw(MODEL* model,const DirectX ::XMMATRIX& mtxWorld );
 

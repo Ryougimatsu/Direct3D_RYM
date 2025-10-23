@@ -10,7 +10,7 @@ void Texture_Finalize(void);
 
 // テクスチャの読み込み
 //戻り値：管理番号。読み込めなかった場合は-1
-int Texture_LoadFromFile(const wchar_t* filename);
+int Texture_LoadFromFile(const wchar_t* pFilename);
 
 void Texture_AllRelease();
 
