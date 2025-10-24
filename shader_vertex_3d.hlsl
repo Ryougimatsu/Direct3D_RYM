@@ -16,16 +16,7 @@ cbuffer VS_CONSTANT_BUFFER : register(b2)
     float4x4 proj;
 }
 
-cbuffer VS_CONSTANT_BUFFER : register(b3)
-{
-    float4 ambient_color;
-}
 
-cbuffer VS_CONSTANT_BUFFER : register(b4)
-{
-    float4 directional_vector;
-    float4 directional_color;
-}
 struct VS_IN
 {
     float4 posL : POSITION0; // ローカル座標
@@ -37,6 +28,8 @@ struct VS_IN
 struct VS_OUT
 {
     float4 posH : SV_POSITION; // 変換後の座標
+    float4 posW : POSITION0; // ワールド座標
+    float4 normalW : NORMAL0; // ワールド法線
     float4 color : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
 };
@@ -47,18 +40,20 @@ struct VS_OUT
 VS_OUT main(VS_IN vi)
 {
     VS_OUT vo;
-
-    float4 pos = float4(vi.posL.xyz, 1.0f); //补w
-    pos = mul(pos, world); // 依次 world -> view -> proj
-    pos = mul(pos, view);
-    vo.posH = mul(pos, proj);
+    
+    //float4 pos = float4(vi.posL.xyz, 1.0f); //补w
+    //pos = mul(pos, world); // 依次 world -> view -> proj
+    //pos = mul(pos, view);
+    float4x4 mtxWV = mul(world, view);
+    float4x4 mtxWVP = mul(mtxWV, proj);
+    vo.posH = mul(vi.posL, mtxWVP);
 
     float4 normalW = mul(float4(vi.normalL.xyz, 0.0f), world);
-    normalW = normalize(normalW);
-    float dl = dot(-directional_vector, normalW);
+    vo.normalW = normalize(normalW);
+    vo.posW = mul(vi.posL,world);
 
-    float3 color = vi.color.rgb * dl * directional_color.rgb + ambient_color.rgb * vi.color.rgb;
-    vo.color = float4(color, vi.color.a);
+    
+    vo.color = vi.color;
     vo.uv = vi.uv;
 
     return vo;

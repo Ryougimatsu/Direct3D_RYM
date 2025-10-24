@@ -34,7 +34,7 @@ void Game_Draw()
 {
 	
 	Light_SetAmbient({ 0.3f,0.3f,0.3f});//环境光照颜色
-	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 0.5f,0.5f,0.5f,1.0f });//方向光
+	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 1.0f,0.9f,0.7f,1.0f }, Camera_GetPosition());//方向光
 	//Grid_Draw();
 	XMMATRIX mtxWorld = XMMatrixIdentity();
 	Cube_Draw(mtxWorld);

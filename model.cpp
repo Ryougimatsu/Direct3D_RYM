@@ -24,8 +24,6 @@ MODEL* ModelLoad(const char* FileName,float size)
 	MODEL* model = new MODEL;
 
 
-	const std::string modelPath(FileName);
-
 	model->AiScene = aiImportFile(FileName, aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_ConvertToLeftHanded);
 	assert(model->AiScene);
 
@@ -62,6 +60,7 @@ MODEL* ModelLoad(const char* FileName,float size)
 			sd.pSysMem = vertex;
 
 			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
+
 
 			delete[] vertex;
 		}
@@ -130,6 +129,60 @@ MODEL* ModelLoad(const char* FileName,float size)
 		}
 
 
+		const std::string modelPath(FileName);
+
+		// 最後の '/' または '\\' の位置を探す (Windows対応)
+		size_t pos = modelPath.find_last_of("/\\");
+		std::string directory;
+
+		if (pos != std::string::npos) {
+			directory = modelPath.substr(0, pos); // ファイル名を除いた部分
+		}
+		else {
+			directory = ""; // パスに区切りがない場合 (ファイル名のみ)
+		}
+
+		// テクスチャがFBXとは別に用意されている場合
+		for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++)
+		{
+			aiString filename;
+			aiMaterial* aiMaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
+			aiMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &filename);
+
+			if (filename.length == 0) {
+				continue;
+			}
+
+			if (model->Texture.count(filename.C_Str())) {
+				continue;
+			}
+
+			ID3D11ShaderResourceView* texture;
+			ID3D11Resource* resource;
+
+			std::string texfilename = directory + "/" + filename.C_Str();
+
+			int len = MultiByteToWideChar(CP_UTF8, 0, texfilename.c_str(), -1, nullptr, 0);
+			wchar_t* pWideFilename = new wchar_t[len];
+			MultiByteToWideChar(CP_UTF8, 0, texfilename.c_str(), -1, pWideFilename, len);
+
+			CreateWICTextureFromFile(
+				Direct3D_GetDevice(),
+				Direct3D_GetDeviceContext(),
+				pWideFilename,
+				&resource,
+				&texture);
+
+			delete[] pWideFilename;
+
+			assert(texture);
+
+			resource->Release(); // !!!!!!!!!!!!!
+
+			model->Texture[filename.C_Str()] = texture;
+		}
+
+
 	return model;
 }
 
@@ -177,7 +230,7 @@ void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 			aiString texture;
 			aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
 			aimaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texture);
-			if (texture != aiString(""))
+			if (texture.length != 0)
 			{
 				Direct3D_GetDeviceContext()->PSSetShaderResources(0, 1, &model->Texture[texture.data]);
 			}
@@ -187,13 +240,15 @@ void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 			Texture_Set(g_TextureWhite);
 		}
 
+
+
+
+
+
 		aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
 		aiColor3D diffuse;
 		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
 		Shader_3D_SetColor({ diffuse.r, diffuse.g, diffuse.b, 1.0f });
-
-
-
 		// 頂点バッファを描画パイプラインに設定
 		UINT stride = sizeof(Vertex3D);
 		UINT offset = 0;
