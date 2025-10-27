@@ -1,6 +1,6 @@
 cbuffer PS_CONSTANT_BUFFER : register(b0)
 {
-    float4 color;
+    float4 diffuse_color;
 
 }
 
@@ -12,9 +12,15 @@ cbuffer VS_CONSTANT_BUFFER : register(b1)
 cbuffer VS_CONSTANT_BUFFER : register(b2)
 {
     float4 directional_vector;
-    float4 directional_color;
-    float3 eyeposW;
-    //float Specular_power;
+    float4 directional_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+}
+
+cbuffer VS_CONSTANT_BUFFER : register(b3)
+{
+    float3 eye_posW;
+    float specular_power = 30.0f;
+    float4 specular_color = { 0.1f, 0.01f, 0.1f, 1.0f };
+    
 }
 
 struct PS_IN
@@ -31,15 +37,27 @@ SamplerState samplerState;
 
 float4 main(PS_IN pi) : SV_TARGET
 {
-    float4 normalW = normalize(pi.normalW);
-    float dl = max(0.0f,dot(-directional_vector, normalW));
+    // 材質の色
+    float3 material_color = tex.Sample(samplerState, pi.uv).rgb * pi.color.rgb * diffuse_color.rgb;
 
-    float3 toEye = normalize(eyeposW - pi.posW.xyz);
-    float3 r = reflect(directional_vector.xyz, pi.normalW).xyz;
-    float t = pow(max(dot(r,toEye),0.0f),1.2f);
-    
-    float3 L_color = pi.color.rgb * dl * directional_color.rgb + ambient_color.rgb * pi.color.rgb;
-    L_color += float3(1.0f,1.0f,1.0f) * t;
-    
-    return tex.Sample(samplerState, pi.uv)* float4(L_color,1.0f) * color;
+    // 並行光源 (ディフューズライト)
+    float4 normalW = normalize(pi.normalW);
+    float dl = max(0.0f, dot(-directional_vector, normalW));
+    //float dl = (dot(-directional_vector, normalW+1.0f)*0.5f);
+    float3 diffuse = material_color * directional_color.rgb * dl;
+
+    // 環境光 (アンビエントライト)
+    float3 ambient = material_color * ambient_color.rgb;
+
+    // スペキュラ
+    float3 toEye = normalize(eye_posW - pi.posW.xyz);
+    float3 r = reflect(directional_vector, normalW).xyz;
+    float t = pow(max(dot(r, toEye), 0.0f), specular_power);
+    float3 specular = specular_color * t;
+    //float3 specular = diffuse_color.rgb * t;
+
+    float alpha = tex.Sample(samplerState, pi.uv).a * pi.color.a * diffuse_color.a;
+    float3 color = ambient + diffuse + specular; // 最終的な我々の目に届く色
+
+    return float4(color, alpha);
 }

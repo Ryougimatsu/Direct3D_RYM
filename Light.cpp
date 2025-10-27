@@ -1,19 +1,27 @@
 #include "Light.h"
+#include "direct3d.h"
+#include <DirectXMath.h>
 using namespace DirectX;
 
 namespace {
-	ID3D11Buffer* g_pPSConstantBuffer1 = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 	ID3D11Device* g_pDevice = nullptr;
+	ID3D11Buffer* g_pPSConstantBuffer1 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer2 = nullptr;
+	ID3D11Buffer* g_pPSConstantBuffer3 = nullptr;
 }
 
-class DirectionalLight
+struct DirectionalLight
 {
-public:
 	XMFLOAT4 Directional;
 	XMFLOAT4 Color;
-	XMFLOAT4 CameraPosition;
+};
+
+struct SpecularLight
+{
+	XMFLOAT3 CameraPosition;
+	float Power;
+	XMFLOAT4 Color;
 };
 
 void Light_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
@@ -23,25 +31,23 @@ void Light_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 
 	D3D11_BUFFER_DESC buffer_desc{};
 	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+
 	buffer_desc.ByteWidth = sizeof(XMFLOAT4); 
-
-
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer1);
 
 	buffer_desc.ByteWidth = sizeof(DirectionalLight);
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer2);
+
+	buffer_desc.ByteWidth = sizeof(SpecularLight);
+	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer3);
 }
 
 void Light_Finalize(void)
 {
-	if (g_pPSConstantBuffer2) {
-		g_pPSConstantBuffer2->Release();
-		g_pPSConstantBuffer1 = nullptr;
-	}
-	if (g_pPSConstantBuffer1) {
-		g_pPSConstantBuffer1->Release();
-		g_pPSConstantBuffer1 = nullptr;
-	}
+	SAFE_RELEASE(g_pPSConstantBuffer3);
+	SAFE_RELEASE(g_pPSConstantBuffer2);
+	SAFE_RELEASE(g_pPSConstantBuffer1);
 }
 
 void Light_SetAmbient(const DirectX :: XMFLOAT3& color)
@@ -50,19 +56,25 @@ void Light_SetAmbient(const DirectX :: XMFLOAT3& color)
 	g_pContext->PSSetConstantBuffers(1, 1, &g_pPSConstantBuffer1);
 }
 
-void Light_SetDirectionalWorld(const DirectX::XMFLOAT4& world_dir, const DirectX::XMFLOAT4& color,const DirectX :: XMFLOAT3& CameraPosition)
+void Light_SetDirectionalWorld(const DirectX::XMFLOAT4& world_dir, const DirectX::XMFLOAT4& color)
 {
 	DirectionalLight light{
 		world_dir,
-		color,
-		{
-		CameraPosition.x, 
-		CameraPosition.y,
-		CameraPosition.z, 
-		0.0f
-		}
+		color
 	};
 	g_pContext->UpdateSubresource(g_pPSConstantBuffer2, 0, nullptr, &light, 0, 0);
 	g_pContext->PSSetConstantBuffers(2, 1, &g_pPSConstantBuffer2);
 
+}
+
+void Light_SetSpecularWorld(const DirectX::XMFLOAT3& CameraPosition, float power,const DirectX::XMFLOAT4& color)
+{
+	SpecularLight light
+	{
+	CameraPosition,
+	power,
+	color,
+	};
+	g_pContext->UpdateSubresource(g_pPSConstantBuffer3, 0, nullptr, &light, 0, 0);
+	g_pContext->PSSetConstantBuffers(3, 1, &g_pPSConstantBuffer3);
 }
