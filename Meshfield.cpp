@@ -3,6 +3,7 @@
 #include "shader_field.h"
 #include "texture.h"
 #include "camera.h"
+#include "shader_3d.h"
 
 using namespace DirectX;
 
@@ -141,6 +142,8 @@ void MeshField_Draw(const DirectX::XMMATRIX& mtxW)
 
 	// プリミティブトポロジ設定
 	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	Shader_field_3D_SetColor({ 0.5f,0.5f,0.5f,1.0f });
 
 	// ポリゴン描画命令発行
 	g_pContext->DrawIndexed(NUM_INDEX, 0, 0);

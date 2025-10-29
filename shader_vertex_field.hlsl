@@ -30,15 +30,16 @@ struct VS_IN
 {
     float4 posL : POSITION0; // ローカル座標
     float3 normalL : NORMAL0; // ローカル法線
-    float4 color : COLOR0; // 色
+    float4 blend : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
 };
 
 struct VS_OUT
 {
     float4 posH : SV_POSITION; // 変換後の座標
-    float4 color : COLOR0; // 色
-    float4 light_color : COLOR1; // ライトカラー
+    float4 posW : POSITION0; // ワールド座標
+    float4 normalW : NORMAL0; // ワールド法線
+    float4 blend : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
 };
 
@@ -49,19 +50,16 @@ VS_OUT main(VS_IN vi)
 {
     VS_OUT vo;
 
-    float4 pos = float4(vi.posL.xyz, 1.0f); //补w
-    pos = mul(pos, world); // 依次 world -> view -> proj
-    pos = mul(pos, view);
-    vo.posH = mul(pos, proj);
+     float4x4 mtxWV = mul(world, view);
+    float4x4 mtxWVP = mul(mtxWV, proj);
+    vo.posH = mul(vi.posL, mtxWVP);
 
     float4 normalW = mul(float4(vi.normalL.xyz, 0.0f), world);
-    normalW = normalize(normalW);
-    float dl = max(0,dot(-directional_vector, normalW));
-    
-    vo.color = vi.color;
+    vo.normalW = normalize(normalW);
+    vo.posW = mul(vi.posL,world);
 
-    float3 color = vi.color.rgb * dl * directional_color.rgb + ambient_color.rgb * vi.color.rgb;
-    vo.light_color = float4(color, 1.0f);
+    
+    vo.blend = vi.blend;
     vo.uv = vi.uv;
 
     return vo;

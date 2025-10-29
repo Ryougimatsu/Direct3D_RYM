@@ -15,7 +15,6 @@ namespace
 	ID3D11Buffer* g_pVSConstantBuffer2 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
-	ID3D11SamplerState* g_pSamplerState = nullptr;
 
 	// 注意！初期化で外部から設定されるもの。Release不要。
 	ID3D11Device* g_pDevice = nullptr;

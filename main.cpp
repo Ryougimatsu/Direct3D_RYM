@@ -77,6 +77,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Cube_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Light_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
+
+	Light_SetPointLightCount(1);
 	
 	MeshField_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 

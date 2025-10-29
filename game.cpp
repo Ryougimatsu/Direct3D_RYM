@@ -33,14 +33,26 @@ void Game_Update(double elapsed_time)
 void Game_Draw()
 {
 	
-	Light_SetAmbient({ 0.3f,0.3f,0.3f});//环境光照颜色
-	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 1.0f,0.9f,0.7f,1.0f });//方向光
+	Light_SetAmbient({ 0.0f,0.0f,0.0f });//环境光照颜色
+	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 0.0f,0.0f,0.0f,0.0f });//方向光
 	//Grid_Draw();
 	XMMATRIX mtxWorld = XMMatrixIdentity();
-	Cube_Draw(mtxWorld);
-	MeshField_Draw(mtxWorld);
+	XMMATRIX mtxWorldCube = XMMatrixTranslation(3.0f, 0.6f, 0.0f);
+	Cube_Draw(mtxWorldCube);
+
 	Light_SetSpecularWorld(Camera_GetPosition(), 1.0f, { 0.1f,0.1f,0.1f,0.1f });//镜面反射光
-	ModelDraw(g_Model, mtxWorld);
+	MeshField_Draw(mtxWorld);
+
+	Light_SetSpecularWorld(Camera_GetPosition(), 10.0f, { 0.4f,0.4f,0.4f,1.0f });
+
+	Light_SetPointLightWorldByCount(0,
+		{ 0.0f, 2.0f, -3.0f }, // 光源位置 (在模型附近)
+		 50.0f,                 // 光照范围
+		{ 1.0f, 1.0f, 1.0f }     // 光源颜色 (白色)
+	);
+
+	XMMATRIX mtxWorldModel = XMMatrixTranslation(-3.0f, 1.6f, 0.0f);
+	ModelDraw(g_Model, mtxWorldModel); // 绘制模型
 	Debug_Draw();
 }
 
