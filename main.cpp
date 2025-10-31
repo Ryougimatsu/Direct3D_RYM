@@ -25,7 +25,7 @@
 #include <Xinput.h>
 #pragma comment(lib, "xinput.lib")
 #include "game.h"
-
+#include "Sampler.h"
 #include "Audio.h"
 #include "cube.h"
 #include "fade.h"
@@ -75,6 +75,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	//Grid_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Cube_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
+
+	Sampler_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Light_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
@@ -204,6 +206,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Sprite_Finalize();
 
 	Texture_AllRelease();
+
+	Sprite_Finalize();
 
 	Shader_Finalize();
 

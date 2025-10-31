@@ -172,6 +172,8 @@
     <ClCompile Include="Meshfield.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="mouse.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="Player_Camera.cpp" />
     <ClCompile Include="polygon.cpp" />
     <ClCompile Include="Sampler.cpp" />
     <ClCompile Include="scene.cpp" />
@@ -206,6 +208,8 @@
     <ClInclude Include="Meshfield.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="mouse.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Player_Camera.h" />
     <ClInclude Include="polygon.h" />
     <ClInclude Include="Sampler.h" />
     <ClInclude Include="scene.h" />
