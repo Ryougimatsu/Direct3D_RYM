@@ -42,12 +42,12 @@ MODEL* ModelLoad(const char* FileName,float size)
 			for (unsigned int v = 0; v < mesh->mNumVertices; v++)
 			{
 			
-				//vertex[v].position = XMFLOAT3(mesh->mVertices[v].x * size, -mesh->mVertices[v].z * size, mesh->mVertices[v].y * size);
-				vertex[v].position = XMFLOAT3(mesh->mVertices[v].x * size, mesh->mVertices[v].y * size, mesh->mVertices[v].z * size);
+				vertex[v].position = XMFLOAT3(mesh->mVertices[v].x * size, -mesh->mVertices[v].z * size, mesh->mVertices[v].y * size);
+				//vertex[v].position = XMFLOAT3(mesh->mVertices[v].x * size, mesh->mVertices[v].y * size, mesh->mVertices[v].z * size);
 				vertex[v].uv = XMFLOAT2(mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y);
 				vertex[v].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-				//vertex[v].normal = XMFLOAT3(mesh->mNormals[v].x * size, -mesh->mNormals[v].z * size, mesh->mNormals[v].y * size);
-				vertex[v].normal = XMFLOAT3(mesh->mNormals[v].x * size, mesh->mNormals[v].y * size, mesh->mNormals[v].z * size);
+				vertex[v].normal = XMFLOAT3(mesh->mNormals[v].x * size, -mesh->mNormals[v].z * size, mesh->mNormals[v].y * size);
+				//vertex[v].normal = XMFLOAT3(mesh->mNormals[v].x * size, mesh->mNormals[v].y * size, mesh->mNormals[v].z * size);
 			}
 
 			D3D11_BUFFER_DESC bd;

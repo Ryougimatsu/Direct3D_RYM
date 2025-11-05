@@ -20,7 +20,7 @@ void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT
 	g_PlayerPosition = position;
 	g_PlayerVelocity = { 0.0f,0.0f,0.0f };
 	DirectX::XMStoreFloat3(&g_PlayerFront, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&front)));
-	g_pPlayerModel = ModelLoad("resource/Model/test.fbx", 0.1f);
+	g_pPlayerModel = ModelLoad("resource/Model/Evoix2.FBX", 0.1f);
 }
 
 void Player_Finalize()
@@ -76,49 +76,67 @@ void Player_Update(double elapsed_time)
 		direction += XMVector3Cross({ 0.0f,1.0f,0.0f }, front);
 	}
 
-	if (XMVectorGetX(XMVector3LengthSq(direction)) > 0.0f) {
+	if (XMVectorGetX(XMVector3LengthSq(direction)) > 0.0f) { // 如果有按键输入
 
-		direction = XMVector3Normalize(direction);
+		direction = XMVector3Normalize(direction); // 'direction' 是我们的 "目标朝向"
+		XMVECTOR currentFront = XMLoadFloat3(&g_PlayerFront);
 
 
-		float dot = XMVectorGetX(XMVector3Dot(XMLoadFloat3(&g_PlayerFront), direction));
+		// --- 这是新的 180 度转向修复 ---
 
-		float angle = acosf(dot);
+		// 'interpTarget' 是我们这一帧真正要插值的目标
+		// 默认情况下，它就是我们想去的方向
+		XMVECTOR interpTarget = direction;
 
-		const float ROT_SPEED = XM_2PI * 2.0f * static_cast<float>(elapsed_time);
+		// 1. 计算当前朝向和目标朝向的点积
+		float dot = XMVectorGetX(DirectX::XMVector3Dot(currentFront, direction));
 
-		if (angle < ROT_SPEED)
+		// 2. 检查它们是否几乎完全相反 (点积接近 -1)
+		if (dot < -0.9999f)
 		{
-			front = direction;
-		}
-		else
-		{//回転行列を使って徐々に向きを変える
+			// 危险！我们不能直接插值到 'direction'
+			// 我们需要找一个 "绕路" 的向量。玩家的 "右" 向量是最好的选择。
+			XMVECTOR right = DirectX::XMVector3Cross({ 0.0f, 1.0f, 0.0f }, currentFront);
 
-			XMMATRIX r = XMMatrixIdentity();
-
-			if (XMVectorGetY(XMVector3Cross(XMLoadFloat3(&g_PlayerFront), direction)) < 0.0f)
+			// （安全检查）如果玩家恰好面朝上（虽然在你的游戏里不太可能）
+			// 'right' 可能是 0。这种情况下我们随便用一个X轴。
+			if (DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(right)) < 0.001f)
 			{
-				r = XMMatrixRotationY(-ROT_SPEED);
-			}
-			else
-			{
-				r = XMMatrixRotationY(ROT_SPEED);
+				right = { 1.0f, 0.0f, 0.0f };
 			}
 
-			front = XMVector3TransformNormal(XMLoadFloat3(&g_PlayerFront), r);
+			// 3. 将我们这一帧的插值目标 'interpTarget' 改为 "right"
+			// 这会使玩家开始向侧面转向
+			interpTarget = DirectX::XMVector3Normalize(right);
 		}
+		// --- 修复结束 ---
 
-		velocity += front * static_cast<float>(2000.0 / 50.0 * elapsed_time);
 
-		XMStoreFloat3(&g_PlayerFront, front);
+		// (下面的代码和以前一样, 只是把 'direction' 换成了 'interpTarget')
+
+		const float ROTATION_SMOOTH_FACTOR = 10.0f;
+		float interpAmount = ROTATION_SMOOTH_FACTOR * static_cast<float>(elapsed_time);
+		interpAmount = (interpAmount > 1.0f) ? 1.0f : interpAmount;
+
+		// 5. 使用 LERP (线性插值)，但目标是 'interpTarget'
+		XMVECTOR newFront = DirectX::XMVectorLerp(currentFront, interpTarget, interpAmount);
+
+		// 6. 重新标准化 (将 LERP 变为 NLerp)
+		newFront = DirectX::XMVector3Normalize(newFront);
+
+		// 7. 使用这个新的、平滑过渡的朝向来增加速度
+		velocity += newFront * static_cast<float>(2000.0 / 50.0 * elapsed_time);
+
+		// 8. 存储更新后的朝向
+		DirectX::XMStoreFloat3(&g_PlayerFront, newFront);
 	}
 
 	velocity += -velocity * static_cast<float>(4.0f * elapsed_time);
 	position += velocity * static_cast<float>(elapsed_time);
 
 
-	XMStoreFloat3(&g_PlayerPosition, position);
-	XMStoreFloat3(&g_PlayerVelocity, velocity);
+	DirectX::XMStoreFloat3(&g_PlayerPosition, position);
+	DirectX::XMStoreFloat3(&g_PlayerVelocity, velocity);
 	
 	AABB player = Player_GetAABB();
 	AABB cube = Cube_CreateAABB({ 3.0f, 0.5f, 2.0f });
@@ -136,13 +154,20 @@ void Player_Draw()
 
 	float angle = -atan2f(g_PlayerFront.z, g_PlayerFront.x) + XMConvertToRadians(270);
 
+	// 1. 创建旋转矩阵
 	XMMATRIX r = XMMatrixRotationY(angle);
 
-	DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(
+	// 2. 创建平移矩阵
+	DirectX::XMMATRIX t = DirectX::XMMatrixTranslation(
 		g_PlayerPosition.x,
 		g_PlayerPosition.y,
 		g_PlayerPosition.z
 	);
+
+	// 3. 组合矩阵 (先旋转，再平移)
+	DirectX::XMMATRIX world = r * t; // <--- 这是关键的修改
+
+	// 4. 使用组合后的 world 矩阵绘制模型
 	ModelDraw(g_pPlayerModel, world);
 }
 
