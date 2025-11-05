@@ -154,8 +154,16 @@ void Cube_Draw(const XMMATRIX mtxW)
 	g_pContext->DrawIndexed(36, 0, 0);
 }
 
-
-void Cube_Update(double)
+AABB Cube_CreateAABB(const DirectX::XMFLOAT3& position)
 {
-
+	return{
+		{ position.x - 0.5f,
+		  position.y - 0.5f,
+		  position.z - 0.5f,
+		},
+		{ position.x - 0.5f,
+		  position.y - 0.5f,
+		  position.z - 0.5f 
+		} 
+		};
 }

@@ -4,6 +4,8 @@
 #include "Light.h"
 #include "camera.h"
 #include "Player_Camera.h"
+#include "cube.h"
+using namespace DirectX;
 
 namespace {
 	DirectX::XMFLOAT3 g_PlayerPosition = {};
@@ -13,11 +15,11 @@ namespace {
 	bool g_IsJump = false;
 }
 
-void Player_Initialize(const DirectX :: XMFLOAT3& position,const DirectX::XMFLOAT3 front)
+void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3 front)
 {
 	g_PlayerPosition = position;
 	g_PlayerVelocity = { 0.0f,0.0f,0.0f };
-	DirectX::XMStoreFloat3(&g_PlayerFront, DirectX ::XMVector3Normalize(DirectX ::XMLoadFloat3(&front)));
+	DirectX::XMStoreFloat3(&g_PlayerFront, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&front)));
 	g_pPlayerModel = ModelLoad("resource/Model/test.fbx", 0.1f);
 }
 
@@ -28,67 +30,136 @@ void Player_Finalize()
 
 void Player_Update(double elapsed_time)
 {
-	DirectX::XMVECTOR player_pos = DirectX::XMLoadFloat3(&g_PlayerPosition);
-	DirectX::XMVECTOR player_velocity = DirectX::XMLoadFloat3(&g_PlayerVelocity);
+	XMVECTOR position = XMLoadFloat3(&g_PlayerPosition);
+	XMVECTOR velocity = XMLoadFloat3(&g_PlayerVelocity);
 
-	if (KeyLogger_IsTrigger(KK_SPACE) && !g_IsJump) {
-		player_velocity += {0.0f, 10.0f, 0.0f};
+	//移動
+	if (KeyLogger_IsTrigger(KK_SPACE) && !g_IsJump)
+	{
+		velocity += {0.0f, 8.0f, 0.0f };
 		g_IsJump = true;
 	}
 
-	DirectX::XMVECTOR gdir{ 0.0f,1.0f,0.0f };
-	player_velocity += gdir * -9.8f * 1.0f * static_cast<float>(elapsed_time);
-	player_pos += player_velocity * static_cast<float>(elapsed_time);
+	//重力
+	XMVECTOR gravityDir = { 0.0f,-1.0f };
+	velocity += gravityDir * 9.8f * 1.5f * static_cast<float>(elapsed_time);
+	position += velocity * static_cast<float>(elapsed_time);
 
-	if (DirectX::XMVectorGetY(player_pos) < 1.0f)
+	//地面判定
+	if (XMVectorGetY(position) < 1.0f)
 	{
-		player_pos -= player_velocity * static_cast<float>(elapsed_time);
-		player_velocity *= { 1.0f,0.0f ,1.0f};
+		position -= velocity * static_cast<float>(elapsed_time);
+		velocity *= { 1.0f, 0.0f, 1.0f };
 		g_IsJump = false;
 	}
+
+	XMVECTOR direction{};
+	XMVECTOR front = XMLoadFloat3(&Player_Camera_GetFront()) * XMVECTOR { 1.0f, 0.0f, 1.0f };
+
+	if (KeyLogger_IsPressed(KK_W))
+	{
+		direction += front;
+	}
+	if (KeyLogger_IsPressed(KK_S))
+	{
+		direction -= front;
+	}
+
+
+	if (KeyLogger_IsPressed(KK_A))
+	{
+		direction -= XMVector3Cross({ 0.0f,1.0f,0.0f }, front);
+
+	}
+	if (KeyLogger_IsPressed(KK_D))
+	{
+		direction += XMVector3Cross({ 0.0f,1.0f,0.0f }, front);
+	}
+
+	if (XMVectorGetX(XMVector3LengthSq(direction)) > 0.0f) {
+
+		direction = XMVector3Normalize(direction);
+
+
+		float dot = XMVectorGetX(XMVector3Dot(XMLoadFloat3(&g_PlayerFront), direction));
+
+		float angle = acosf(dot);
+
+		const float ROT_SPEED = XM_2PI * 2.0f * static_cast<float>(elapsed_time);
+
+		if (angle < ROT_SPEED)
+		{
+			front = direction;
+		}
+		else
+		{//回転行列を使って徐々に向きを変える
+
+			XMMATRIX r = XMMatrixIdentity();
+
+			if (XMVectorGetY(XMVector3Cross(XMLoadFloat3(&g_PlayerFront), direction)) < 0.0f)
+			{
+				r = XMMatrixRotationY(-ROT_SPEED);
+			}
+			else
+			{
+				r = XMMatrixRotationY(ROT_SPEED);
+			}
+
+			front = XMVector3TransformNormal(XMLoadFloat3(&g_PlayerFront), r);
+		}
+
+		velocity += front * static_cast<float>(2000.0 / 50.0 * elapsed_time);
+
+		XMStoreFloat3(&g_PlayerFront, front);
+	}
+
+	velocity += -velocity * static_cast<float>(4.0f * elapsed_time);
+	position += velocity * static_cast<float>(elapsed_time);
+
+
+	XMStoreFloat3(&g_PlayerPosition, position);
+	XMStoreFloat3(&g_PlayerVelocity, velocity);
 	
-	DirectX::XMVECTOR direction{};
-	DirectX::XMVECTOR front = DirectX::XMLoadFloat3(&Player_Camera_GetFront());
+	AABB player = Player_GetAABB();
+	AABB cube = Cube_CreateAABB({ 3.0f, 0.5f, 2.0f });
 
-	if (KeyLogger_IsPressed(KK_W)) {
-		direction += DirectX::XMLoadFloat3(&Player_Camera_GetFront());
+	if (Collision_IsOverAABB(player, cube)) {
+		position -= velocity * (float)elapsed_time;
+		velocity = { 0.0f, 0.0f, 0.0f };
 	}
 
-	if (KeyLogger_IsPressed(KK_S)) {
-		direction -= DirectX::XMLoadFloat3(&Player_Camera_GetFront());
-	}
-
-	if (KeyLogger_IsPressed(KK_D)) {
-		direction += DirectX::XMVector3Cross({ 0.0f,1.0f,0.0f }, front);
-	}
-
-	if (KeyLogger_IsPressed(KK_A)) {
-		direction -= DirectX::XMVector3Cross({ 0.0f,1.0f,0.0f }, front);
-	}
-
-
-	direction = DirectX::XMVector2Normalize(direction);
-
-	player_velocity += direction * (float)(80000.0 / 50.0 * elapsed_time);
-	player_velocity += front * XMVECTOR{ -1.0f, 0.0f, -1.0f } *(float)(5.0 * elapsed_time);
-	player_pos += player_velocity * (float)elapsed_time;
-
-
-
-	DirectX::XMStoreFloat3(&g_PlayerPosition, player_pos);
-	DirectX::XMStoreFloat3(&g_PlayerVelocity, player_velocity);
 }
 
 void Player_Draw()
 {
 	Light_SetSpecularWorld(Camera_GetPosition(), 10.0f, { 0.1f,0.1f,0.1f,0.1f });//镜面反射光
-	DirectX ::XMMATRIX world = DirectX::XMMatrixTranslation(
+
+	float angle = -atan2f(g_PlayerFront.z, g_PlayerFront.x) + XMConvertToRadians(270);
+
+	XMMATRIX r = XMMatrixRotationY(angle);
+
+	DirectX::XMMATRIX world = DirectX::XMMatrixTranslation(
 		g_PlayerPosition.x,
 		g_PlayerPosition.y,
 		g_PlayerPosition.z
 	);
 	ModelDraw(g_pPlayerModel, world);
 }
+
+AABB Player_GetAABB()
+{
+	return{
+		{ g_PlayerPosition.x - 1.0f,
+		  g_PlayerPosition.y,
+		  g_PlayerPosition.z - 1.0f,
+		},
+		{ g_PlayerPosition.x + 1.0f,
+		  g_PlayerPosition.y + 2.0f,
+		  g_PlayerPosition.z + 1.0f
+		}
+	};
+}
+
 
 const DirectX::XMFLOAT3& Player_GetPosition()
 {

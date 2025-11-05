@@ -4,8 +4,11 @@
 #include "debug_text.h"
 #include <sstream>
 #include "shader_3d.h"
+#include "shader_field.h"
 #include "direct3d.h"
 #include "Player.h"
+using namespace DirectX;
+
 
 namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
@@ -24,42 +27,42 @@ void Player_Camera_Finalize()
 
 void Player_Camera_Update(double elapsed_time)
 {
-	DirectX::XMVECTOR position = DirectX::XMVectorSubtract(
-		DirectX::XMLoadFloat3(&Player_GetPosition()),
-		DirectX::XMVectorScale(DirectX::XMLoadFloat3(&Player_GetFront()), 5.0f)
+	XMVECTOR position = XMLoadFloat3(&Player_GetPosition());
+
+	position = XMVectorMultiply(position, { 1.0f,0.0f,1.0f });
+
+	XMVECTOR target = position;
+
+	position = XMVectorAdd(position, { 0.0f,3.0f,-5.0f });
+
+
+	XMVECTOR front = XMVector3Normalize(target - position);
+
+	XMStoreFloat3(&g_CameraFront, front);
+	XMStoreFloat3(&g_CameraPosition, position);
+
+	XMMATRIX mtxView = XMMatrixLookAtLH(
+		position, // 視点座標
+		target, // 注視点座標
+		{ 0.0f,1.0f,0.0f } // 上方向ベクトル
 	);
 
-	DirectX::XMVECTOR target = DirectX::XMLoadFloat3(&Player_GetPosition());
-
-	DirectX::XMVECTOR front = DirectX::XMVector3Normalize(
-		DirectX::XMVectorSubtract(target, position)
-	);
-	DirectX::XMStoreFloat3(&g_CameraPosition, position);
-	DirectX::XMStoreFloat3(&g_CameraFront, front);
-
-
-	DirectX::XMMATRIX mtxView = DirectX::XMMatrixLookAtLH(
-		position,
-		target,
-		{0.0f,1.0f,0.0f});
-
-	//DirectX::XMStoreFloat4x4(&g_CameraMatrix, mtxView);
 	Shader_3D_SetViewMatrix(mtxView);
+	Shader_field_SetViewMatrix(mtxView);
 
-	constexpr float fovAngleY = DirectX::XMConvertToRadians(60.0f);
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
 	float nearZ = 0.1f;
-	float farZ = 100.0f;
+	float farZ = 1000.0f;
 
-	DirectX::XMMATRIX mtxPerspective = DirectX::XMMatrixPerspectiveFovLH(
-		fovAngleY,
+	XMMATRIX mtxPerspective = XMMatrixPerspectiveFovLH(
+		1.0f,
 		aspectRatio,
 		nearZ,
 		farZ
 	);
 
-	//XMStoreFloat4x4(&g_PerspectiveMatrix, mtxPerspective);
 	Shader_3D_SetProjectMatrix(mtxPerspective);
+	Shader_field_SetProjectMatrix(mtxPerspective);
 }
 
 const DirectX::XMFLOAT3& Player_Camera_GetFront()

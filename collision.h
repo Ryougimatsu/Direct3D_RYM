@@ -19,8 +19,15 @@ struct Box
 	float halfHeight; // 垂直半宽
 };
 
+struct AABB
+{
+	DirectX::XMFLOAT3 max;
+	DirectX::XMFLOAT3 min;
+};
+
 bool Collision_OverlapCircleCircle(const Circle& a, const Circle& b);
 bool Collision_OverlapCircleBox(const Box& a, const Box& b);
+bool Collision_IsOverAABB(const AABB& a, const AABB& b);
 
 
 void Collision_DebugInitialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext);

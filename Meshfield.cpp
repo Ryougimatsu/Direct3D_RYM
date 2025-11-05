@@ -137,9 +137,6 @@ void MeshField_Draw(const DirectX::XMMATRIX& mtxW)
 
 	Shader_field_SetWorldMatrix(XMMatrixTranslation(-offset_x, 0.0f, -offset_z));
 
-	Shader_field_SetViewMatrix(XMLoadFloat4x4(&Camera_GetMatrix()));
-	Shader_field_SetProjectMatrix(XMLoadFloat4x4(&Camera_GetPerspectiveMatrix()));
-
 	// プリミティブトポロジ設定
 	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

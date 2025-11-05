@@ -1,6 +1,8 @@
 #include "direct3d.h"
 #include "Light.h"
 using namespace DirectX;
+#include "shader_3d.h"
+#include "shader_field.h"
 
 //並行光源（拡散反射）
 struct DirectionalLight

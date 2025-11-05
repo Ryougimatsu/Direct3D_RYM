@@ -39,6 +39,16 @@ bool Collision_OverlapCircleBox(const Box& a, const Box& b)
 	return al < br && ar > bl && at < bb && ab > bt;
 }
 
+bool Collision_IsOverAABB(const AABB& a, const AABB& b)
+{
+	return a.min.x < b.max.x
+		&& a.max.x > b.min.x
+		&& a.min.y < b.max.y
+		&& a.max.y > b.min.y
+		&& a.min.z < b.max.z
+		&& a.max.z > b.min.z;
+}					 
+
 
 static constexpr int NUM_VERTEX = 5000; // 頂点数の上限
 
