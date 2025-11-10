@@ -21,7 +21,7 @@ void Game_Initialize()
 	Player_Initialize({ 0.0f, 3.0f, 0.0f }, { 0.0f,0.0f,1.0f });
 	Player_Camera_Initialize();
 	//Camera_Initialize({ 0.00, 3.91, -7.80 }, { 0.00, -0.44, 0.90 }, { 1.00, 0.00, 0.00 }, { -0.00, 0.90, 0.44 });
-	//g_Model = ModelLoad("resource/Model/NIKKE/Doro.fbx",1.5f);
+	g_Model = ModelLoad("resource/Model/Tree.fbx",0.5f);
 	
 }
 
@@ -53,8 +53,23 @@ void Game_Draw()
 	Sampler_SetFilterAnisotropic();
 	Player_Draw();
 
-	//XMMATRIX mtxWorldModel = XMMatrixTranslation(-3.0f, 1.6f, 0.0f);
-	//ModelDraw(g_Model, mtxWorldModel); // 绘制模型
+	XMMATRIX mtxWorldModel = XMMatrixTranslation(-3.0f, 0.0f, 0.0f);
+	ModelDraw(g_Model, mtxWorldModel); // 绘制模型
+	ModelDraw(g_Model, XMMatrixTranslation(3.0f, 0.0f, 2.0f)); // 绘制模型
+	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 2.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 3.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(7.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(8.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(8.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 4.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 6.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 7.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(-6.0f, 0.0f, 2.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(-2.0f, 0.0f, 3.0f));
+	ModelDraw(g_Model, XMMatrixTranslation(-7.0f, 0.0f, 5.0f));
 	//Debug_Draw();
 }
 

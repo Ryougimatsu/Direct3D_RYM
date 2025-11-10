@@ -2,7 +2,7 @@
 
 #include <d3d11.h>
 #include <DirectXMath.h>
-
+#include <algorithm>
 #include "debug_ostream.h"
 #include "direct3d.h"
 #include "shader.h"
@@ -47,18 +47,74 @@ bool Collision_IsOverAABB(const AABB& a, const AABB& b)
 		&& a.max.y > b.min.y
 		&& a.min.z < b.max.z
 		&& a.max.z > b.min.z;
-}					 
+}
 
+Hit Collision_IsHitAABB(const AABB& a, const AABB& b)
+{
+	Hit hit;
 
-static constexpr int NUM_VERTEX = 5000; // 頂点数の上限
+	hit.isHit = Collision_IsOverAABB(a, b);
+
+	if (!hit.isHit) {
+		return hit;
+	}
+
+	float xdepth = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
+	float ydepth = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
+	float zdepth = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
+
+	bool isShallowX = false;
+	bool isShallowY = false;
+	bool isShallowZ = false;
+
+	if (xdepth > ydepth) {
+		if (ydepth > zdepth) {
+			// zの軸
+			isShallowZ = true;
+		}
+		else {
+			// yの軸
+			isShallowY = true;
+		}
+	}
+	else {
+		if (zdepth > xdepth) {
+			// xの軸
+			isShallowX = true;
+		}
+		else {
+			// zの軸
+			isShallowZ = true;
+		}
+	}
+
+	//
+	XMVECTOR normal_vec = XMVectorZero();
+	if (isShallowX) {
+		// 指向 A 的中心方向
+		normal_vec = XMVectorSet((a.GetCenter().x < b.GetCenter().x) ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
+	}
+	else if (isShallowY) {
+		normal_vec = XMVectorSet(0.0f, (a.GetCenter().y < b.GetCenter().y) ? -1.0f : 1.0f, 0.0f, 0.0f);
+	}
+	else if (isShallowZ) {
+		normal_vec = XMVectorSet(0.0f, 0.0f, (a.GetCenter().z < b.GetCenter().z) ? -1.0f : 1.0f, 0.0f);
+	}
+
+	XMStoreFloat3(&hit.normal, normal_vec);
+
+	return hit;
+}	
 
 namespace
 {
+	constexpr int NUM_VERTEX = 5000; // 頂点数の上限
 	ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
 	ID3D11Device* g_pDevice = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 	int g_WhiteId = -1; // 白色のテクスチャID
 }
+
 
 struct Vertex
 {

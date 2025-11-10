@@ -22,6 +22,7 @@ struct MODEL
 
 
 MODEL* ModelLoad(const char* FileName,float size);
+MODEL* ModelLoadS(const char* FileName, float size);
 void ModelRelease(MODEL* model);
 
 void ModelDraw(MODEL* model,const DirectX ::XMMATRIX& mtxWorld );

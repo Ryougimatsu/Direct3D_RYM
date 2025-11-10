@@ -20,7 +20,7 @@ void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT
 	g_PlayerPosition = position;
 	g_PlayerVelocity = { 0.0f,0.0f,0.0f };
 	DirectX::XMStoreFloat3(&g_PlayerFront, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&front)));
-	g_pPlayerModel = ModelLoad("resource/Model/Evoix2.FBX", 0.1f);
+	g_pPlayerModel = ModelLoad("resource/Model/test.fbx", 0.05f);
 }
 
 void Player_Finalize()
@@ -41,14 +41,28 @@ void Player_Update(double elapsed_time)
 	}
 
 	//重力
-	XMVECTOR gravityDir = { 0.0f,-1.0f };
+	XMVECTOR gravityDir = { 0.0f,-1.0f,0.0f };
 	velocity += gravityDir * 9.8f * 1.5f * static_cast<float>(elapsed_time);
 	position += velocity * static_cast<float>(elapsed_time);
 
-	//地面判定
-	if (XMVectorGetY(position) < 1.0f)
-	{
-		position -= velocity * static_cast<float>(elapsed_time);
+
+	XMStoreFloat3(&g_PlayerPosition, position);
+	AABB player = Player_GetAABB();
+	AABB cube = Cube_CreateAABB({ 3.0f, 3.0f, 2.0f });
+
+	Hit hit = Collision_IsHitAABB(cube, player);
+	if (hit.isHit) {
+		if (hit.normal.y > 0.0f) { // 上にたぶんのっかった
+			// position -= gvelocity; // 落ちたことをなかったことにする
+			XMVectorSetY(position, cube.max.y + 0.01f);
+			// gvelocity = {};
+			velocity *= { 1.0f, 0.0f, 1.0f };
+			g_IsJump = false;
+		}
+	}
+	else if (XMVectorGetY(position) < 0.5f) {
+		position -= gravityDir; // 落ちたことをなかったことにする
+		// gvelocity = {};
 		velocity *= { 1.0f, 0.0f, 1.0f };
 		g_IsJump = false;
 	}
@@ -137,14 +151,7 @@ void Player_Update(double elapsed_time)
 
 	DirectX::XMStoreFloat3(&g_PlayerPosition, position);
 	DirectX::XMStoreFloat3(&g_PlayerVelocity, velocity);
-	
-	AABB player = Player_GetAABB();
-	AABB cube = Cube_CreateAABB({ 3.0f, 0.5f, 2.0f });
 
-	if (Collision_IsOverAABB(player, cube)) {
-		position -= velocity * (float)elapsed_time;
-		velocity = { 0.0f, 0.0f, 0.0f };
-	}
 
 }
 
