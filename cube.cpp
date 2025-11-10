@@ -21,6 +21,7 @@ struct Vertex3D
 namespace {
 	int g_CubeTexId = -1; // テクスチャID
 
+
 	constexpr int NUM_VERTEX = 24; // 頂点数
 	constexpr int NUM_INDEX = 36;
 	ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
@@ -121,8 +122,6 @@ void Cube_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	sd.pSysMem = g_CubeVertexIndex;
 
 	g_pDevice->CreateBuffer(&bd, &sd, &g_pIndexBuffer);
-
-	g_CubeTexId = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
 }
 
 void Cube_Finalize(void)
@@ -131,19 +130,20 @@ void Cube_Finalize(void)
 	SAFE_RELEASE(g_pVertexBuffer);
 }
 
-void Cube_Draw(const XMMATRIX mtxW)
+void Cube_Draw(int texID,const XMMATRIX mtxW)
 {
+
 	// シェーダーを描画パイプラインに設定
 	Shader_3D_Begin();
 
 	Shader_3D_SetColor({ 1.0f,1.0f,1.0f,1.0f });
 
+	Texture_Set(texID);
 	// 頂点バッファを描画パイプラインに設定
 	UINT stride = sizeof(Vertex3D);
 	UINT offset = 0;
 	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 	g_pContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	Texture_Set(g_CubeTexId);
 
 	Shader_3D_SetWorldMatrix(mtxW);
 

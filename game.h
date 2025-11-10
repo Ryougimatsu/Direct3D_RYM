@@ -13,10 +13,4 @@ void Game_Draw();
 void Game_Finalize();
 
 
-
-
-
-
-
-
 #endif 

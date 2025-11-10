@@ -9,6 +9,7 @@ using namespace DirectX;
 #include "model.h"
 #include "Player.h"
 #include "Player_Camera.h"
+#include "map.h"
 
 namespace 
 {
@@ -22,6 +23,7 @@ void Game_Initialize()
 	Player_Camera_Initialize();
 	//Camera_Initialize({ 0.00, 3.91, -7.80 }, { 0.00, -0.44, 0.90 }, { 1.00, 0.00, 0.00 }, { -0.00, 0.90, 0.44 });
 	g_Model = ModelLoad("resource/Model/Tree.fbx",0.5f);
+	Map_Initialize();
 	
 }
 
@@ -53,6 +55,8 @@ void Game_Draw()
 	Sampler_SetFilterAnisotropic();
 	Player_Draw();
 
+	Map_Draw();
+
 	XMMATRIX mtxWorldModel = XMMatrixTranslation(-3.0f, 0.0f, 0.0f);
 	ModelDraw(g_Model, mtxWorldModel); // 绘制模型
 	ModelDraw(g_Model, XMMatrixTranslation(3.0f, 0.0f, 2.0f)); // 绘制模型
@@ -75,11 +79,12 @@ void Game_Draw()
 
 void Game_Finalize()
 {
-	//ModelRelease(g_Model);
+	ModelRelease(g_Model);
 	MeshField_Finalize();
 	Player_Finalize();
 	Player_Camera_Finalize();
 	//Camera_Finalize();
+	Map_Finalize();
 }
 
 
