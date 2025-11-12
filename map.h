@@ -1,11 +1,12 @@
 #pragma once
 #include <DirectXMath.h>
+#include "collision.h"
 class MapObject
 {
 public:
 	int KindId;
 	DirectX ::XMFLOAT3 Position;
-
+	AABB Aabb;
 };
 void Map_Initialize();
 

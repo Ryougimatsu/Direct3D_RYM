@@ -10,6 +10,7 @@ using namespace DirectX;
 
 namespace {
 	MapObject g_MapObjects[]{
+		{ 0, { 0.0f, 0.0f, 0.0f }, { { -25.0f, -1.0f, -25.0f}, {25.0f, 0.0f, 25.0f}}},
 		{1,{ 1.0f,0.5f,0.0f}},
 		{1,{-1.0f,0.5f,0.0f}},
 		{1,{ 0.0f,0.5f,0.0f}},
@@ -26,7 +27,15 @@ namespace {
 void Map_Initialize()
 {
 	g_CubeTexID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
+
+	for (MapObject& o : g_MapObjects)
+	{
+		if (o.KindId == 1 || o.KindId == 2) {
+			o.Aabb = Cube_CreateAABB(o.Position);
+		}
+	}
 }
+
 
 void Map_Finalize()
 {
@@ -37,6 +46,8 @@ void Map_Draw()
 	XMMATRIX mtxWorld;
 	for (const MapObject& o : g_MapObjects) {
 		switch (o.KindId) {
+		case 0:
+			break;
 		case 1:
 			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
 			Cube_Draw(g_CubeTexID, mtxWorld);

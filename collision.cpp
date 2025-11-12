@@ -2,11 +2,12 @@
 
 #include <d3d11.h>
 #include <DirectXMath.h>
-#include <algorithm>
+
 #include "debug_ostream.h"
 #include "direct3d.h"
 #include "shader.h"
 #include "texture.h"
+#include <algorithm>
 using namespace DirectX;
 
 
@@ -39,82 +40,16 @@ bool Collision_OverlapCircleBox(const Box& a, const Box& b)
 	return al < br && ar > bl && at < bb && ab > bt;
 }
 
-bool Collision_IsOverAABB(const AABB& a, const AABB& b)
-{
-	return a.min.x < b.max.x
-		&& a.max.x > b.min.x
-		&& a.min.y < b.max.y
-		&& a.max.y > b.min.y
-		&& a.min.z < b.max.z
-		&& a.max.z > b.min.z;
-}
 
-Hit Collision_IsHitAABB(const AABB& a, const AABB& b)
-{
-	Hit hit;
-
-	hit.isHit = Collision_IsOverAABB(a, b);
-
-	if (!hit.isHit) {
-		return hit;
-	}
-
-	float xdepth = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
-	float ydepth = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
-	float zdepth = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
-
-	bool isShallowX = false;
-	bool isShallowY = false;
-	bool isShallowZ = false;
-
-	if (xdepth > ydepth) {
-		if (ydepth > zdepth) {
-			// zの軸
-			isShallowZ = true;
-		}
-		else {
-			// yの軸
-			isShallowY = true;
-		}
-	}
-	else {
-		if (zdepth > xdepth) {
-			// xの軸
-			isShallowX = true;
-		}
-		else {
-			// zの軸
-			isShallowZ = true;
-		}
-	}
-
-	//
-	XMVECTOR normal_vec = XMVectorZero();
-	if (isShallowX) {
-		// 指向 A 的中心方向
-		normal_vec = XMVectorSet((a.GetCenter().x < b.GetCenter().x) ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
-	}
-	else if (isShallowY) {
-		normal_vec = XMVectorSet(0.0f, (a.GetCenter().y < b.GetCenter().y) ? -1.0f : 1.0f, 0.0f, 0.0f);
-	}
-	else if (isShallowZ) {
-		normal_vec = XMVectorSet(0.0f, 0.0f, (a.GetCenter().z < b.GetCenter().z) ? -1.0f : 1.0f, 0.0f);
-	}
-
-	XMStoreFloat3(&hit.normal, normal_vec);
-
-	return hit;
-}	
+static constexpr int NUM_VERTEX = 5000; // 頂点数の上限
 
 namespace
 {
-	constexpr int NUM_VERTEX = 5000; // 頂点数の上限
 	ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
 	ID3D11Device* g_pDevice = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 	int g_WhiteId = -1; // 白色のテクスチャID
 }
-
 
 struct Vertex
 {
@@ -122,6 +57,44 @@ struct Vertex
 	XMFLOAT4 color;
 	XMFLOAT2 uv;
 };
+
+bool Collision_IsOverLapAABB(const AABB& a, const AABB& b)
+{
+	return a.min.x <= b.max.x
+		&& a.max.x >= b.min.x
+		&& a.min.y <= b.max.y
+		&& a.max.y >= b.min.y
+		&& a.min.z <= b.max.z
+		&& a.max.z >= b.min.z;
+}
+
+Hit Collision_IsHitAABB(const AABB& a, const AABB& b)
+{
+	Hit hit{};
+	hit.isHit = Collision_IsOverLapAABB(a, b);
+	if (!hit.isHit) return hit;
+
+	float xdepth = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
+	float ydepth = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
+	float zdepth = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
+
+	DirectX::XMFLOAT3 aCenter = a.GetCenter();
+	DirectX::XMFLOAT3 bCenter = b.GetCenter();
+	DirectX::XMFLOAT3 normal = { 0,0,0 };
+
+	if (xdepth <= ydepth && xdepth <= zdepth) {
+		normal.x = (bCenter.x > aCenter.x) ? 1.0f : -1.0f;
+	}
+	else if (ydepth <= xdepth && ydepth <= zdepth) {
+		normal.y = (bCenter.y > aCenter.y) ? 1.0f : -1.0f;
+	}
+	else {
+		normal.z = (bCenter.z > aCenter.z) ? 1.0f : -1.0f;
+	}
+	hit.normal = normal;
+	return hit;
+}
+
 
 void Collision_DebugInitialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 {
@@ -146,7 +119,7 @@ void Collision_DebugFinalize()
 	SAFE_RELEASE(g_pVertexBuffer);
 }
 
-void Collision_DebugDraw(const Circle& circle,const DirectX::XMFLOAT4& color)
+void Collision_DebugDraw(const Circle& circle, const DirectX::XMFLOAT4& color)
 {
 	int vertexNum = static_cast<int>(circle.radius * XM_2PI + 1);
 
@@ -204,13 +177,13 @@ void Collision_DebugDraw(const Box& box, const DirectX::XMFLOAT4& color)
 	// 頂点バッファへの仮想ポインタを取得
 	Vertex* v = (Vertex*)msr.pData;
 
-	v[0].position = {box.center.x - box.halfWidth,box.center.y - box.halfHeight,0.0f};
-	v[1].position = { box.center.x +box.halfWidth,box.center.y - box.halfHeight,0.0f };
-	v[2].position= { box.center.x + box.halfWidth,box.center.y + box.halfHeight,0.0f };
-	v[3].position= { box.center.x - box.halfWidth,box.center.y + box.halfHeight,0.0f };
+	v[0].position = { box.center.x - box.halfWidth,box.center.y - box.halfHeight,0.0f };
+	v[1].position = { box.center.x + box.halfWidth,box.center.y - box.halfHeight,0.0f };
+	v[2].position = { box.center.x + box.halfWidth,box.center.y + box.halfHeight,0.0f };
+	v[3].position = { box.center.x - box.halfWidth,box.center.y + box.halfHeight,0.0f };
 
 	for (int i = 0; i < 4; ++i) {
-		
+
 		v[i].color = color;
 		v[i].uv = { 0.0f,0.0f };
 	}

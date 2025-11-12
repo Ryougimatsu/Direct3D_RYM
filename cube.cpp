@@ -161,9 +161,9 @@ AABB Cube_CreateAABB(const DirectX::XMFLOAT3& position)
 		  position.y - 0.5f,
 		  position.z - 0.5f,
 		},
-		{ position.x - 0.5f,
-		  position.y - 0.5f,
-		  position.z - 0.5f 
+		{ position.x + 0.5f,
+		  position.y + 0.5f,
+		  position.z + 0.5f 
 		} 
 		};
 }
