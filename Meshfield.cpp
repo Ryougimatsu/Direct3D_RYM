@@ -4,6 +4,7 @@
 #include "texture.h"
 #include "camera.h"
 #include "shader_3d.h"
+#include "Sampler.h"
 
 using namespace DirectX;
 
@@ -124,6 +125,7 @@ void MeshField_Draw(const DirectX::XMMATRIX& mtxW)
 	Texture_Set(g_MeshFieldTexId0,0);
 	Texture_Set(g_MeshFieldTexId1,1);
 	// 頂点バッファを描画パイプラインに設定
+	Sampler_SetFilterAnisotropic();
 	UINT stride = sizeof(Vertex3D);
 	UINT offset = 0;
 	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);

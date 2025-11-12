@@ -205,3 +205,75 @@ void Collision_DebugDraw(const Box& box, const DirectX::XMFLOAT4& color)
 
 	g_pContext->Draw(4, 0);
 }
+
+void Collision_DebugDraw(const AABB& aabb, const DirectX::XMFLOAT4& color)
+{
+	// 1. 获取AABB的8个顶点（角）
+	DirectX::XMFLOAT3 corners[8] = {
+		{ aabb.min.x, aabb.min.y, aabb.min.z }, // 0: Bottom-Back-Left
+		{ aabb.max.x, aabb.min.y, aabb.min.z }, // 1: Bottom-Back-Right
+		{ aabb.max.x, aabb.max.y, aabb.min.z }, // 2: Top-Back-Right
+		{ aabb.min.x, aabb.max.y, aabb.min.z }, // 3: Top-Back-Left
+		{ aabb.min.x, aabb.min.y, aabb.max.z }, // 4: Bottom-Front-Left
+		{ aabb.max.x, aabb.min.y, aabb.max.z }, // 5: Bottom-Front-Right
+		{ aabb.max.x, aabb.max.y, aabb.max.z }, // 6: Top-Front-Right
+		{ aabb.min.x, aabb.max.y, aabb.max.z }  // 7: Top-Front-Left
+	};
+
+	// 2. 定义12条线 (需要24个顶点)
+	Vertex v[24];
+
+	auto set_line = [&](int v_index, int corner_a, int corner_b) {
+		v[v_index].position = corners[corner_a];
+		v[v_index].color = color;
+		v[v_index].uv = { 0.0f, 0.0f };
+
+		v[v_index + 1].position = corners[corner_b];
+		v[v_index + 1].color = color;
+		v[v_index + 1].uv = { 0.0f, 0.0f };
+		};
+
+	// 绘制底面 (4条线)
+	set_line(0, 0, 1);
+	set_line(2, 1, 5);
+	set_line(4, 5, 4);
+	set_line(6, 4, 0);
+
+	// 绘制顶面 (4条线)
+	set_line(8, 3, 2);
+	set_line(10, 2, 6);
+	set_line(12, 6, 7);
+	set_line(14, 7, 3);
+
+	// 绘制垂直的边 (4条线)
+	set_line(16, 0, 3);
+	set_line(18, 1, 2);
+	set_line(20, 5, 6);
+	set_line(22, 4, 7);
+
+
+	// 3. 复制标准D3D绘制流程
+	Shader_Begin();
+
+	D3D11_MAPPED_SUBRESOURCE msr;
+	g_pContext->Map(g_pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+
+	// 将所有24个顶点数据复制到顶点缓冲区
+	memcpy(msr.pData, v, sizeof(Vertex) * 24);
+
+	g_pContext->Unmap(g_pVertexBuffer, 0);
+
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+
+	Shader_SetWorldMatrix(DirectX::XMMatrixIdentity());
+
+	// *** 注意：这里使用 LINELIST ***
+	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+	Texture_Set(g_WhiteId);
+
+	// *** 注意：绘制24个顶点 ***
+	g_pContext->Draw(24, 0);
+}

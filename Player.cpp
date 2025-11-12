@@ -14,6 +14,9 @@ namespace {
 	XMFLOAT3 g_PlayerVelocity = {};
 	MODEL* g_pPlayerModel = nullptr;
 	bool g_IsJump = false;
+	const float PLAYER_HEIGHT = 1.2f;
+	const float PLAYER_HALF_WIDTH_X = 1.0f / 2.0f; // 假设测量后得到
+	const float PLAYER_HALF_WIDTH_Z = 1.0f / 2.0f; // 假设X和Z是对称的
 }
 
 void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3 front)
@@ -121,7 +124,7 @@ void Player_Update(double elapsed_time)
 			front = XMVector3TransformNormal(XMLoadFloat3(&g_PlayerFront), r);
 		}
 
-		velocity += front * static_cast<float>(2000.0 / 50.0 * elapsed_time);
+		velocity += front * static_cast<float>(2000.0 / 90.0 * elapsed_time);
 
 		XMStoreFloat3(&g_PlayerFront, front);
 	}
@@ -141,27 +144,27 @@ void Player_Update(double elapsed_time)
 		{
 			if (hit.normal.x > 0.0f)
 			{
-				position = XMVectorSetX(position, obj.max.x + 1.0f);
+				position = XMVectorSetX(position, obj.max.x + PLAYER_HALF_WIDTH_X);
 				velocity *= { 0.0f, 1.0f, 1.0f };
 			}
 			else if (hit.normal.x < 0.0f)
 			{
-				position = XMVectorSetX(position, obj.min.x - 1.0f);
+				position = XMVectorSetX(position, obj.min.x - PLAYER_HALF_WIDTH_X);
 				velocity *= { 0.0f, 1.0f, 1.0f };
 			}
 			else if (hit.normal.y < 0.0f)
 			{
-				position = XMVectorSetY(position, obj.min.y - 2.0f);
+				position = XMVectorSetY(position, obj.min.y - PLAYER_HEIGHT);
 				velocity *= { 1.0f, 0.0f, 1.0f };
 			}
 			else if (hit.normal.z > 0.0f)
 			{
-				position = XMVectorSetZ(position, obj.max.z + 1.0f);
+				position = XMVectorSetZ(position, obj.max.z + PLAYER_HALF_WIDTH_Z); 
 				velocity *= { 1.0f, 1.0f, 0.0f };
 			}
 			else if (hit.normal.z < 0.0f)
 			{
-				position = XMVectorSetZ(position, obj.min.z - 1.0f);
+				position = XMVectorSetZ(position, obj.min.z - PLAYER_HALF_WIDTH_Z); 
 				velocity *= { 1.0f, 1.0f, 0.0f };
 			}
 		}
@@ -181,7 +184,7 @@ void Player_Draw()
 
 	XMMATRIX t = XMMatrixTranslation(
 		g_PlayerPosition.x,
-		g_PlayerPosition.y + 1.0f,
+		g_PlayerPosition.y + (PLAYER_HEIGHT / 2.0f),
 		g_PlayerPosition.z);
 
 	XMMATRIX world = r * t;
@@ -191,17 +194,16 @@ void Player_Draw()
 
 AABB Player_GetAABB()
 {
-	return {{g_PlayerPosition.x - 1.0f,  g_PlayerPosition.y, g_PlayerPosition.z - 1.0f },
-		{g_PlayerPosition.x + 1.0f,g_PlayerPosition.y + 2.0f, g_PlayerPosition.z + 1.0f}
-
+	return { {g_PlayerPosition.x - PLAYER_HALF_WIDTH_X,  g_PlayerPosition.y, g_PlayerPosition.z - PLAYER_HALF_WIDTH_Z },
+		{g_PlayerPosition.x + PLAYER_HALF_WIDTH_X, g_PlayerPosition.y + PLAYER_HEIGHT, g_PlayerPosition.z + PLAYER_HALF_WIDTH_Z}
 	};
 }
 
 AABB Player_ConvertPositionToAABB(const DirectX::XMVECTOR& position)
 {
 	AABB aabb;
-	XMStoreFloat3(&aabb.min, position - XMVECTOR{ 1.0f,0.0f,1.0f });
-	XMStoreFloat3(&aabb.max, position + XMVECTOR{ 1.0f,2.0f,1.0f });
+	XMStoreFloat3(&aabb.min, position - XMVECTOR{ PLAYER_HALF_WIDTH_X, 0.0f, PLAYER_HALF_WIDTH_Z });
+	XMStoreFloat3(&aabb.max, position + XMVECTOR{ PLAYER_HALF_WIDTH_X, PLAYER_HEIGHT, PLAYER_HALF_WIDTH_Z });
 	return aabb;
 }
 

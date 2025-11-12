@@ -51,7 +51,7 @@ void Collision_DebugFinalize();
 void Collision_DebugDraw(const Circle& circle, const DirectX::XMFLOAT4& color = { 1.0f,1.0f,0.0f,1.0f });
 void Collision_DebugDraw(const Box& box, const DirectX::XMFLOAT4& color = { 1.0f,1.0f,0.0f,1.0f });
 
-
+void Collision_DebugDraw(const AABB& aabb, const DirectX::XMFLOAT4& color);
 
 
 #endif // COLLISION_H
