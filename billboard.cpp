@@ -5,6 +5,7 @@
 #include "key_logger.h"
 #include "mouse.h"
 #include "texture.h"
+#include "Player_Camera.h"
 
 using namespace DirectX;
 namespace {
@@ -49,8 +50,11 @@ void Billboard_Finalize(void)
 	Shader_Billboard_Finalize();
 }
 
-void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x, float scale_y)
+void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x, float scale_y, const DirectX::XMFLOAT2& pivot)
 {
+
+	Shader_Billboard_SetUVParameter({ { 1.0f,1.0f}, { 0.0f,0.0f } });
+
 	// シェーダーを描画パイプラインに設定
 	Shader_Billboard_Begin();
 
@@ -63,9 +67,17 @@ void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x,
 	Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 	Direct3D_GetDeviceContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
 
+	XMMATRIX pivot_offset = XMMatrixTranslation(-pivot.x , -pivot.y , 0.0f);
+
+	XMFLOAT4X4 CameraMatrix = Player_Camera_GetViewMatrix();
+	CameraMatrix._41 = CameraMatrix._42 = CameraMatrix._43 = 0.0f;
+
+
+	//XMMATRIX iv = XMMatrixInverse(nullptr, XMLoadFloat4x4(&CameraMatrix));
+	XMMATRIX iv = XMMatrixTranspose(XMLoadFloat4x4(&CameraMatrix));
 	XMMATRIX mtxs = XMMatrixScaling(scale_x, scale_y, 1.0f);
-	XMMATRIX mtxt = XMMatrixTranslation(position.x,position.y,position.z);
-	Shader_Billboard_SetWorldMatrix(mtxs * mtxt);
+	XMMATRIX mtxt = XMMatrixTranslation(position.x + pivot.x ,position.y + pivot.y ,position.z);
+	Shader_Billboard_SetWorldMatrix(pivot_offset* mtxs * iv * mtxt);
 
 	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	// ポリゴン描画命令発行

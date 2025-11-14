@@ -15,9 +15,11 @@ namespace
 	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer1 = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer2 = nullptr;
+	ID3D11Buffer* g_pVSConstantBuffer3 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
 }
+
 
 
 bool Shader_Billboard_Initialize()
@@ -81,6 +83,9 @@ bool Shader_Billboard_Initialize()
 	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0); // World
 	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer1); // View
 	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer2); // Projection
+	
+	buffer_desc.ByteWidth = sizeof(UVParameter);
+	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer3); 
 
 
 	// ピクセルシェーダーの読み込み
@@ -168,6 +173,11 @@ void Shader_Billboard_SetColor(const DirectX::XMFLOAT4& color)
 	Direct3D_GetDeviceContext()->UpdateSubresource(g_pPSConstantBuffer0, 0, nullptr, &color, 0, 0);
 }
 
+void Shader_Billboard_SetUVParameter(const UVParameter& parameter)
+{
+	Direct3D_GetDeviceContext()->UpdateSubresource(g_pVSConstantBuffer3, 0, nullptr, &parameter, 0, 0);
+}
+
 void Shader_Billboard_Begin()
 {
 	//頂点シェーダーとピクセルシェーダーを描画パイプラインに設定
@@ -181,5 +191,6 @@ void Shader_Billboard_Begin()
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &g_pVSConstantBuffer1);
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(2, 1, &g_pVSConstantBuffer2);
+	Direct3D_GetDeviceContext()->VSSetConstantBuffers(3, 1, &g_pVSConstantBuffer3);
 	Direct3D_GetDeviceContext()->PSSetConstantBuffers(0, 1, &g_pPSConstantBuffer0);
 }

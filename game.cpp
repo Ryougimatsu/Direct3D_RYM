@@ -29,7 +29,7 @@ void Game_Initialize()
 	Map_Initialize();
 	Billboard_Initialize();
 
-	g_TexTest = Texture_LoadFromFile(L"resource/texture/Background1.png");
+	g_TexTest = Texture_LoadFromFile(L"resource/texture/pl00.png");
 	
 }
 
@@ -77,7 +77,7 @@ void Game_Draw()
 	ModelDraw(g_Model, XMMatrixTranslation(-2.0f, 0.0f, 3.0f));
 	ModelDraw(g_Model, XMMatrixTranslation(-7.0f, 0.0f, 5.0f));
 
-	Billboard_Draw(g_TexTest, { -5.0f,0.5f,-5.0f }, 1.0f, 1.0f);
+	Billboard_Draw(g_TexTest, { -10.0f,0.5f,-5.0f }, 4.0f, 4.0f, {0.0f,-0.3});
 }
 
 void Game_Finalize()

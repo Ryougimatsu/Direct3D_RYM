@@ -52,8 +52,9 @@ void Player_Camera_Update(double elapsed_time)
 
 	Shader_3D_SetViewMatrix(mtxView);
 	Shader_field_SetViewMatrix(mtxView);
-
 	Shader_Billboard_SetViewMatrix(mtxView);
+
+	XMStoreFloat4x4(&g_CameraMatrix, mtxView);
 
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
 	float nearZ = 0.1f;
@@ -68,7 +69,6 @@ void Player_Camera_Update(double elapsed_time)
 
 	Shader_3D_SetProjectMatrix(mtxPerspective);
 	Shader_field_SetProjectMatrix(mtxPerspective);
-
 	Shader_Billboard_SetProjectMatrix(mtxPerspective);
 }
 
@@ -80,4 +80,9 @@ const DirectX::XMFLOAT3& Player_Camera_GetFront()
 const DirectX::XMFLOAT3& Player_Camera_GetPosition()
 {
 	return g_CameraPosition;
+}
+
+const DirectX::XMFLOAT4X4& Player_Camera_GetViewMatrix()
+{
+	return g_CameraMatrix;
 }
