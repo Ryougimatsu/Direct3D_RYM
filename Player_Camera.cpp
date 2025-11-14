@@ -5,6 +5,7 @@
 #include <sstream>
 #include "shader_3d.h"
 #include "shader_field.h"
+#include "shader_billboard.h"
 #include "direct3d.h"
 #include "Player.h"
 using namespace DirectX;
@@ -13,6 +14,8 @@ using namespace DirectX;
 namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT4X4 g_CameraMatrix{};
+
 }
 
 
@@ -50,6 +53,8 @@ void Player_Camera_Update(double elapsed_time)
 	Shader_3D_SetViewMatrix(mtxView);
 	Shader_field_SetViewMatrix(mtxView);
 
+	Shader_Billboard_SetViewMatrix(mtxView);
+
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
 	float nearZ = 0.1f;
 	float farZ = 1000.0f;
@@ -63,6 +68,8 @@ void Player_Camera_Update(double elapsed_time)
 
 	Shader_3D_SetProjectMatrix(mtxPerspective);
 	Shader_field_SetProjectMatrix(mtxPerspective);
+
+	Shader_Billboard_SetProjectMatrix(mtxPerspective);
 }
 
 const DirectX::XMFLOAT3& Player_Camera_GetFront()

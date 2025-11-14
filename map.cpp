@@ -77,10 +77,6 @@ void Map_Draw()
 			Cube_Draw(g_CubeTexID, mtxWorld);
 			break;
 		case 2:
-			Shader_3D_Begin();
-			Light_SetSpecularWorld(Player_Camera_GetPosition(), 10.0f, { 0.4f,0.4f,0.4f,1.0f });
-			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
-			ModelDraw(g_Model, mtxWorld);
 			break;
 		}
 	}

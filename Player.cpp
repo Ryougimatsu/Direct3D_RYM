@@ -73,13 +73,13 @@ void Player_Update(double elapsed_time)
 
 	}
 	//地面に到達したら止まる
-	if (XMVectorGetY(position) <= 0.0f)
+	/*if (XMVectorGetY(position) <= 0.0f)
 	{
 		position = XMVectorSetY(position, 0.0f);
 		gravityVelocity = XMVectorZero();
 		velocity *= { 1.0f, 0.0f, 1.0f };
 		g_IsJump = false;
-	}
+	}*/
 
 	XMVECTOR moveDir = XMVectorZero();
 

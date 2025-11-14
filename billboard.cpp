@@ -1,0 +1,73 @@
+#include "billboard.h"
+#include <DirectXMath.h>
+#include "direct3d.h"
+#include "shader_billboard.h"
+#include "key_logger.h"
+#include "mouse.h"
+#include "texture.h"
+
+using namespace DirectX;
+namespace {
+	constexpr int NUM_VERTEX = 4; // 頂点数
+	ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
+}
+struct Vertex3D
+{
+	XMFLOAT3 position; // 頂点座標
+	XMFLOAT4 color;
+	XMFLOAT2 uv; // uv座標
+};
+
+void Billboard_Initialize()
+{
+	Shader_Billboard_Initialize();
+	Vertex3D Vertex[]
+	{
+		{{-0.5f,  0.5f,0.0f},{ 1.0f,1.0f,1.0f,1.0f},  {0.0f, 0.0f}}, // 左上
+		{{ 0.5f,  0.5f,0.0f},{ 1.0f,1.0f,1.0f,1.0f},  {1.0f, 0.0f}}, // 右上
+		{{-0.5f, -0.5f,0.0f},{ 1.0f,1.0f,1.0f,1.0f},  {0.0f, 1.0f}}, // 左下
+		{{ 0.5f, -0.5f,0.0f},{ 1.0f,1.0f,1.0f,1.0f},  {1.0f, 1.0f}}, // 右下
+	};
+
+	// 頂点バッファ生成
+	D3D11_BUFFER_DESC bd = {};
+	bd.Usage = D3D11_USAGE_DEFAULT;// 書き込み不可に設定
+	bd.ByteWidth = sizeof(Vertex3D) * NUM_VERTEX;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA sd{};
+	sd.pSysMem = Vertex;
+	Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &g_pVertexBuffer);
+	
+	return;
+}
+
+void Billboard_Finalize(void)
+{
+	SAFE_RELEASE(g_pVertexBuffer);
+	Shader_Billboard_Finalize();
+}
+
+void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x, float scale_y)
+{
+	// シェーダーを描画パイプラインに設定
+	Shader_Billboard_Begin();
+
+	Shader_Billboard_SetColor({ 1.0f,1.0f,1.0f,1.0f });
+
+	Texture_Set(texID);
+	// 頂点バッファを描画パイプラインに設定
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	Direct3D_GetDeviceContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+
+	XMMATRIX mtxs = XMMatrixScaling(scale_x, scale_y, 1.0f);
+	XMMATRIX mtxt = XMMatrixTranslation(position.x,position.y,position.z);
+	Shader_Billboard_SetWorldMatrix(mtxs * mtxt);
+
+	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	// ポリゴン描画命令発行
+	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
+}

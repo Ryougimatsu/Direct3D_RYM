@@ -10,12 +10,15 @@ using namespace DirectX;
 #include "Player.h"
 #include "Player_Camera.h"
 #include "map.h"
+#include "billboard.h"
+#include "texture.h"
 
 
 namespace 
 {
 	XMMATRIX g_mtxWorld_Field;
 	MODEL* g_Model = nullptr;
+	int g_TexTest = -1;
 }
 void Game_Initialize()
 {
@@ -24,6 +27,9 @@ void Game_Initialize()
 	Player_Camera_Initialize();
 	g_Model = ModelLoad("resource/Model/Tree.fbx",0.5f);
 	Map_Initialize();
+	Billboard_Initialize();
+
+	g_TexTest = Texture_LoadFromFile(L"resource/texture/Background1.png");
 	
 }
 
@@ -70,6 +76,8 @@ void Game_Draw()
 	ModelDraw(g_Model, XMMatrixTranslation(-6.0f, 0.0f, 2.0f));
 	ModelDraw(g_Model, XMMatrixTranslation(-2.0f, 0.0f, 3.0f));
 	ModelDraw(g_Model, XMMatrixTranslation(-7.0f, 0.0f, 5.0f));
+
+	Billboard_Draw(g_TexTest, { -5.0f,0.5f,-5.0f }, 1.0f, 1.0f);
 }
 
 void Game_Finalize()
@@ -79,6 +87,7 @@ void Game_Finalize()
 	Player_Finalize();
 	Player_Camera_Finalize();
 	Map_Finalize();
+	Billboard_Finalize();
 }
 
 
