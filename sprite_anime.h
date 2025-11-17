@@ -8,6 +8,7 @@ void SpriteAnime_Finalize(void);
 
 void SpriteAnime_Update(double elapsed_time);
 void SpriteAnime_Draw(int playid,float x,float y,float dw,float dh);
+void BillboardAnim_Draw(int playid,const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT2& scale,const DirectX :: XMFLOAT2& pivot = {0.0f,0.0f});
 
 int SpriteAnime_PatternRegister(int textrueId,int pattern_max, double second_per_pattern,
 	const DirectX::XMUINT2& pattern_size,

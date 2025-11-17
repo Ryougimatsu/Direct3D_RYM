@@ -2,6 +2,7 @@
 #include "sprite.h"
 #include "texture.h"
 #include <DirectXMath.h>
+#include "billboard.h"
 using namespace DirectX;
 
 struct AnimePatternData {
@@ -90,6 +91,27 @@ void SpriteAnime_Update(double elapsed_time)
 			* (g_AnimePlayData[playid].m_PatternNum / pAnmPtrnData->m_PatternCol),
 			pAnmPtrnData->m_PatternSize.x,
 			pAnmPtrnData->m_PatternSize.y);
+
+	}
+
+	void BillboardAnim_Draw(int playid, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot)
+	{
+		int anm_ptrn_id = g_AnimePlayData[playid].m_PatternId;
+
+		AnimePatternData* pAnmPtrnData = &g_AnimePattern[anm_ptrn_id];
+
+		Billboard_Draw(pAnmPtrnData->m_TextureId,
+			position, scale,
+			{
+			pAnmPtrnData->m_StartPosition.x + pAnmPtrnData->m_PatternSize.x
+			* (g_AnimePlayData[playid].m_PatternNum % pAnmPtrnData->m_PatternCol),
+			pAnmPtrnData->m_StartPosition.y + pAnmPtrnData->m_PatternSize.y
+			* (g_AnimePlayData[playid].m_PatternNum / pAnmPtrnData->m_PatternCol),
+			pAnmPtrnData->m_PatternSize.x,
+			pAnmPtrnData->m_PatternSize.y
+			},
+			pivot
+		);
 
 	}
 

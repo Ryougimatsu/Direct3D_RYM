@@ -50,7 +50,7 @@ void Billboard_Finalize(void)
 	Shader_Billboard_Finalize();
 }
 
-void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x, float scale_y, const DirectX::XMFLOAT2& pivot)
+void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT2& scale,const DirectX::XMFLOAT2& pivot = { 0.0f,0.0f })
 {
 
 	Shader_Billboard_SetUVParameter({ { 1.0f,1.0f}, { 0.0f,0.0f } });
@@ -75,9 +75,47 @@ void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, float scale_x,
 
 	//XMMATRIX iv = XMMatrixInverse(nullptr, XMLoadFloat4x4(&CameraMatrix));
 	XMMATRIX iv = XMMatrixTranspose(XMLoadFloat4x4(&CameraMatrix));
-	XMMATRIX mtxs = XMMatrixScaling(scale_x, scale_y, 1.0f);
+	XMMATRIX mtxs = XMMatrixScaling(scale.x, scale.y, 1.0f);
 	XMMATRIX mtxt = XMMatrixTranslation(position.x + pivot.x ,position.y + pivot.y ,position.z);
 	Shader_Billboard_SetWorldMatrix(pivot_offset* mtxs * iv * mtxt);
+
+	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	// ポリゴン描画命令発行
+	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
+}
+
+void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot, const DirectX::XMFLOAT4&  tex_cut)
+{
+	Shader_Billboard_Begin();
+	
+	float uv_x = tex_cut.x / Texture_GetWidth(texID);
+	float uv_y = tex_cut.y / Texture_GetHeight(texID);
+	float uv_w = tex_cut.z / Texture_GetWidth(texID);
+	float uv_h = tex_cut.w / Texture_GetHeight(texID);
+
+	// シェーダーを描画パイプラインに設定
+	Shader_Billboard_SetUVParameter({ { uv_w,uv_h}, { uv_x,uv_y } });
+
+	Shader_Billboard_SetColor({ 1.0f,1.0f,1.0f,1.0f });
+
+	Texture_Set(texID);
+	// 頂点バッファを描画パイプラインに設定
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	Direct3D_GetDeviceContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+
+	XMMATRIX pivot_offset = XMMatrixTranslation(-pivot.x, -pivot.y, 0.0f);
+
+	XMFLOAT4X4 CameraMatrix = Player_Camera_GetViewMatrix();
+	CameraMatrix._41 = CameraMatrix._42 = CameraMatrix._43 = 0.0f;
+
+
+	//XMMATRIX iv = XMMatrixInverse(nullptr, XMLoadFloat4x4(&CameraMatrix));
+	XMMATRIX iv = XMMatrixTranspose(XMLoadFloat4x4(&CameraMatrix));
+	XMMATRIX mtxs = XMMatrixScaling(scale.x, scale.y, 1.0f);
+	XMMATRIX mtxt = XMMatrixTranslation(position.x + pivot.x, position.y + pivot.y, position.z);
+	Shader_Billboard_SetWorldMatrix(pivot_offset * mtxs * iv * mtxt);
 
 	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	// ポリゴン描画命令発行
