@@ -31,5 +31,7 @@ ID3D11Device* Direct3D_GetDevice();
 ID3D11DeviceContext* Direct3D_GetDeviceContext();
 
 void Direct3D_SetDepthEnable(bool enable);
+void Direct3D_SetBlendState(bool enable);
+void Direct3D_SetDepthStencilStateDepthWriteDisable(bool enalbe);
 
 #endif // DIRECT3D_H

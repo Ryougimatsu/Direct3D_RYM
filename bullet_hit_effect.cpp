@@ -3,6 +3,7 @@
 #include "bullet_hit_effect.h"
 using namespace DirectX;
 #include "texture.h"
+#include"direct3d.h"
 
 namespace {
 	int g_TexID = -1;
@@ -58,12 +59,12 @@ static int g_EffectCount = 0;
 
 void BulletHitEffect_Initialize()
 {
-	g_TexID = Texture_LoadFromFile(L"resource/texture/pl00.png");
+	g_TexID = Texture_LoadFromFile(L"resource/texture/enemy_aura.png");
 	g_AnimePatternID = SpriteAnime_PatternRegister(
 		g_TexID,
 		8,				//パターン数
-		0.3,			//1パターンあたりの秒数
-		{ 32,49 },		//パターンサイズ
+		0.3f,			//1パターンあたりの秒数
+		{ 48,48 },		//パターンサイズ
 		{ 0,0 },			//スタート座標
 		false,			//ループ設定
 		8				//パターンの列数
@@ -108,8 +109,12 @@ void BulletHitEffect_Create(const DirectX::XMFLOAT3& position)
 
 void BulletHitEffect_Draw()
 {
+	Direct3D_SetBlendState(true);
+	Direct3D_SetDepthStencilStateDepthWriteDisable(false);
 	for (int i = 0; i < g_EffectCount; i++)
 	{
 		g_pEffects[i]->Draw();
 	}
+	Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+	Direct3D_SetBlendState(false);
 }

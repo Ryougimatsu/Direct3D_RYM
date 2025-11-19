@@ -13,33 +13,22 @@ using namespace DirectX;
 #include "texture.h"
 #include "sprite_anime.h"
 #include "bullet.h"
+#include "bullet_hit_effect.h"
+#include "direct3d.h"
 
 
 namespace 
 {
 	XMMATRIX g_mtxWorld_Field;
 	int g_TexTest = -1;
-	int g_AnimePlayId = -1;
 }
 void Game_Initialize()
 {
 	Bullet_Initialize();
+	BulletHitEffect_Initialize();
 	Player_Initialize({ 0.0f, 3.0f, 0.0f }, { 0.0f,0.0f,1.0f });
 	Player_Camera_Initialize();
 	Map_Initialize();
-	g_TexTest = Texture_LoadFromFile(L"resource/texture/pl00.png");
-	SpriteAnime_Initialize();
-	g_AnimePlayId = SpriteAnime_PatternRegister(
-		g_TexTest,
-		8,				//パターン数
-		0.3,			//1パターンあたりの秒数
-		{ 32,49 },		//パターンサイズ
-		{ 0,0 },			//スタート座標
-		true,			//ループ設定
-		8				//パターンの列数
-	);
-
-	SpriteAnime_CreatePlayer(g_AnimePlayId);
 	Billboard_Initialize();
 	
 }
@@ -48,8 +37,8 @@ void Game_Update(double elapsed_time)
 {	
 	Player_Update(elapsed_time);
 	Player_Camera_Update(elapsed_time);
-	SpriteAnime_Update(elapsed_time);
 	Bullet_Update(elapsed_time);
+	BulletHitEffect_Update();
 
 	for (int j = 0; j < Map_GetObjectsCount(); j++)
 	{
@@ -82,15 +71,14 @@ void Game_Draw()
 	//	{ 1.0f, 1.0f, 1.0f }     // 光源颜色 (白色)
 	//);
 	Sampler_SetFilterAnisotropic();
+	Map_Draw();
 	Player_Draw();
 	Bullet_Draw();
+	
+	
 
-	Map_Draw();
+	BulletHitEffect_Draw();
 
-	BillboardAnim_Draw(g_AnimePlayId,
-		{ -5.0f,1.0f,-5.0f },
-		{ 2.0f,2.0f },
-		{ 0.0f,-0.9f });
 }
 
 void Game_Finalize()
@@ -98,10 +86,10 @@ void Game_Finalize()
 	MeshField_Finalize();
 	Player_Finalize();
 	Bullet_Finalize();
+	BulletHitEffect_Finalize();
 	Player_Camera_Finalize();
 	Map_Finalize();
 	Billboard_Finalize();
-	SpriteAnime_Finalize();
 }
 
 

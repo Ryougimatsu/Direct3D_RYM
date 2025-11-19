@@ -27,6 +27,7 @@ static IDXGISwapChain* g_pSwapChain = nullptr;
 static ID3D11BlendState* g_pBlendStateMultiply = nullptr; // ブレンドステート（乗算ブレンド用）
 static ID3D11DepthStencilState* g_pDepthStencilStateDepthDisable = nullptr; // 深度ステンシルステート（深度無効用）
 static ID3D11DepthStencilState* g_pDepthStencilStateDepthEnable = nullptr; // 深度ステンシルステート（深度有効用）
+static ID3D11DepthStencilState* g_pDepthStencilStateDepthWriteDisable = nullptr; 
 static ID3D11RasterizerState* g_pRasterizerState = nullptr; // ラスタライザーステート
 /* バックバッファ関連 */
 static ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
@@ -151,6 +152,13 @@ bool Direct3D_Initialize(HWND hWnd)
 	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthEnable);
 
+
+	dsd.DepthEnable = TRUE; // 【重要】仍然要进行深度测试(比对谁前谁后)
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // 【重要】但不写入深度值
+	dsd.DepthFunc = D3D11_COMPARISON_LESS; // 常规的比较函数
+	dsd.StencilEnable = FALSE;
+	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthWriteDisable);
+	
 	Direct3D_SetDepthEnable(true);
 
 	// ラスタライザステートの作成
@@ -231,6 +239,37 @@ void Direct3D_SetDepthEnable(bool enable)
 	{
 		g_pDeviceContext->OMSetDepthStencilState(g_pDepthStencilStateDepthDisable, NULL);
 
+	}
+}
+
+void Direct3D_SetBlendState(bool enable)
+{
+	if (enable)
+	{
+		// 开启混合 (使用你代码中初始化好的 Alpha Blend 状态)
+		float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		g_pDeviceContext->OMSetBlendState(g_pBlendStateMultiply, blend_factor, 0xffffffff);
+	}
+	else
+	{
+		// 关闭混合 (传入 nullptr 会重置为默认状态: Opaque)
+		float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		g_pDeviceContext->OMSetBlendState(nullptr, blend_factor, 0xffffffff);
+	}
+}
+
+void Direct3D_SetDepthStencilStateDepthWriteDisable(bool enable)
+{
+	if (enable)
+	{
+		// 普通物体：开启深度测试，允许写入
+		g_pDeviceContext->OMSetDepthStencilState(g_pDepthStencilStateDepthEnable, 0);
+	}
+	else
+	{
+		// 特效物体：开启深度测试，禁止写入
+		// 使用刚才新创建的那个状态变量
+		g_pDeviceContext->OMSetDepthStencilState(g_pDepthStencilStateDepthWriteDisable, 0);
 	}
 }
 
