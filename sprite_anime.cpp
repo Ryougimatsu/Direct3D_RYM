@@ -100,15 +100,15 @@ void SpriteAnime_Update(double elapsed_time)
 
 		AnimePatternData* pAnmPtrnData = &g_AnimePattern[anm_ptrn_id];
 
-		Billboard_Draw(pAnmPtrnData->m_TextureId,
-			position, scale,
+		Billboard_Draw(
+			pAnmPtrnData->m_TextureId,
+			position,
+			scale,
 			{
-			pAnmPtrnData->m_StartPosition.x + pAnmPtrnData->m_PatternSize.x
-			* (g_AnimePlayData[playid].m_PatternNum % pAnmPtrnData->m_PatternCol),
-			pAnmPtrnData->m_StartPosition.y + pAnmPtrnData->m_PatternSize.y
-			* (g_AnimePlayData[playid].m_PatternNum / pAnmPtrnData->m_PatternCol),
-			pAnmPtrnData->m_PatternSize.x,
-			pAnmPtrnData->m_PatternSize.y
+				(float)pAnmPtrnData->m_StartPosition.x + pAnmPtrnData->m_PatternSize.x * (g_AnimePlayData[playid].m_PatternNum % pAnmPtrnData->m_PatternCol),
+				(float)pAnmPtrnData->m_StartPosition.y + pAnmPtrnData->m_PatternSize.y * (g_AnimePlayData[playid].m_PatternNum / pAnmPtrnData->m_PatternCol),
+				(float)pAnmPtrnData->m_PatternSize.x,
+				(float)pAnmPtrnData->m_PatternSize.y
 			},
 			pivot
 		);

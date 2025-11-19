@@ -6,6 +6,7 @@
 #include "Player_Camera.h"
 #include "map.h"
 #include "cube.h"
+#include "bullet.h"
 using namespace DirectX;
 
 namespace {
@@ -172,6 +173,35 @@ void Player_Update(double elapsed_time)
 
 	XMStoreFloat3(&g_PlayerPosition, position);
 	XMStoreFloat3(&g_PlayerVelocity, velocity);
+	//BULLET発射
+	if (KeyLogger_IsTrigger(KK_F))
+	{
+		XMFLOAT3 b_velocity;
+		XMFLOAT3 shoot_pos; // 不需要先等于 g_PlayerPosition，后面会覆盖
+
+		// 1. 加载向量
+		XMVECTOR vPos = XMLoadFloat3(&g_PlayerPosition);
+		XMVECTOR vFront = XMLoadFloat3(&g_PlayerFront);
+
+		// 2. 计算发射位置
+		// OffsetY: 向上偏移 1.0f (大约在胸口或枪口高度)
+		XMVECTOR vOffsetY = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+		// OffsetForward: 向角色前方偏移 0.5f (避免子弹生成在身体内部)
+		float forwardDist = 0.5f;
+
+		// 最终位置 = 玩家位置 + 高度 + (朝向 * 距离)
+		XMVECTOR vShootPos = vPos + vOffsetY + (vFront * forwardDist);
+
+		// 3. 存回 float3
+		XMStoreFloat3(&shoot_pos, vShootPos);
+
+		// 4. 计算速度 (朝向 * 速度值)
+		XMStoreFloat3(&b_velocity, vFront * 10.0f); // 假设速度是 20
+
+		// 5. 创建子弹
+		Bullet_Create(shoot_pos, b_velocity);
+	}
 }
 
 void Player_Draw()

@@ -432,6 +432,30 @@ void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 	}
 }
 
+AABB ModelGetAABB(MODEL* model, const DirectX::XMFLOAT3& position)
+{
+	AABB aabb;
+	aiVector3D min = model->AiScene->mMeshes[0]->mAABB.mMin;
+	aiVector3D max = model->AiScene->mMeshes[0]->mAABB.mMax;
+	for (unsigned int m = 1; m < model->AiScene->mNumMeshes; m++)
+	{
+		aiMesh* mesh = model->AiScene->mMeshes[m];
+		if (min.x > mesh->mAABB.mMin.x) min.x = mesh->mAABB.mMin.x;
+		if (min.y > mesh->mAABB.mMin.y) min.y = mesh->mAABB.mMin.y;
+		if (min.z > mesh->mAABB.mMin.z) min.z = mesh->mAABB.mMin.z;
+		if (max.x < mesh->mAABB.mMax.x) max.x = mesh->mAABB.mMax.x;
+		if (max.y < mesh->mAABB.mMax.y) max.y = mesh->mAABB.mMax.y;
+		if (max.z < mesh->mAABB.mMax.z) max.z = mesh->mAABB.mMax.z;
+	}
+	aabb.min.x = min.x + position.x;
+	aabb.min.y = min.y + position.y;
+	aabb.min.z = min.z + position.z;
+	aabb.max.x = max.x + position.x;
+	aabb.max.y = max.y + position.y;
+	aabb.max.z = max.z + position.z;
+	return aabb;
+}
+
 
 
 

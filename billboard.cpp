@@ -50,7 +50,7 @@ void Billboard_Finalize(void)
 	Shader_Billboard_Finalize();
 }
 
-void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT2& scale,const DirectX::XMFLOAT2& pivot = { 0.0f,0.0f })
+void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT2& scale,const DirectX::XMFLOAT2& pivot)
 {
 
 	Shader_Billboard_SetUVParameter({ { 1.0f,1.0f}, { 0.0f,0.0f } });
@@ -84,7 +84,7 @@ void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::X
 	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
 }
 
-void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot, const DirectX::XMFLOAT4&  tex_cut)
+void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT4& tex_cut, const DirectX::XMFLOAT2& pivot)
 {
 	Shader_Billboard_Begin();
 	

@@ -1,6 +1,5 @@
 #include "game.h"
 #include "shader.h"
-//#include "camera.h"
 #include "Sampler.h"
 #include "Meshfield.h"
 #include "Light.h"
@@ -12,24 +11,36 @@ using namespace DirectX;
 #include "map.h"
 #include "billboard.h"
 #include "texture.h"
+#include "sprite_anime.h"
+#include "bullet.h"
 
 
 namespace 
 {
 	XMMATRIX g_mtxWorld_Field;
-	MODEL* g_Model = nullptr;
 	int g_TexTest = -1;
+	int g_AnimePlayId = -1;
 }
 void Game_Initialize()
 {
-	
+	Bullet_Initialize();
 	Player_Initialize({ 0.0f, 3.0f, 0.0f }, { 0.0f,0.0f,1.0f });
 	Player_Camera_Initialize();
-	g_Model = ModelLoad("resource/Model/Tree.fbx",0.5f);
 	Map_Initialize();
-	Billboard_Initialize();
-
 	g_TexTest = Texture_LoadFromFile(L"resource/texture/pl00.png");
+	SpriteAnime_Initialize();
+	g_AnimePlayId = SpriteAnime_PatternRegister(
+		g_TexTest,
+		8,				//パターン数
+		0.3,			//1パターンあたりの秒数
+		{ 32,49 },		//パターンサイズ
+		{ 0,0 },			//スタート座標
+		true,			//ループ設定
+		8				//パターンの列数
+	);
+
+	SpriteAnime_CreatePlayer(g_AnimePlayId);
+	Billboard_Initialize();
 	
 }
 
@@ -37,6 +48,22 @@ void Game_Update(double elapsed_time)
 {	
 	Player_Update(elapsed_time);
 	Player_Camera_Update(elapsed_time);
+	SpriteAnime_Update(elapsed_time);
+	Bullet_Update(elapsed_time);
+
+	for (int j = 0; j < Map_GetObjectsCount(); j++)
+	{
+		for (int i = 0; i < Bullet_GetCount(); i++)
+		{
+			AABB bullet = Bullet_GetAABB(i);
+			AABB mapObj = Map_GetObject(j)->Aabb;
+			if (Collision_IsOverLapAABB(bullet, mapObj))
+			{
+				Bullet_Destroy(i);
+				break;
+			}
+		}
+	}
 
 }
 
@@ -56,38 +83,25 @@ void Game_Draw()
 	//);
 	Sampler_SetFilterAnisotropic();
 	Player_Draw();
+	Bullet_Draw();
 
 	Map_Draw();
 
-	XMMATRIX mtxWorldModel = XMMatrixTranslation(-3.0f, 0.0f, 0.0f);
-	ModelDraw(g_Model, mtxWorldModel); // 绘制模型
-	ModelDraw(g_Model, XMMatrixTranslation(3.0f, 0.0f, 2.0f)); // 绘制模型
-	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 2.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 3.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(6.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(7.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(8.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(8.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 4.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 6.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(9.0f, 0.0f, 7.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(-6.0f, 0.0f, 2.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(-2.0f, 0.0f, 3.0f));
-	ModelDraw(g_Model, XMMatrixTranslation(-7.0f, 0.0f, 5.0f));
-
-	Billboard_Draw(g_TexTest, { -10.0f,0.5f,-5.0f }, { 4.0f, 4.0f }, { 0.0f,-0.3 });
+	BillboardAnim_Draw(g_AnimePlayId,
+		{ -5.0f,1.0f,-5.0f },
+		{ 2.0f,2.0f },
+		{ 0.0f,-0.9f });
 }
 
 void Game_Finalize()
 {
-	ModelRelease(g_Model);
 	MeshField_Finalize();
 	Player_Finalize();
+	Bullet_Finalize();
 	Player_Camera_Finalize();
 	Map_Finalize();
 	Billboard_Finalize();
+	SpriteAnime_Finalize();
 }
 
 

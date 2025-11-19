@@ -7,8 +7,13 @@
 #include "assimp/postprocess.h"
 #include "assimp/matrix4x4.h"
 #pragma comment (lib, "assimp-vc143-mt.lib")
+#include "collision.h"
 
-
+enum CategoryID
+{
+	Grass = 0,
+	Brick = 1,
+};
 
 struct MODEL
 {
@@ -26,4 +31,6 @@ MODEL* ModelLoadS(const char* FileName, float size);
 void ModelRelease(MODEL* model);
 
 void ModelDraw(MODEL* model,const DirectX ::XMMATRIX& mtxWorld );
+
+AABB ModelGetAABB(MODEL* model, const DirectX::XMFLOAT3& position);
 
