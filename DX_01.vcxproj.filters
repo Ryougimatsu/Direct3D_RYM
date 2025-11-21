@@ -132,6 +132,15 @@
     <ClCompile Include="bullet_hit_effect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Trajectory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sky.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shader3d_unlit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug_ostream.h">
@@ -251,6 +260,15 @@
     <ClInclude Include="bullet_hit_effect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Trajectory3d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sky.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shader3d_unlit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shader_pixel_2d.hlsl">
@@ -275,6 +293,12 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="shader_pixel_billboard.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader3DUnilt_vertex.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader3DUnilt_Pixel.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

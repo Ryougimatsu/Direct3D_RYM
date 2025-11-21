@@ -31,6 +31,7 @@ MODEL* ModelLoadS(const char* FileName, float size);
 void ModelRelease(MODEL* model);
 
 void ModelDraw(MODEL* model,const DirectX ::XMMATRIX& mtxWorld );
+void ModelUnlitDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld);
 
 AABB ModelGetAABB(MODEL* model, const DirectX::XMFLOAT3& position);
 

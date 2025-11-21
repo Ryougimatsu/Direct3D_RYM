@@ -8,6 +8,7 @@
 #include "shader_billboard.h"
 #include "direct3d.h"
 #include "Player.h"
+#include "shader3d_unlit.h"
 using namespace DirectX;
 
 
@@ -15,6 +16,7 @@ namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 g_CameraMatrix{};
+	DirectX::XMFLOAT4X4 g_ProjectionMatrix{};
 
 }
 
@@ -53,6 +55,7 @@ void Player_Camera_Update(double elapsed_time)
 	Shader_3D_SetViewMatrix(mtxView);
 	Shader_field_SetViewMatrix(mtxView);
 	Shader_Billboard_SetViewMatrix(mtxView);
+	Shader3DUnilt_SetViewMatrix(mtxView);
 
 	XMStoreFloat4x4(&g_CameraMatrix, mtxView);
 
@@ -70,6 +73,9 @@ void Player_Camera_Update(double elapsed_time)
 	Shader_3D_SetProjectMatrix(mtxPerspective);
 	Shader_field_SetProjectMatrix(mtxPerspective);
 	Shader_Billboard_SetProjectMatrix(mtxPerspective);
+	Shader3DUnilt_SetProjectMatrix(mtxPerspective);
+
+	XMStoreFloat4x4(&g_ProjectionMatrix, mtxPerspective);
 }
 
 const DirectX::XMFLOAT3& Player_Camera_GetFront()
@@ -85,4 +91,9 @@ const DirectX::XMFLOAT3& Player_Camera_GetPosition()
 const DirectX::XMFLOAT4X4& Player_Camera_GetViewMatrix()
 {
 	return g_CameraMatrix;
+}
+
+const DirectX::XMFLOAT4X4& Player_Camera_GetProjectionMatrix()
+{
+	return g_ProjectionMatrix;
 }

@@ -11,4 +11,5 @@ const DirectX::XMFLOAT3& Player_Camera_GetFront();
 const DirectX::XMFLOAT3& Player_Camera_GetPosition();
 
 const DirectX::XMFLOAT4X4& Player_Camera_GetViewMatrix();
+const DirectX::XMFLOAT4X4& Player_Camera_GetProjectionMatrix();
 

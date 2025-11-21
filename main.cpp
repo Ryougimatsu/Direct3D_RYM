@@ -2,8 +2,6 @@
 #include <sstream>
 #include "debug_ostream.h"
 #include "game_window.h"
-
-
 #include <SDKDDKVer.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -16,7 +14,6 @@
 #include "texture.h"
 #include <thread>
 #include "system_timer.h"
-#include <sstream>
 #include "polygon.h"
 #include "DirectXMath.h"
 #include "key_logger.h"
@@ -34,6 +31,7 @@
 #include "camera.h"
 #include "Meshfield.h"
 #include "Light.h"
+#include "shader3d_unlit.h"
 
 //Window procedure prototype claim
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -59,6 +57,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Shader_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Shader_3D_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
+
+	Shader3DUnilt_Initialize();
 
 	Texture_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
@@ -212,6 +212,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Shader_Finalize();
 
 	Shader_3D_Finalize();
+
+	Shader3DUnilt_Finalize();
 
 	Polygon_Finalize();
 
