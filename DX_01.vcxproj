@@ -164,6 +164,8 @@
     <ClCompile Include="debug_text.cpp" />
     <ClCompile Include="direct3d.cpp" />
     <ClCompile Include="effect.cpp" />
+    <ClCompile Include="enemy.cpp" />
+    <ClCompile Include="enemy_test.cpp" />
     <ClCompile Include="fade.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="game_window.cpp" />
@@ -197,6 +199,8 @@
     <ClCompile Include="WICTextureLoader11.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="enemy.h" />
+    <ClInclude Include="enemy_test.h" />
     <ClInclude Include="shader3d_unlit.h" />
     <ClInclude Include="sky.h" />
     <ClInclude Include="Trajectory3d.h" />

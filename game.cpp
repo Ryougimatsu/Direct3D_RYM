@@ -16,6 +16,7 @@ using namespace DirectX;
 #include "bullet_hit_effect.h"
 #include "direct3d.h"
 #include "sky.h"
+#include "enemy.h"
 
 
 namespace 
@@ -29,6 +30,7 @@ void Game_Initialize()
 	Bullet_Initialize();
 	BulletHitEffect_Initialize();
 	Player_Initialize({ 0.0f, 3.0f, 0.0f }, { 0.0f,0.0f,1.0f });
+	Enemy_Initialize();
 	Player_Camera_Initialize();
 	Map_Initialize();
 	Billboard_Initialize();
@@ -38,6 +40,7 @@ void Game_Initialize()
 void Game_Update(double elapsed_time)
 {	
 	Player_Update(elapsed_time);
+	Enemy_Update(elapsed_time);
 	Sky_SetPosition(Player_GetPosition());
 	Player_Camera_Update(elapsed_time);
 	Bullet_Update(elapsed_time);
@@ -75,8 +78,9 @@ void Game_Draw()
 	//);
 	Sampler_SetFilterAnisotropic();
 	Sky_Draw();
-	Map_Draw();
 	Player_Draw();
+	Enemy_Draw();
+	Map_Draw();
 	Bullet_Draw();
 	BulletHitEffect_Draw();
 
@@ -87,6 +91,7 @@ void Game_Finalize()
 	Sky_Finalize();
 	MeshField_Finalize();
 	Player_Finalize();
+	Enemy_Finalize();
 	Bullet_Finalize();
 	BulletHitEffect_Finalize();
 	Player_Camera_Finalize();

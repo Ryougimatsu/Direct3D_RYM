@@ -58,6 +58,15 @@ struct Vertex
 	XMFLOAT2 uv;
 };
 
+bool Collision_IsOverlapSphere(const Sphere& a, const DirectX::XMFLOAT3& point)
+{
+	XMVECTOR centerA = XMLoadFloat3(&a.center);
+	XMVECTOR centerB = XMLoadFloat3(&point);
+	XMVECTOR lsq = XMVector2LengthSq(centerB - centerA);
+
+	return a.radius * a.radius > XMVectorGetX(lsq);
+}
+
 bool Collision_IsOverLapAABB(const AABB& a, const AABB& b)
 {
 	return a.min.x <= b.max.x

@@ -12,6 +12,12 @@ struct Circle
 	float radius; // 半径
 };
 
+struct Sphere
+{
+	DirectX::XMFLOAT3 center; // 圆心坐标
+	float radius; // 半径
+};
+
 struct Box
 {
 	DirectX::XMFLOAT2 center;
@@ -43,6 +49,7 @@ bool Collision_OverlapCircleCircle(const Circle& a, const Circle& b);
 bool Collision_OverlapCircleBox(const Box& a, const Box& b);
 
 //3D
+bool Collision_IsOverlapSphere(const Sphere& a,const DirectX::XMFLOAT3& point);
 bool Collision_IsOverLapAABB(const AABB& a, const AABB& b);
 Hit Collision_IsHitAABB(const AABB& a, const AABB& b);
 
