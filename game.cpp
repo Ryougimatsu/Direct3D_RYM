@@ -35,6 +35,7 @@ void Game_Initialize()
 	Map_Initialize();
 	Billboard_Initialize();
 	
+	Enemy_Create({-3.0f,1.0f,5.0f});
 }
 
 void Game_Update(double elapsed_time)

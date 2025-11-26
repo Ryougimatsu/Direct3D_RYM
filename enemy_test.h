@@ -1,15 +1,20 @@
 #pragma once
 #include "enemy.h"
 #include <DirectXMath.h>
+#include "texture.h"
+
 
 class EnemyTest : public Enemy {
 private:
 	DirectX::XMFLOAT3 m_position{};
 	float m_DetectionAngle = 5.0f;
 	float m_HP = 100.0f;
-
+	int m_TexID{};
 public:
-	EnemyTest(const DirectX::XMFLOAT3& position) : m_position(position) {}
+	EnemyTest(const DirectX::XMFLOAT3& position) : m_position(position) {
+		m_TexID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
+		ChangeState(new EnemyTest_StatePatrol(this));
+	}
 
 	bool IsDestroyed() const override
 	{

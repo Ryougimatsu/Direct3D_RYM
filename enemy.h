@@ -1,5 +1,5 @@
 #pragma once
-#include <DirectMath.h>
+#include <DirectXMath.h>
 class Enemy {
 
 protected:
