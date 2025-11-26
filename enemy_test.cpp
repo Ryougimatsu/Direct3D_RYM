@@ -8,7 +8,7 @@ using namespace DirectX;
 void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 {
 	m_AccumulatedTime += elapsed_time;
-	m_pOwner->m_position.x = sinf(m_AccumulatedTime);
+	m_pOwner->m_position.x = m_PointX +sinf(m_AccumulatedTime);
 
 	if (Collision_IsOverlapSphere({ m_pOwner->m_position,m_pOwner->m_DetectionAngle}, Player_GetPosition()))
 	{

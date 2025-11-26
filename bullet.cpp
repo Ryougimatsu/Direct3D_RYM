@@ -133,6 +133,12 @@ int Bullet_GetCount()
 	return g_BulletCount;
 }
 
+Sphere Bullet_GetSphere(int index)
+{
+	//return { g_Bullets[index]->GetPosition(),g_BulletModel->local_aabb.GetHalf().x };
+	return { g_Bullets[index]->GetPosition(),0.1f };
+}
+
 AABB Bullet_GetAABB(int index)
 {
 	return ModelGetAABB(g_BulletModel, g_Bullets[index]->GetPosition());

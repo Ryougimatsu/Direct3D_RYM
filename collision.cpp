@@ -58,11 +58,20 @@ struct Vertex
 	XMFLOAT2 uv;
 };
 
+bool Collision_IsOverlapSphere(const Sphere& a, const Sphere& b)
+{
+	XMVECTOR centerA = XMLoadFloat3(&a.center);
+	XMVECTOR centerB = XMLoadFloat3(&b.center);
+	XMVECTOR lsq = XMVector3LengthSq(centerB - centerA);
+
+	return (a.radius + b.radius) * (a.radius + b.radius) > XMVectorGetX(lsq);
+}
+
 bool Collision_IsOverlapSphere(const Sphere& a, const DirectX::XMFLOAT3& point)
 {
 	XMVECTOR centerA = XMLoadFloat3(&a.center);
 	XMVECTOR centerB = XMLoadFloat3(&point);
-	XMVECTOR lsq = XMVector2LengthSq(centerB - centerA);
+	XMVECTOR lsq = XMVector3LengthSq(centerB - centerA);
 
 	return a.radius * a.radius > XMVectorGetX(lsq);
 }

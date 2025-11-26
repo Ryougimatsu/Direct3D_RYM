@@ -81,3 +81,13 @@ void Enemy_Create(const XMFLOAT3& position)
 {
 	g_Enemy[g_EnemyCount++] = new EnemyTest(position);
 }
+
+int Enemy_GetEnemyCount()
+{
+	return g_EnemyCount;
+}
+
+Enemy* Enemy_GetEnemy(int index)
+{
+	return g_Enemy[index];
+}

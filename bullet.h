@@ -12,4 +12,5 @@ void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& v
 void Bullet_Destroy(int index);
 
 int Bullet_GetCount();
+Sphere Bullet_GetSphere(int index);
 AABB Bullet_GetAABB(int index);

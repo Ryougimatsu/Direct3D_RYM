@@ -61,6 +61,20 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
+	for (int j = 0; j <Enemy_GetEnemyCount(); j++)
+	{
+		for (int i = 0; i < Bullet_GetCount(); i++)
+		{
+			Sphere bullet = Bullet_GetSphere(i);
+			Sphere enemy = Enemy_GetEnemy(j)->GetCollisionSphere();
+			if (Collision_IsOverlapSphere(bullet, enemy))
+			{
+				BulletHitEffect_Create(Bullet_GetSphere(i).center);
+				Bullet_Destroy(i);
+				Enemy_GetEnemy(j)->Damage(50.0f);
+			}
+		}
+	}
 }
 
 void Game_Draw()

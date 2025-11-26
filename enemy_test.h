@@ -7,7 +7,7 @@
 class EnemyTest : public Enemy {
 private:
 	DirectX::XMFLOAT3 m_position{};
-	float m_DetectionAngle = 5.0f;
+	float m_DetectionAngle = 2.0f;
 	float m_HP = 100.0f;
 	int m_TexID{};
 public:
@@ -16,10 +16,16 @@ public:
 		ChangeState(new EnemyTest_StatePatrol(this));
 	}
 
+	void Damage(float damage) override{
+		m_HP -= damage;
+	}
+
 	bool IsDestroyed() const override
 	{
 		return m_HP <= 0.0f;
 	}
+
+	Sphere GetCollisionSphere() const { return {m_position,0.5f}; }
 private:
 	class EnemyTest_StatePatrol : public State {
 	private:
