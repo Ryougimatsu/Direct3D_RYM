@@ -322,6 +322,58 @@ void Sprite_Draw(int texid, float sx, float sy, float sw, float sh, int pixx, in
 	g_pContext->Draw(NUM_VERTEX, 0);
 }
 
+void Sprite_Draw(ID3D11ShaderResourceView* pTexture, float sx, float sy, float sw, float sh, const DirectX::XMFLOAT4& color)
+{
+	// シェーダーを描画パイプラインに設定
+	Shader_Begin();
+
+	// 頂点バッファをロックする
+	D3D11_MAPPED_SUBRESOURCE msr;
+	HRESULT hr = g_pContext->Map(g_pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	if (FAILED(hr)) return;
+
+	// 頂点バッファへの仮想ポインタを取得
+	Vertex* v = (Vertex*)msr.pData;
+
+	// 画面の指定位置(sx, sy)に 指定サイズ(sw, sh) で四角形を作る
+	v[0].position = { sx      , sy      , 0.0f };
+	v[1].position = { sx + sw , sy      , 0.0f };
+	v[2].position = { sx      , sy + sh , 0.0f };
+	v[3].position = { sx + sw , sy + sh , 0.0f };
+
+	v[0].color = color;
+	v[1].color = color;
+	v[2].color = color;
+	v[3].color = color;
+
+	// UV座標はテクスチャ全体(0.0 ~ 1.0)を使う
+	v[0].uv = { 0.0f, 0.0f }; // 左上
+	v[1].uv = { 1.0f, 0.0f }; // 右上
+	v[2].uv = { 0.0f, 1.0f }; // 左下
+	v[3].uv = { 1.0f, 1.0f }; // 右下
+
+	// 頂点バッファのロックを解除
+	g_pContext->Unmap(g_pVertexBuffer, 0);
+
+	// ワールド行列は単位行列（そのままの座標で描画）
+	Shader_SetWorldMatrix(XMMatrixIdentity());
+
+	// 頂点バッファ設定
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+
+	// トポロジ設定
+	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// ★★★ 重要：ここが違います ★★★
+	// Texture_Set(texid) ではなく、直接 SRV を設定します
+	g_pContext->PSSetShaderResources(0, 1, &pTexture);
+
+	// 描画
+	g_pContext->Draw(NUM_VERTEX, 0);
+}
+
 
 void Sprite_Draw(int texid,float sx,float sy,float sw,float sh,
 	const DirectX::XMFLOAT4& color)

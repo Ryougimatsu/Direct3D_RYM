@@ -51,4 +51,6 @@ void Direct3D_ClearOffScreen();
 void Direct3D_SetOffscreen();
 
 void Direct3D_SetOffscreenTexture(int slot);
+
+ID3D11ShaderResourceView* Direct3D_GetOffscreenSRV();
 #endif // DIRECT3D_H

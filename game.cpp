@@ -18,11 +18,31 @@ using namespace DirectX;
 #include "direct3d.h"
 #include "sky.h"
 #include "enemy.h"
+#include "MapCamera.h"
+#include "sprite.h"
 
 
 namespace 
 {
 
+}
+
+void Game_RenderMiniMap()
+{
+	Direct3D_SetOffscreen();
+	XMFLOAT4X4 mtxView = MapCam_GetViewMatrix();
+	XMFLOAT4X4 mtxProj = MapCam_GetPerspectiveMatrix();
+
+	XMMATRIX view = XMLoadFloat4x4(&mtxView);
+	XMMATRIX proj = XMLoadFloat4x4(&mtxProj);
+	Camera_SetMatrixToShader(view, proj);
+
+
+	Direct3D_SetDepthEnable(true); 
+	Light_SetAmbient({ 1.0f, 1.0f, 1.0f }); 
+	Map_Draw();
+	Enemy_Draw();
+	Player_Draw();
 }
 void Game_Initialize()
 {
@@ -40,10 +60,14 @@ void Game_Initialize()
 }
 
 void Game_Update(double elapsed_time)
-{	
+{
+
 	Player_Update(elapsed_time);
+	XMFLOAT3 playerPos = Player_GetPosition();
 	Enemy_Update(elapsed_time);
 	Player_Camera_Update(elapsed_time);
+	MapCam_SetPosition({ playerPos.x, 25.0f, playerPos.z });
+	MapCam_SetFront({ 0.0f, -1.0f, 0.0f });
 	Sky_SetPosition(Player_Camera_GetPosition());
 	Bullet_Update(elapsed_time);
 	BulletHitEffect_Update();
@@ -80,7 +104,10 @@ void Game_Update(double elapsed_time)
 
 void Game_Draw()
 {
-	
+	Game_RenderMiniMap();
+	Direct3D_SetOffBackBuffer();    // 切回主屏幕
+	Direct3D_ClearBackBuffer();
+
 	XMFLOAT4X4 mtxView = Player_Camera_GetViewMatrix();
 	XMMATRIX view = XMLoadFloat4x4(&mtxView);
 	XMMATRIX proj = XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
@@ -107,6 +134,16 @@ void Game_Draw()
 	Bullet_Draw();
 	BulletHitEffect_Draw();
 
+	Direct3D_SetOffscreenTexture(0);
+	Direct3D_SetDepthEnable(false);
+	Sprite_Begin();
+	float mapW = 300.0f;
+	float mapH = 300.0f;
+	float mapX = 1920.0f - mapW - 20.0f;
+	float mapY = 1080.0f - mapH - 20.0f;
+	Sprite_Draw(Direct3D_GetOffscreenSRV(), mapX, mapY, mapW, mapH);
+	Direct3D_SetDepthEnable(true);
+
 }
 
 void Game_Finalize()
@@ -121,7 +158,5 @@ void Game_Finalize()
 	Map_Finalize();
 	Billboard_Finalize();
 }
-
-
 
 

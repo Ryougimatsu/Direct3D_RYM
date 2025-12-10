@@ -29,4 +29,5 @@ void Sprite_Draw(int texid, float sx, float sy, float sw, float sh,int pixx, int
 void Sprite_Draw(int texid, float sx, float sy, float sw, float sh, int pixx, int pixy, int pixw, int pixh, float angle,
 	const DirectX::XMFLOAT4& color = { 1.0f,1.0f,1.0f,1.0f });
 
+void Sprite_Draw(ID3D11ShaderResourceView* pTexture, float sx, float sy, float sw, float sh, const DirectX::XMFLOAT4& color = { 1,1,1,1 });
 #endif	

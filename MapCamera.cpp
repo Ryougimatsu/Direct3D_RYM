@@ -2,8 +2,10 @@
 using namespace DirectX;
 namespace
 {
-	XMFLOAT3 g_Position{};
-	XMFLOAT3 g_Front{};
+	XMFLOAT3 g_Position;
+	XMFLOAT3 g_Front;
+
+	float g_ViewRange = 4.0f;
 }
 void MapCam_Initialize()
 {
@@ -29,7 +31,7 @@ const DirectX::XMFLOAT4X4& MapCam_GetViewMatrix()
 	XMMATRIX view = XMMatrixLookToLH(
 		XMLoadFloat3(&g_Position),
 		XMLoadFloat3(&g_Front),
-		XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
+		XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f)
 	);
 	XMStoreFloat4x4(&mtxView, view);
 	return mtxView;
@@ -37,7 +39,7 @@ const DirectX::XMFLOAT4X4& MapCam_GetViewMatrix()
 const DirectX::XMFLOAT4X4& MapCam_GetPerspectiveMatrix()
 {
 	XMFLOAT4X4 mtxPerspective;
-	XMMATRIX perspective = XMMatrixOrthographicOffCenterLH(-10.0f, 10.0f, 10.0f, -10.0f, 1.0f, 1000.0f);
+	XMMATRIX perspective = XMMatrixOrthographicOffCenterLH(-g_ViewRange, g_ViewRange, -g_ViewRange, g_ViewRange, 1.0f, 200.0f);
 	XMStoreFloat4x4(&mtxPerspective, perspective);
 	return mtxPerspective;
 }

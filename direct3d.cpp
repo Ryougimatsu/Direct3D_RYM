@@ -183,8 +183,8 @@ bool Direct3D_Initialize(HWND hWnd)
 	D3D11_RASTERIZER_DESC rd = {};
 	rd.FillMode = D3D11_FILL_SOLID;
 	//rd.FillMode = D3D11_FILL_WIREFRAME;
-	rd.CullMode = D3D11_CULL_BACK;
-	//rd.CullMode = D3D11_CULL_NONE;
+	//rd.CullMode = D3D11_CULL_BACK;
+	rd.CullMode = D3D11_CULL_NONE;
 	rd.DepthClipEnable = TRUE;
 	rd.MultisampleEnable = FALSE;
 	g_pDevice->CreateRasterizerState(&rd, &g_pRasterizerState);
@@ -202,6 +202,7 @@ void Direct3D_Finalize()
 	SAFE_RELEASE(g_pBlendStateMultiply)
 	SAFE_RELEASE(g_pRasterizerState)
 
+	releaseOffscreenBuffer();
 	releaseBackBuffer();
 
 	SAFE_RELEASE(g_pSwapChain)
@@ -361,7 +362,7 @@ void Direct3D_ClearOffScreen()
 void Direct3D_SetOffscreen()
 {
 	g_pDeviceContext->RSSetViewports(1, &g_OffscreenViewport); // ビューポートの設定
-	float clear_color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	float clear_color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	g_pDeviceContext->ClearRenderTargetView(g_pOffscreenRenderTargetView, clear_color);
 	g_pDeviceContext->ClearDepthStencilView(g_pOffscreenDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -375,6 +376,11 @@ void Direct3D_SetOffscreenTexture(int slot)
 	g_pDeviceContext->PSSetShaderResources(slot, 1, &g_pOffscreenShaderResourceView);
 }
 
+
+ID3D11ShaderResourceView* Direct3D_GetOffscreenSRV()
+{
+	return g_pOffscreenShaderResourceView;
+}
 
 bool configureBackBuffer()
 {

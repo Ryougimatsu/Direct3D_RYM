@@ -76,7 +76,7 @@ void Map_Draw()
 
 		case 2: // 树木 (Model) - 【之前这里是空的，现在补全】
 		{
-			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
+			mtxWorld = XMMatrixTranslation(o.Position.x +5.0f, o.Position.y, o.Position.z);
 			// 确保模型加载成功再画，防止崩溃
 			if (g_Model) {
 				ModelDraw(g_Model, mtxWorld);
