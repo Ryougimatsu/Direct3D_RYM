@@ -173,11 +173,14 @@
     <ClCompile Include="keyboard.cpp" />
     <ClCompile Include="key_logger.cpp" />
     <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightCamera.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map.cpp" />
+    <ClCompile Include="MapCamera.cpp" />
     <ClCompile Include="Meshfield.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="mouse.cpp" />
+    <ClCompile Include="Pad_Logger.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Player_Camera.cpp" />
     <ClCompile Include="polygon.cpp" />
@@ -201,6 +204,9 @@
   <ItemGroup>
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
+    <ClInclude Include="LightCamera.h" />
+    <ClInclude Include="MapCamera.h" />
+    <ClInclude Include="Pad_Logger.h" />
     <ClInclude Include="shader3d_unlit.h" />
     <ClInclude Include="sky.h" />
     <ClInclude Include="Trajectory3d.h" />

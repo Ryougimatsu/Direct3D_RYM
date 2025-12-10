@@ -7,7 +7,7 @@
 class EnemyTest : public Enemy {
 private:
 	DirectX::XMFLOAT3 m_position{};
-	float m_DetectionAngle = 2.0f;
+	float m_DetectionAngle = 5.0f;
 	float m_HP = 100.0f;
 	int m_TexID{};
 public:

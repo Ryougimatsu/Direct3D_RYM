@@ -148,6 +148,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 				KeyLogger_Update();
 
 				//Game_Update(elapsed_time);
+				Direct3D_SetOffscreen();
 				Scene_Update(elapsed_time);
 				Fade_Update(elapsed_time);
 
