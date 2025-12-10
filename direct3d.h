@@ -19,11 +19,11 @@
 #define SAFE_RELEASE(o) if (o) { (o)->Release(); o = NULL; }
 
 
-bool Direct3D_Initialize(HWND hWnd); // Direct3D�̏�����
-void Direct3D_Finalize(); // Direct3D�̏I������
+bool Direct3D_Initialize(HWND hWnd);
+void Direct3D_Finalize(); 
 
-void Direct3D_Clear(); // �o�b�N�o�b�t�@�̃N���A
-void Direct3D_Present(); // �o�b�N�o�b�t�@�̕\��
+void Direct3D_Clear();
+void Direct3D_Present();
 
 unsigned int Direct3D_GetBackBufferWidth();// バックバッファの幅を取得
 unsigned int Direct3D_GetBackBufferHeight(); // バックバッファの幅と高さを取得
@@ -42,6 +42,11 @@ DirectX::XMFLOAT3 Direct3D_ScreenToWorld(int x,int y,float depth,const DirectX::
 
 DirectX::XMFLOAT2 Direct3D_WorldToScreen(const DirectX::XMFLOAT3& position,const DirectX::XMFLOAT4X4& view,const DirectX::XMFLOAT4X4& projection);
 
+void Direct3D_ClearBackBuffer();
+
+void Direct3D_SetOffBackBuffer();
+
+void Direct3D_ClearOffScreen();
 
 void Direct3D_SetOffscreen();
 

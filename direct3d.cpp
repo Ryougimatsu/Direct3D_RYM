@@ -339,6 +339,25 @@ DirectX::XMFLOAT2 Direct3D_WorldToScreen(const DirectX::XMFLOAT3& position, cons
 	return ret;
 }
 
+void Direct3D_ClearBackBuffer()
+{
+	float clear_color[4] = { 0.2f, 0.4f, 0.8f, 1.0f };
+	g_pDeviceContext->ClearRenderTargetView(g_pRenderTargetView, clear_color);
+	g_pDeviceContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void Direct3D_SetOffBackBuffer()
+{
+	// ビューポートの設定
+	g_pDeviceContext->RSSetViewports(1, &g_Viewport);
+	// レンダーターゲットビューとデプスステンシルビューの設定
+	g_pDeviceContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
+}
+
+void Direct3D_ClearOffScreen()
+{
+}
+
 void Direct3D_SetOffscreen()
 {
 	g_pDeviceContext->RSSetViewports(1, &g_OffscreenViewport); // ビューポートの設定

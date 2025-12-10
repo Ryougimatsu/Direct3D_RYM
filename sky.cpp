@@ -10,6 +10,7 @@ namespace {
 void Sky_Initialize()
 {
 	g_pskyModel = ModelLoadS("resource/Model/sky.fbx",50.0f);
+
 }
 
 void Sky_Finalize()

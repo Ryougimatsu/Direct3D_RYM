@@ -10,6 +10,7 @@ using namespace DirectX;
 #include <memory>
 
 
+
 static XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, -5.0f };
 static XMFLOAT3 g_CameraFront= { 0.0f, 0.0f, 1.0f };
 static XMFLOAT3 g_CameraUp = { 0.0f, 1.0f,0.0f };
@@ -19,6 +20,8 @@ static constexpr float CAMERA_UP_SPEED = 0.5f;
 static constexpr float CAMERA_ROTATION_SPEED = XMConvertToRadians(30);
 static XMFLOAT4X4 g_CameraMatrix = {};
 static XMFLOAT4X4 g_PerspectiveMatrix = {};
+static ID3D11Buffer* g_pViewBuffer = nullptr;
+static ID3D11Buffer* g_pProjectionBuffer = nullptr;
 
 static hal::DebugText* g_DebugText = nullptr;
 
@@ -33,9 +36,9 @@ void Camera_Initialize()
 
 	g_CameraRight = { 1.0f, 0.0f, 0.0f };
 
-	XMStoreFloat4x4(&g_CameraMatrix, XMMatrixIdentity());
+	//XMStoreFloat4x4(&g_CameraMatrix, XMMatrixIdentity());
 
-	XMStoreFloat4x4(&g_PerspectiveMatrix, XMMatrixIdentity());
+	//XMStoreFloat4x4(&g_PerspectiveMatrix, XMMatrixIdentity());
 
 #if defined(_DEBUG) || defined(DEBUG)
 
@@ -48,6 +51,16 @@ void Camera_Initialize()
 	);
 
 #endif
+
+	// Create Constant Buffers
+	D3D11_BUFFER_DESC buffer_desc{};
+	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4);
+	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	buffer_desc.CPUAccessFlags = 0;
+
+	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pViewBuffer);
+	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pProjectionBuffer);
 }
 
 void Camera_Initialize(const DirectX::XMFLOAT3& Position,
@@ -64,6 +77,8 @@ void Camera_Initialize(const DirectX::XMFLOAT3& Position,
 void Camera_Finalize()
 {
 	delete g_DebugText;
+	if (g_pViewBuffer) g_pViewBuffer->Release();
+	if (g_pProjectionBuffer) g_pProjectionBuffer->Release();
 }
 
 void Camera_Update(double elapsed_time)
@@ -155,7 +170,6 @@ void Camera_Update(double elapsed_time)
 	);
 	
 	XMStoreFloat4x4(&g_CameraMatrix, mtxView);
-	Shader_3D_SetViewMatrix(mtxView);
 
 	constexpr float fovAngleY = XMConvertToRadians(60.0f);
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
@@ -170,7 +184,6 @@ void Camera_Update(double elapsed_time)
 	);
 
 	XMStoreFloat4x4(&g_PerspectiveMatrix, mtxPerspective);
-	Shader_3D_SetProjectMatrix(mtxPerspective);
 }
 
 const DirectX::XMFLOAT4X4& Camera_GetMatrix()
@@ -201,6 +214,23 @@ const DirectX::XMFLOAT3& Camera_GetUp()
 const DirectX::XMFLOAT3& Camera_GetRight()
 {
 	return g_CameraRight;
+}
+
+void Camera_SetMatrixToShader(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj)
+{
+	XMFLOAT4X4 transpose;
+
+	// View Matrix
+	XMStoreFloat4x4(&transpose, XMMatrixTranspose(view));
+	Direct3D_GetDeviceContext()->UpdateSubresource(g_pViewBuffer, 0, nullptr, &transpose, 0, 0);
+
+	// Projection Matrix
+	XMStoreFloat4x4(&transpose, XMMatrixTranspose(proj));
+	Direct3D_GetDeviceContext()->UpdateSubresource(g_pProjectionBuffer, 0, nullptr, &transpose, 0, 0);
+
+	// Bind to Slots 1 and 2
+	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &g_pViewBuffer);
+	Direct3D_GetDeviceContext()->VSSetConstantBuffers(2, 1, &g_pProjectionBuffer);
 }
 
 void Debug_Draw()

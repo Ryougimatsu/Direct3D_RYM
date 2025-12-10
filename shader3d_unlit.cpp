@@ -13,8 +13,6 @@ namespace
 	ID3D11VertexShader* g_pVertexShader = nullptr;
 	ID3D11InputLayout* g_pInputLayout = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
-	ID3D11Buffer* g_pVSConstantBuffer1 = nullptr;
-	ID3D11Buffer* g_pVSConstantBuffer2 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
 }
@@ -79,8 +77,6 @@ bool Shader3DUnilt_Initialize()
 	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; // 定数バッファとして使用
 
 	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0); // World
-	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer1); // View
-	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer2); // Projection
 
 
 
@@ -122,8 +118,6 @@ void Shader3DUnilt_Finalize()
 {
 	SAFE_RELEASE(g_pPixelShader);
 	SAFE_RELEASE(g_pVSConstantBuffer0);
-	SAFE_RELEASE(g_pVSConstantBuffer1);
-	SAFE_RELEASE(g_pVSConstantBuffer2);
 	SAFE_RELEASE(g_pPSConstantBuffer0);
 	SAFE_RELEASE(g_pInputLayout);
 	SAFE_RELEASE(g_pVertexShader);
@@ -142,27 +136,11 @@ void Shader3DUnilt_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 }
 
 void Shader3DUnilt_SetViewMatrix(const DirectX::XMMATRIX& matrix)
-{
-	// シェーダーに渡すために行列を転置する
-	XMFLOAT4X4 transpose;
-
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
-	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// ワールド行列用の定数バッファを更新
-	Direct3D_GetDeviceContext()->UpdateSubresource(g_pVSConstantBuffer1, 0, nullptr, &transpose, 0, 0);
+{							
 }
 
 void Shader3DUnilt_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
 {
-	// シェーダーに渡すために行列を転置する
-	XMFLOAT4X4 transpose;
-
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
-	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// ビュー行列用の定数バッファを更新
-	Direct3D_GetDeviceContext()->UpdateSubresource(g_pVSConstantBuffer2, 0, nullptr, &transpose, 0, 0);
 }
 
 void Shader3DUnilt_SetColor(const DirectX::XMFLOAT4& color)
@@ -181,7 +159,5 @@ void Shader3DUnilt_Begin()
 
 	//定数バッファを描画パイプラインに設定
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
-	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &g_pVSConstantBuffer1);
-	Direct3D_GetDeviceContext()->VSSetConstantBuffers(2, 1, &g_pVSConstantBuffer2);
 	Direct3D_GetDeviceContext()->PSSetConstantBuffers(0, 1, &g_pPSConstantBuffer0);
 }

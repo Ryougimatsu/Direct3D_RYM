@@ -19,4 +19,6 @@ const DirectX::XMFLOAT3& Camera_GetFront();
 const DirectX::XMFLOAT3& Camera_GetUp();
 const DirectX::XMFLOAT3& Camera_GetRight();
 
+void Camera_SetMatrixToShader(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj);
+
 void Debug_Draw();

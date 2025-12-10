@@ -16,6 +16,7 @@ namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 g_CameraMatrix{};
+	DirectX::XMFLOAT4X4 g_ViewMatrix{};
 	DirectX::XMFLOAT4X4 g_ProjectionMatrix{};
 
 }
@@ -52,12 +53,12 @@ void Player_Camera_Update(double elapsed_time)
 		{ 0.0f,1.0f,0.0f } // 上方向ベクトル
 	);
 
-	Shader_3D_SetViewMatrix(mtxView);
-	Shader_field_SetViewMatrix(mtxView);
-	Shader_Billboard_SetViewMatrix(mtxView);
-	Shader3DUnilt_SetViewMatrix(mtxView);
+	//Shader_3D_SetViewMatrix(mtxView);
+	//Shader_field_SetViewMatrix(mtxView);
+	//Shader_Billboard_SetViewMatrix(mtxView);
+	//Shader3DUnilt_SetViewMatrix(mtxView);
 
-	XMStoreFloat4x4(&g_CameraMatrix, mtxView);
+	XMStoreFloat4x4(&g_ViewMatrix, mtxView);
 
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
 	float nearZ = 0.1f;
@@ -70,10 +71,10 @@ void Player_Camera_Update(double elapsed_time)
 		farZ
 	);
 
-	Shader_3D_SetProjectMatrix(mtxPerspective);
-	Shader_field_SetProjectMatrix(mtxPerspective);
-	Shader_Billboard_SetProjectMatrix(mtxPerspective);
-	Shader3DUnilt_SetProjectMatrix(mtxPerspective);
+	//Shader_3D_SetProjectMatrix(mtxPerspective);
+	//Shader_field_SetProjectMatrix(mtxPerspective);
+	//Shader_Billboard_SetProjectMatrix(mtxPerspective);
+	//Shader3DUnilt_SetProjectMatrix(mtxPerspective);
 
 	XMStoreFloat4x4(&g_ProjectionMatrix, mtxPerspective);
 }
@@ -88,9 +89,14 @@ const DirectX::XMFLOAT3& Player_Camera_GetPosition()
 	return g_CameraPosition;
 }
 
-const DirectX::XMFLOAT4X4& Player_Camera_GetViewMatrix()
+const DirectX::XMFLOAT4X4& Player_Camera_GetMatrix()
 {
 	return g_CameraMatrix;
+}
+
+const DirectX::XMFLOAT4X4& Player_Camera_GetViewMatrix()
+{
+	return g_ViewMatrix;
 }
 
 const DirectX::XMFLOAT4X4& Player_Camera_GetProjectionMatrix()

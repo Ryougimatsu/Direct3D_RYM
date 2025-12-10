@@ -55,29 +55,34 @@ void Map_Finalize()
 void Map_Draw()
 {
 	XMMATRIX mtxWorld;
+
+	// 遍历所有地图物体
 	for (const MapObject& o : g_MapObjects) {
-		if (o.KindId == 0)
-		{
-			// 地面 AABB 画绿色
-			Collision_DebugDraw(o.Aabb, { 0.0f, 1.0f, 0.0f, 1.0f });
-		}
-		else
-		{
-			// 方块 AABB 画蓝色
-			Collision_DebugDraw(o.Aabb, { 0.0f, 0.0f, 1.0f, 1.0f });
-		}
 		switch (o.KindId) {
-		case 0:
-			mtxWorld = XMMatrixIdentity(); // 地面は原点に
-			Light_SetSpecularWorld(Player_Camera_GetPosition(), 1.0f, { 0.1f,0.1f,0.1f,0.1f }); // 地面用の光沢設定
+		case 0: // 地面 (MeshField)
+			mtxWorld = XMMatrixIdentity();
+			// 开启地面专用的低反光设置
+			Light_SetSpecularWorld(Player_Camera_GetPosition(), 1.0f, { 0.1f,0.1f,0.1f,1.0f });
 			MeshField_Draw(mtxWorld);
+
+			// 【重要】画完地面后，把高光重置回默认值（比如更亮），否则树木会很暗
+			Light_SetSpecularWorld(Player_Camera_GetPosition(), 10.0f, { 0.8f,0.8f,0.8f,1.0f });
 			break;
-		case 1:
+
+		case 1: // 方块 (Cube)
 			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
 			Cube_Draw(g_CubeTexID, mtxWorld);
 			break;
-		case 2:
-			break;
+
+		case 2: // 树木 (Model) - 【之前这里是空的，现在补全】
+		{
+			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
+			// 确保模型加载成功再画，防止崩溃
+			if (g_Model) {
+				ModelDraw(g_Model, mtxWorld);
+			}
+		}
+		break;
 		}
 	}
 }

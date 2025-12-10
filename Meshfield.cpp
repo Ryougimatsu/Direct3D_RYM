@@ -77,18 +77,12 @@ void MeshField_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 		for (int x = 0; x < FIELD_MESH_H_COUNT; x++)
 		{
 			index = (x + z * FIELD_MESH_H_COUNT) * 6;
-			//g_MeshFieldVertexIndex[index + 0] = x + 0 + (z + 0) * FIELD_MESH_H_VERTEX_COUNT;
-			//g_MeshFieldVertexIndex[index + 1] = x + 1 + (z + 0) * FIELD_MESH_H_VERTEX_COUNT;
-			//g_MeshFieldVertexIndex[index + 2] = x + 0 + (z + 1) * FIELD_MESH_H_VERTEX_COUNT;
-			//g_MeshFieldVertexIndex[index + 3] = x + 1 + (z + 0) * FIELD_MESH_H_VERTEX_COUNT;
-			//g_MeshFieldVertexIndex[index + 4] = x + 1 + (z + 1) * FIELD_MESH_H_VERTEX_COUNT;
-			//g_MeshFieldVertexIndex[index + 5] = x + 0 + (z + 1) * FIELD_MESH_H_VERTEX_COUNT;
 			g_MeshFieldVertexIndex[index + 0] = x + (z + 0) * FIELD_MESH_H_VERTEX_COUNT;      //0 1    5
 			g_MeshFieldVertexIndex[index + 1] = x + (z + 1) * FIELD_MESH_H_VERTEX_COUNT + 1;  //5 6    10
-			g_MeshFieldVertexIndex[index + 2] = g_MeshFieldVertexIndex[index + 0] + 1;    //1 2    6
-			g_MeshFieldVertexIndex[index + 3] = g_MeshFieldVertexIndex[index + 0];     //0 1    5
-			g_MeshFieldVertexIndex[index + 4] = g_MeshFieldVertexIndex[index + 1] - 1;    //4 5    9
-			g_MeshFieldVertexIndex[index + 5] = g_MeshFieldVertexIndex[index + 1];     //5 6    10
+			g_MeshFieldVertexIndex[index + 2] = g_MeshFieldVertexIndex[index + 0] + 1;		  //1 2    6
+			g_MeshFieldVertexIndex[index + 3] = g_MeshFieldVertexIndex[index + 0];			  //0 1    5
+			g_MeshFieldVertexIndex[index + 4] = g_MeshFieldVertexIndex[index + 1] - 1;		  //4 5    9
+			g_MeshFieldVertexIndex[index + 5] = g_MeshFieldVertexIndex[index + 1];			  //5 6    10
 			index += 6;
 		}
 	}

@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 using namespace DirectX;
 #include "model.h"
+#include "camera.h"
 #include "Player.h"
 #include "Player_Camera.h"
 #include "map.h"
@@ -21,11 +22,11 @@ using namespace DirectX;
 
 namespace 
 {
-	XMMATRIX g_mtxWorld_Field;
-	int g_TexTest = -1;
+
 }
 void Game_Initialize()
 {
+	Camera_Initialize();
 	Sky_Initialize();
 	Bullet_Initialize();
 	BulletHitEffect_Initialize();
@@ -42,8 +43,8 @@ void Game_Update(double elapsed_time)
 {	
 	Player_Update(elapsed_time);
 	Enemy_Update(elapsed_time);
-	Sky_SetPosition(Player_GetPosition());
 	Player_Camera_Update(elapsed_time);
+	Sky_SetPosition(Player_Camera_GetPosition());
 	Bullet_Update(elapsed_time);
 	BulletHitEffect_Update();
 
@@ -70,8 +71,8 @@ void Game_Update(double elapsed_time)
 			if (Collision_IsOverlapSphere(bullet, enemy))
 			{
 				BulletHitEffect_Create(Bullet_GetSphere(i).center);
-				Bullet_Destroy(i);
 				Enemy_GetEnemy(j)->Damage(50.0f);
+				Bullet_Destroy(i);
 			}
 		}
 	}
@@ -80,9 +81,16 @@ void Game_Update(double elapsed_time)
 void Game_Draw()
 {
 	
+	XMFLOAT4X4 mtxView = Player_Camera_GetViewMatrix();
+	XMMATRIX view = XMLoadFloat4x4(&mtxView);
+	XMMATRIX proj = XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
+	Camera_SetMatrixToShader(view, proj);
+	XMMATRIX mtxWorld = XMMatrixIdentity();
+
+	XMFLOAT3 cam_pos = Player_Camera_GetPosition();
+
 	Light_SetAmbient({ 1.0f,1.0f,1.0f });//环境光照颜色
 	Light_SetDirectionalWorld({ 0.0f,-1.0f,0.0f,0.0f }, { 0.3f,0.3f,0.3f,1.0f });//方向光
-	XMMATRIX mtxWorld = XMMatrixIdentity();
 
 	Light_SetSpecularWorld(Player_Camera_GetPosition(), 10.0f, { 0.4f,0.4f,0.4f,1.0f });
 
@@ -93,9 +101,9 @@ void Game_Draw()
 	//);
 	Sampler_SetFilterAnisotropic();
 	Sky_Draw();
+	Map_Draw();
 	Player_Draw();
 	Enemy_Draw();
-	Map_Draw();
 	Bullet_Draw();
 	BulletHitEffect_Draw();
 

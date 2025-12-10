@@ -6,6 +6,7 @@
 #include "mouse.h"
 #include "texture.h"
 #include "Player_Camera.h"
+#include "camera.h"
 
 using namespace DirectX;
 namespace {
@@ -69,7 +70,7 @@ void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::X
 
 	XMMATRIX pivot_offset = XMMatrixTranslation(-pivot.x , -pivot.y , 0.0f);
 
-	XMFLOAT4X4 CameraMatrix = Player_Camera_GetViewMatrix();
+	XMFLOAT4X4 CameraMatrix = Player_Camera_GetMatrix();
 	CameraMatrix._41 = CameraMatrix._42 = CameraMatrix._43 = 0.0f;
 
 
@@ -86,8 +87,9 @@ void Billboard_Draw(int texID,const DirectX::XMFLOAT3& position,const DirectX::X
 
 void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT4& tex_cut, const DirectX::XMFLOAT2& pivot)
 {
+
 	Shader_Billboard_Begin();
-	
+
 	float uv_x = tex_cut.x / Texture_GetWidth(texID);
 	float uv_y = tex_cut.y / Texture_GetHeight(texID);
 	float uv_w = tex_cut.z / Texture_GetWidth(texID);

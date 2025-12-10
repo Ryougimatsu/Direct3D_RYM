@@ -11,8 +11,6 @@ namespace
 	ID3D11VertexShader* g_pVertexShader = nullptr;
 	ID3D11InputLayout* g_pInputLayout = nullptr;
 	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
-	ID3D11Buffer* g_pVSConstantBuffer1 = nullptr;
-	ID3D11Buffer* g_pVSConstantBuffer2 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
 
@@ -92,8 +90,6 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; // 定数バッファとして使用
 
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0); // World
-	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer1); // View
-	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer2); // Projection
 
 
 	// ピクセルシェーダーの読み込み
@@ -133,8 +129,6 @@ void Shader_field_Finalize()
 {
 	SAFE_RELEASE(g_pPixelShader);
 	SAFE_RELEASE(g_pVSConstantBuffer0);
-	SAFE_RELEASE(g_pVSConstantBuffer1);
-	SAFE_RELEASE(g_pVSConstantBuffer2);
 	SAFE_RELEASE(g_pPSConstantBuffer0);
 	SAFE_RELEASE(g_pInputLayout);
 	SAFE_RELEASE(g_pVertexShader);
@@ -167,27 +161,13 @@ void Shader_field_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 
 void Shader_field_SetViewMatrix(const DirectX::XMMATRIX& matrix)
 {
-	// シェーダーに渡すために行列を転置する
-	XMFLOAT4X4 transpose;
 
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
-	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// ビュー行列用の定数バッファを更新
-	g_pContext->UpdateSubresource(g_pVSConstantBuffer1, 0, nullptr, &transpose, 0, 0);
 
 }
 
 void Shader_field_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
 {
-	// シェーダーに渡すために行列を転置する
-	XMFLOAT4X4 transpose;
 
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
-	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// プロジェクション行列用の定数バッファを更新
-	g_pContext->UpdateSubresource(g_pVSConstantBuffer2, 0, nullptr, &transpose, 0, 0);
 
 }
 
@@ -207,8 +187,6 @@ void Shader_field_Begin()
 
 	//定数バッファを描画パイプラインに設定
 	g_pContext->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
-	g_pContext->VSSetConstantBuffers(1, 1, &g_pVSConstantBuffer1);
-	g_pContext->VSSetConstantBuffers(2, 1, &g_pVSConstantBuffer2);
 	g_pContext->PSSetConstantBuffers(0, 1, &g_pPSConstantBuffer0);
 
 	//サンプラーステートを描画パイプラインに設定
