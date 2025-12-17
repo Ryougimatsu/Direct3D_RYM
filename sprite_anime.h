@@ -17,6 +17,10 @@ int SpriteAnime_PatternRegister(int textrueId,int pattern_max, double second_per
 
 int SpriteAnime_CreatePlayer(int anime_pattern_id);
 
+//多图序列动画实现
+int SpriteAnime_PatternRegisterSequence(const int* textureIds, int count, double second_per_pattern, bool isLooped = true);
+void SpriteAnime_FlipbookDraw(int playid, float x, float y, float dw, float dh);\
+
 bool SpriteAnime_IsStopped(int index);
 
 void SpriteAnime_DestroyPlayer(int index);

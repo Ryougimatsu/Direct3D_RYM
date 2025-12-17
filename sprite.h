@@ -8,6 +8,7 @@ void Sprite_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
 void Sprite_Finalize(void);
 
 void Sprite_Begin();
+void Sprite_End();
 
 //テクスチャ全表示
 void Sprite_Draw(int texid,float sx, float sy,

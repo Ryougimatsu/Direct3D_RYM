@@ -160,6 +160,7 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="collision.cpp" />
     <ClCompile Include="cube.cpp" />
+    <ClCompile Include="DebugCamera.cpp" />
     <ClCompile Include="debug_ostream.cpp" />
     <ClCompile Include="debug_text.cpp" />
     <ClCompile Include="direct3d.cpp" />
@@ -202,6 +203,7 @@
     <ClCompile Include="WICTextureLoader11.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DebugCamera.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
     <ClInclude Include="LightCamera.h" />

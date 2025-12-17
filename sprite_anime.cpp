@@ -3,6 +3,7 @@
 #include "texture.h"
 #include <DirectXMath.h>
 #include "billboard.h"
+#include <vector>
 using namespace DirectX;
 
 struct AnimePatternData {
@@ -13,6 +14,9 @@ struct AnimePatternData {
 	XMUINT2 m_PatternSize = { 0,0 };//アニメーションパターンのサイズ
 	bool m_IsLooped = true;//ル-プするか
 	double m_second_per_pattern = 0.1; // パターンごとの秒数（デフォルトは0.1秒）
+
+	bool m_IsSequenceMode = false;
+	std::vector<int> m_SequenceTextureIds;
 };
 
 
@@ -30,10 +34,13 @@ static AnimePlayData g_AnimePlayData[ANIM_PLAY_MAX]; // アニメーション再
 
 
 
+
 void SpriteAnime_Initialize()
 {
 	for (AnimePatternData& data : g_AnimePattern) {
 		data.m_TextureId = -1; // 初期化
+		data.m_IsSequenceMode = false;     // [新增]
+		data.m_SequenceTextureIds.clear(); // [新增] 清空序列
 
 	}
 
@@ -147,9 +154,68 @@ void SpriteAnime_Update(double elapsed_time)
 		return -1;
 	}
 
+	int SpriteAnime_PatternRegisterSequence(const int* textureIds, int count, double second_per_pattern, bool isLooped)
+	{
+		for (int i = 0; i < ANIM_PATTERN_MAX; i++) {
+			// 找一个没被占用的槽位 (这里判断稍微粗糙点，只要单图ID和序列都为空就视为可用)
+			if (g_AnimePattern[i].m_TextureId == -1 && g_AnimePattern[i].m_SequenceTextureIds.empty()) {
+
+				AnimePatternData& data = g_AnimePattern[i];
+
+				data.m_IsSequenceMode = true; // 标记为序列模式
+				data.m_PatternMax = count;
+				data.m_second_per_pattern = second_per_pattern;
+				data.m_IsLooped = isLooped;
+
+				// 将传入的 ID 数组拷贝到 vector 中
+				data.m_SequenceTextureIds.resize(count);
+				for (int frame = 0; frame < count; ++frame) {
+					data.m_SequenceTextureIds[frame] = textureIds[frame];
+				}
+
+				return i; // 返回 Pattern ID
+			}
+		}
+		return -1; // 注册失败
+	}
+
 	bool SpriteAnime_IsStopped(int index)
 	{
 		return g_AnimePlayData[index].m_isStopped; // 再生が停止しているかどうかを返す
+	}
+
+	void SpriteAnime_FlipbookDraw(int playid, float x, float y, float dw, float dh)
+	{
+		// 安全检查
+		if (playid < 0 || playid >= ANIM_PLAY_MAX) return;
+		int anm_ptrn_id = g_AnimePlayData[playid].m_PatternId;
+		if (anm_ptrn_id < 0) return;
+
+		AnimePatternData* pAnmPtrnData = &g_AnimePattern[anm_ptrn_id];
+		int currentFrame = g_AnimePlayData[playid].m_PatternNum;
+
+		// --- 分支判断 ---
+		if (pAnmPtrnData->m_IsSequenceMode) {
+			// [新增] 多图序列模式逻辑
+			if (currentFrame < pAnmPtrnData->m_SequenceTextureIds.size()) {
+				int currentTexId = pAnmPtrnData->m_SequenceTextureIds[currentFrame];
+
+				// 直接绘制整张图片 (UV 0,0 到 1,1)
+				// 使用 sprite.h 中支持缩放的重载版本
+				Sprite_Draw(currentTexId, x, y, dw, dh, { 1.0f, 1.0f, 1.0f, 1.0f });
+			}
+		}
+		else {
+			// [原有] Sprite Sheet 切分逻辑保持不变
+			Sprite_Draw(pAnmPtrnData->m_TextureId,
+				x, y, dw, dh,
+				pAnmPtrnData->m_StartPosition.x + pAnmPtrnData->m_PatternSize.x
+				* (currentFrame % pAnmPtrnData->m_PatternCol),
+				pAnmPtrnData->m_StartPosition.y + pAnmPtrnData->m_PatternSize.y
+				* (currentFrame / pAnmPtrnData->m_PatternCol),
+				pAnmPtrnData->m_PatternSize.x,
+				pAnmPtrnData->m_PatternSize.y);
+		}
 	}
 
 	void SpriteAnime_DestroyPlayer(int index)

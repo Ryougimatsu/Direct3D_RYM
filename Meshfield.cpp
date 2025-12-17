@@ -19,9 +19,9 @@ struct Vertex3D
 
 namespace
 {
-	constexpr float FIELD_MESH_SIZE = 1.0f; // メッシュの1マスの大きさ
-	constexpr int FIELD_MESH_H_COUNT = 50; // 横方向の分割数
-	constexpr int FIELD_MESH_V_COUNT = 25; // 縦方向の分割数
+	constexpr float FIELD_MESH_SIZE = 2.0f; // メッシュの1マスの大きさ
+	constexpr int FIELD_MESH_H_COUNT = 100; // 横方向の分割数
+	constexpr int FIELD_MESH_V_COUNT = 100; // 縦方向の分割数
 	constexpr int FIELD_MESH_H_VERTEX_COUNT = FIELD_MESH_H_COUNT + 1;// 横方向の頂点数
 	constexpr int FIELD_MESH_V_VERTEX_COUNT = FIELD_MESH_V_COUNT + 1;// 縦方向の頂点数
 
@@ -140,4 +140,14 @@ void MeshField_Draw(const DirectX::XMMATRIX& mtxW)
 
 	// ポリゴン描画命令発行
 	g_pContext->DrawIndexed(NUM_INDEX, 0, 0);
+}
+
+float MeshField_GetWidth()
+{
+	return FIELD_MESH_H_COUNT * FIELD_MESH_SIZE;
+}
+
+float MeshField_GetDepth()
+{
+	return FIELD_MESH_V_COUNT * FIELD_MESH_SIZE;
 }

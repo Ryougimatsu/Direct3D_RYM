@@ -20,7 +20,7 @@ using namespace DirectX;
 static constexpr int NUM_VERTEX = 4; // 頂点数
 
 
-
+static ID3D11BlendState* g_pBlendState = nullptr;
 static ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
 static ID3D11ShaderResourceView* g_pTexture = nullptr;
 
@@ -57,6 +57,18 @@ void Sprite_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
+	D3D11_BLEND_DESC blendDesc = {};
+	blendDesc.AlphaToCoverageEnable = FALSE;
+	blendDesc.IndependentBlendEnable = FALSE;
+	blendDesc.RenderTarget[0].BlendEnable = TRUE;             // 开启混合
+	blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;  // 源因子 = Alpha
+	blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA; // 目标因子 = 1 - Alpha
+	blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
 	g_pDevice->CreateBuffer(&bd, NULL, &g_pVertexBuffer);
 
 
@@ -66,6 +78,7 @@ void Sprite_Finalize(void)
 {
 	SAFE_RELEASE(g_pTexture);
 	SAFE_RELEASE(g_pVertexBuffer);
+	SAFE_RELEASE(g_pBlendState);
 }
 
 void Sprite_Begin()
@@ -74,6 +87,18 @@ void Sprite_Begin()
 	const float SCREEN_HEIGHT = (float)Direct3D_GetBackBufferHeight();
 
 	Shader_SetProjectMatrix(XMMatrixOrthographicOffCenterLH(0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f));
+
+	float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	g_pContext->OMSetBlendState(g_pBlendState, blendFactor, 0xffffffff);
+}
+
+void Sprite_End()
+{
+	float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	g_pContext->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
+
+	// 2. [规范化] 恢复深度测试 (为了后续画 3D 物体)
+	Direct3D_SetDepthEnable(true);
 }
 
 void Sprite_Draw(int texid, float sx, float sy, const DirectX::XMFLOAT4& color)
