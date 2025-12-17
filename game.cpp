@@ -22,6 +22,7 @@ using namespace DirectX;
 #include "DebugCamera.h"
 #include "mouse.h"      
 #include "sprite.h"
+#include "Inventory.h"
 
 
 namespace 
@@ -59,6 +60,7 @@ void Game_Initialize()
 	Map_Initialize();
 	Billboard_Initialize();
 	Enemy_Create({-3.0f,1.0f,5.0f});
+	Inventory_Initialize();
 }
 
 void Game_Update(double elapsed_time)
@@ -74,7 +76,7 @@ void Game_Update(double elapsed_time)
 	Sky_SetPosition(Player_Camera_GetPosition());
 	Bullet_Update(elapsed_time);
 	BulletHitEffect_Update();
-
+	Inventory_Update(elapsed_time);
 	if (KeyLogger_IsTrigger(KK_TAB))
 	{
 		g_IsDebugCameraMode = !g_IsDebugCameraMode;
@@ -143,6 +145,7 @@ void Game_Update(double elapsed_time)
 				}
 			}
 		}
+
 }
 void Game_Draw()
 {
@@ -205,6 +208,7 @@ void Game_Draw()
 	float mapX = 1920.0f - mapW - 20.0f;
 	float mapY = 20.0f;
 	Sprite_Draw(Direct3D_GetOffscreenSRV(), mapX, mapY, mapW, mapH);
+	Inventory_Draw();
 	Direct3D_SetDepthEnable(true);
 
 }
@@ -220,6 +224,7 @@ void Game_Finalize()
 	Player_Camera_Finalize();
 	Map_Finalize();
 	Billboard_Finalize();
+	Inventory_Finalize();
 }
 
 

@@ -171,6 +171,7 @@
     <ClCompile Include="game.cpp" />
     <ClCompile Include="game_window.cpp" />
     <ClCompile Include="Grid.cpp" />
+    <ClCompile Include="Inventory.cpp" />
     <ClCompile Include="keyboard.cpp" />
     <ClCompile Include="key_logger.cpp" />
     <ClCompile Include="Light.cpp" />
@@ -206,6 +207,7 @@
     <ClInclude Include="DebugCamera.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
+    <ClInclude Include="Inventory.h" />
     <ClInclude Include="LightCamera.h" />
     <ClInclude Include="MapCamera.h" />
     <ClInclude Include="Pad_Logger.h" />
