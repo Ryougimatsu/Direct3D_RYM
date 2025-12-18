@@ -170,6 +170,7 @@
     <ClCompile Include="enemy_test.cpp" />
     <ClCompile Include="fade.cpp" />
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="GameUI.cpp" />
     <ClCompile Include="game_window.cpp" />
     <ClCompile Include="Grid.cpp" />
     <ClCompile Include="Inventory.cpp" />
@@ -210,6 +211,7 @@
     <ClInclude Include="DropItem.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
+    <ClInclude Include="GameUI.h" />
     <ClInclude Include="Inventory.h" />
     <ClInclude Include="LightCamera.h" />
     <ClInclude Include="MapCamera.h" />

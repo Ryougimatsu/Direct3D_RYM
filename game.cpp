@@ -24,6 +24,7 @@ using namespace DirectX;
 #include "sprite.h"
 #include "Inventory.h"
 #include "DropItem.h"
+#include "GameUI.h"
 
 
 namespace 
@@ -47,6 +48,7 @@ void Game_RenderMiniMap()
 	Map_Draw();
 	Enemy_Draw();
 	Player_Draw();
+	DropItem_Draw();
 }
 void Game_Initialize()
 {
@@ -63,6 +65,7 @@ void Game_Initialize()
 	Enemy_Create({-3.0f,1.0f,5.0f});
 	Inventory_Initialize();
 	DropItem_Initialize();
+	GameUI_Initialize();
 }
 
 void Game_Update(double elapsed_time)
@@ -221,6 +224,7 @@ void Game_Draw()
 	float mapY = 20.0f;
 	Sprite_Draw(Direct3D_GetOffscreenSRV(), mapX, mapY, mapW, mapH);
 	Inventory_Draw();
+	GameUI_Draw();
 	Direct3D_SetDepthEnable(true);
 
 }

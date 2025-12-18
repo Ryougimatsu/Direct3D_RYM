@@ -5,6 +5,7 @@ using namespace DirectX;
 #include "cube.h"
 #include "shader_3d.h"
 #include "Meshfield.h"
+#include "Player.h"
 
 void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 {
@@ -57,6 +58,20 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	else
 	{
 		m_AccumulatedTime = 0.0;
+	}
+	//攻击判定：检测敌人身体是否碰到了玩家
+	Sphere enemySphere = { m_pOwner->GetPosition(), 0.5f };
+
+	// 获取玩家位置，假设玩家半径也是 0.5f (可以做的更精确点，用 Player_GetAABB)
+	Sphere playerSphere = { Player_GetPosition(), 1.0f };
+
+	if (Collision_IsOverlapSphere(enemySphere, playerSphere))
+	{
+		// 碰到玩家了！造成 10 点伤害
+		Player_Damage(10.0f);
+
+		// 此时 Player_Damage 内部会自动处理无敌时间，
+		// 所以即使这里每一帧都调用，实际上 1 秒只会扣一次血。
 	}
 }
 

@@ -4,6 +4,7 @@
 #include "texture.h"
 
 
+
 class EnemyTest : public Enemy {
 private:
 	DirectX::XMFLOAT3 m_position{};

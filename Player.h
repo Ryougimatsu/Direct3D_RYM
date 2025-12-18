@@ -4,6 +4,8 @@
 #include <DirectXMath.h>
 #include "collision.h"
 
+
+
 void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3 front);
 void Player_Finalize();
 
@@ -13,6 +15,9 @@ AABB Player_GetAABB();
 AABB Player_ConvertPositionToAABB(const DirectX::XMVECTOR& position);
 const DirectX::XMFLOAT3& Player_GetPosition();
 const DirectX::XMFLOAT3& Player_GetFront();
-
+float Player_GetHP();
+float Player_GetMaxHP();
+void Player_Damage(float damage);
+void Player_Heal(float amount);
 
 #endif

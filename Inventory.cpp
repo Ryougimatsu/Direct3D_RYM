@@ -8,6 +8,7 @@
 #include <map>
 #include <cstdio>  
 #include <cstdarg> 
+#include "Player.h"
 
 using namespace DirectX;
 
@@ -25,7 +26,7 @@ namespace
 	int g_TexBackground = -1;     // 背包背景图
 	int g_TexCursor = -1;         // 选中框图片
 	int g_TexIcons = -1;          // 道具图标集合 (Sprite Sheet)
-
+	float g_ItemUseCooldown = 0.0f;// 道具使用冷却时间
 	int g_FontTexId = -1;        // DebugText 用的字体纹理
 
 	// --- 数据存储 ---
@@ -118,12 +119,15 @@ void Inventory_Initialize()
 	// 4. [测试用] 开局送玩家一点东西
 	Inventory_AddItem(0, 5); // 5瓶血药
 	Inventory_AddItem(1, 1); // 1把剑
-	Inventory_AddItem(1, 1);
-	Inventory_AddItem(1, 1);
+	Inventory_AddItem(3, 1);
+	Inventory_AddItem(2, 4);
 }
 
 void Inventory_Update(double elapsed_time)
 {
+	if (g_ItemUseCooldown > 0.0f) {
+		g_ItemUseCooldown -= (float)elapsed_time;
+	}
 	// 1. 开关背包 (按 I 键)
 	if (KeyLogger_IsTrigger(KK_I)) {
 		g_IsOpen = !g_IsOpen;
@@ -149,14 +153,39 @@ void Inventory_Update(double elapsed_time)
 		if (g_CursorIndex >= MAX_SLOTS) g_CursorIndex -= MAX_SLOTS;
 	}
 
+	if (g_ItemUseCooldown > 0.0f) return;
 	// 3. 使用道具 (按回车或空格)
 	if (KeyLogger_IsTrigger(KK_ENTER)) {
 		InventorySlot& slot = g_Inventory[g_CursorIndex];
 		if (!slot.isEmpty()) {
-			// 这里编写使用逻辑，例如加血
-			// 目前仅打印日志或减少数量测试
-			if (g_ItemDatabase[slot.itemId].type == ItemType::Consumable) {
+			int itemId = slot.itemId;
+			bool isUsed = false; // 标记是否成功使用了道具
+
+			// --- 特殊道具逻辑 ---
+			if (itemId == 0) // 红药水
+			{
+				Player_Heal(50.0f);
+				isUsed = true;
+			}
+			else if (itemId == 2) // 苹果
+			{
+				Player_Heal(20.0f);
+				isUsed = true;
+			}
+			// --- 通用/测试逻辑 ---
+			// 只有当上面没处理过，且是消耗品时，才执行通用逻辑
+			else if (g_ItemDatabase[slot.itemId].type == ItemType::Consumable)
+			{
+				// 这里可以写一些没有特殊功能的普通食物的逻辑
+				printf("Used generic consumable\n");
+				isUsed = true;
+			}
+
+			// --- 统一处理扣除和冷却 ---
+			if (isUsed)
+			{
 				Inventory_RemoveItem(g_CursorIndex, 1);
+				g_ItemUseCooldown = 0.2f;
 			}
 		}
 	}
@@ -165,26 +194,26 @@ void Inventory_Update(double elapsed_time)
 void Inventory_Draw()
 {
 	if (!g_IsOpen) return;
-	Direct3D_SetBlendState(true);
-	Direct3D_SetDepthEnable(false);
 
-	// UI 参数
+	// 开启混合模式以支持半透明
+	Direct3D_SetBlendState(true);
+	Direct3D_SetDepthEnable(false); // 关闭深度测试，保证 UI 在最上层
+
+	// --- 1. 计算面板位置 ---
 	float screenW = (float)Direct3D_GetBackBufferWidth();
 	float screenH = (float)Direct3D_GetBackBufferHeight();
 
-	// 居中显示背景面板
 	float panelW = 400.0f;
-	float panelH = 300.0f;
+	float panelH = 400.0f;
 	float panelX = (screenW - panelW) / 2.0f;
 	float panelY = (screenH - panelH) / 2.0f;
 
-	// 1. 绘制背景
-	// 颜色设为灰色半透明
+	// 绘制大背景面板 (半透明灰色)
 	Sprite_Draw(g_TexBackground, panelX, panelY, panelW, panelH, { 0.2f, 0.2f, 0.2f, 0.9f });
 
-	// 2. 绘制格子
+	// --- 2. 遍历绘制所有格子 ---
 	float slotSize = 50.0f;
-	float gap = 10.0f; // 间距
+	float gap = 10.0f;
 	float startX = panelX + 30.0f;
 	float startY = panelY + 30.0f;
 
@@ -196,51 +225,51 @@ void Inventory_Draw()
 		float x = startX + col * (slotSize + gap);
 		float y = startY + row * (slotSize + gap);
 
+		// [修改点 1] 绘制格子底板 (所有格子都画)
+		// 如果是选中状态，底板稍微亮一点；没选中则暗一点
+		XMFLOAT4 bgColor = (i == g_CursorIndex) ? XMFLOAT4{ 0.3f, 0.3f, 0.3f, 0.8f } : XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.5f };
+		Sprite_Draw(g_TexBackground, x, y, slotSize, slotSize, bgColor);
+
+		// [修改点 2] 绘制道具图标 (所有格子都画，只要不为空)
+		InventorySlot& slot = g_Inventory[i];
+		if (!slot.isEmpty()) {
+			ItemDefinition& def = g_ItemDatabase[slot.itemId];
+
+			// 计算 UV 裁剪
+			float iconRawSize = 32.0f;
+			float srcX = (def.uvIndex * iconRawSize);
+			float srcY = 0.0f;
+
+			// 绘制图标
+			if (g_TexIcons != -1) {
+				Sprite_Draw(g_TexIcons, x + 4, y + 4, slotSize - 8, slotSize - 8, srcX, srcY, iconRawSize, iconRawSize);
+			}
+
+			// 绘制数量 (大于1才显示)
+			if (slot.count > 1) {
+				DrawDebugText(x + 2, y + slotSize - 16, "%d", slot.count);
+			}
+		}
+
 		if (i == g_CursorIndex) {
-			// 绘制格子底图 (深色)
-			Sprite_Draw(g_TexBackground, x, y, slotSize, slotSize, { 0.0f, 0.0f, 0.0f, 0.5f });
+			// 画一个比格子稍微大一点的框
+			Sprite_Draw(g_TexCursor, x - 4, y - 4, slotSize + 8, slotSize + 8);
 
-			// 如果该格子有道具，绘制图标
-			InventorySlot& slot = g_Inventory[i];
-
+			// --- 绘制下方的道具描述文字 ---
+			// 只有当选中且有道具时才显示详情
 			if (!slot.isEmpty()) {
 				ItemDefinition& def = g_ItemDatabase[slot.itemId];
 
-				// 计算 UV 裁剪
-				float iconRawSize = 32.0f;
-				float srcX = (def.uvIndex * iconRawSize);
-				float srcY = 0.0f;
+				// Name
+				std::string nameStr(def.name.begin(), def.name.end());
+				DrawDebugText(panelX + 20, panelY + panelH - 60, "Name: %s", nameStr.c_str());
 
-				// [关键检查] 确保 g_TexIcons 是有效的
-				if (g_TexIcons != -1) {
-					Sprite_Draw(g_TexIcons, x + 4, y + 4, slotSize - 8, slotSize - 8, srcX, srcY, iconRawSize, iconRawSize);
-				}
-
-				// 绘制数量
-				if (slot.count > 1) {
-					DrawDebugText(x + 2, y + slotSize - 16, "%d", slot.count);
-				}
+				// Desc
+				std::string descStr(def.desc.begin(), def.desc.end());
+				DrawDebugText(panelX + 20, panelY + panelH - 30, "Desc: %s", descStr.c_str());
 			}
-
-			// 4. 绘制选中框
-			if (i == g_CursorIndex) {
-				Sprite_Draw(g_TexCursor, x - 4, y - 4, slotSize + 8, slotSize + 8);
-
-				// 2. 画道具描述 (在面板下方)
-				if (!slot.isEmpty()) {
-					ItemDefinition& def = g_ItemDatabase[slot.itemId];
-
-					// Name
-					std::string nameStr(def.name.begin(), def.name.end());
-					DrawDebugText(panelX, panelY + panelH + 10, "Name: %s", nameStr.c_str());
-
-					// Desc
-					std::string descStr(def.desc.begin(), def.desc.end());
-					DrawDebugText(panelX, panelY + panelH + 30, "Desc: %s", descStr.c_str());
-				}
-				else {
-					DrawDebugText(panelX, panelY + panelH + 10, "Empty Slot");
-				}
+			else {
+				DrawDebugText(panelX + 20, panelY + panelH - 40, "Empty Slot");
 			}
 		}
 	}

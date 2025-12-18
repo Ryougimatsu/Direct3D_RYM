@@ -19,6 +19,9 @@ namespace {
 	const float PLAYER_HEIGHT = 1.2f;
 	const float PLAYER_HALF_WIDTH_X = 1.0f / 2.0f; // 假设测量后得到
 	const float PLAYER_HALF_WIDTH_Z = 1.0f / 2.0f; // 假设X和Z是对称的
+	float g_PlayerHP = 100.0f;
+	float g_PlayerMaxHP = 100.0f;
+	float g_InvincibleTimer = 0.0f;
 }
 
 void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3 front)
@@ -36,6 +39,10 @@ void Player_Finalize()
 
 void Player_Update(double elapsed_time)
 {
+	//无敌时间计时器
+	if (g_InvincibleTimer > 0.0f) {
+		g_InvincibleTimer -= static_cast<float>(elapsed_time);
+	}
 	XMVECTOR position = XMLoadFloat3(&g_PlayerPosition);
 	XMVECTOR velocity = XMLoadFloat3(&g_PlayerVelocity);
 	XMVECTOR gravityVelocity = XMVectorZero();
@@ -248,4 +255,26 @@ const DirectX::XMFLOAT3& Player_GetFront()
 {
 	return g_PlayerFront;
 }
+float Player_GetHP() {
+	return g_PlayerHP;
+}
 
+float Player_GetMaxHP() {
+	return g_PlayerMaxHP;
+}
+
+void Player_Damage(float damage) {
+
+	//无敌时间中不受伤
+	if (g_InvincibleTimer > 0.0f) return;
+
+	g_PlayerHP -= damage;
+	if (g_PlayerHP < 0.0f) g_PlayerHP = 0.0f;
+	//受到伤害后进入无敌时间
+	g_InvincibleTimer = 1.0f;
+}
+
+void Player_Heal(float amount) {
+	g_PlayerHP += amount;
+	if (g_PlayerHP > g_PlayerMaxHP) g_PlayerHP = g_PlayerMaxHP;
+}
