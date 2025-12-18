@@ -3,6 +3,7 @@
 #include "key_logger.h"
 #include "Light.h"
 #include "camera.h"
+#include "Character.h"
 #include "Player_Camera.h"
 #include "map.h"
 #include "cube.h"
@@ -247,3 +248,4 @@ const DirectX::XMFLOAT3& Player_GetFront()
 {
 	return g_PlayerFront;
 }
+
