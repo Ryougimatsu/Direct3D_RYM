@@ -140,6 +140,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 
 			elapsed_time = current_time - exec_last_time;
 			//if (elapsed_time >= (1.0 / 60.0)) {  // 60FPSで更新する場合
+			if (elapsed_time > 0.1)
+			{
+				elapsed_time = 1.0 / 60.0;
+			}
 			if (true){
 				exec_last_time = current_time;
 

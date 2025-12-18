@@ -164,6 +164,7 @@
     <ClCompile Include="debug_ostream.cpp" />
     <ClCompile Include="debug_text.cpp" />
     <ClCompile Include="direct3d.cpp" />
+    <ClCompile Include="DropItem.cpp" />
     <ClCompile Include="effect.cpp" />
     <ClCompile Include="enemy.cpp" />
     <ClCompile Include="enemy_test.cpp" />
@@ -205,6 +206,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DebugCamera.h" />
+    <ClInclude Include="DropItem.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
     <ClInclude Include="Inventory.h" />

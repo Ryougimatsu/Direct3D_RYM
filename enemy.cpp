@@ -41,8 +41,8 @@ void Enemy_Finalize()
 {
 	for (int i = 0; i < g_EnemyCount; ++i)
 	{
-			delete g_Enemy[i];
-			g_Enemy[i] = nullptr;
+		delete g_Enemy[i];
+		g_Enemy[i] = nullptr;
 	}
 }
 

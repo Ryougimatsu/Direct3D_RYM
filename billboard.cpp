@@ -123,3 +123,42 @@ void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX:
 	// ポリゴン描画命令発行
 	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
 }
+
+void Billboard_Draw(int texID, DirectX::XMFLOAT3 pos, float width, float height, float u, float v, float uw, float vh)
+{
+	// 1. 设置 Shader
+	Shader_Billboard_Begin();
+	Shader_Billboard_SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+
+	// 2. 直接设置 UV (不除以宽高)
+	// 注意：根据你的 Shader_Billboard_SetUVParameter 定义，参数顺序可能是 {{uw, vh}, {u, v}}
+	// 请对照你的 Shader_Billboard.h 确认结构体顺序
+	Shader_Billboard_SetUVParameter({ { uw, vh }, { u, v } });
+
+	// 3. 设置纹理和顶点
+	Texture_Set(texID);
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	Direct3D_GetDeviceContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+
+	// 4. 计算矩阵 (Billboard 核心)
+	// 使用 Player_Camera 或者通用的 Camera_GetViewMatrix
+	XMFLOAT4X4 CameraMatrix = Player_Camera_GetViewMatrix();
+	CameraMatrix._41 = CameraMatrix._42 = CameraMatrix._43 = 0.0f;
+
+	XMMATRIX iv = XMMatrixTranspose(XMLoadFloat4x4(&CameraMatrix));
+
+	// 使用传入的 width 和 height 作为缩放
+	XMMATRIX mtxs = XMMatrixScaling(width, height, 1.0f);
+
+	// 使用传入的 pos 作为位置 (Pivot 默认为 0)
+	XMMATRIX mtxt = XMMatrixTranslation(pos.x, pos.y, pos.z);
+
+	// 组合矩阵
+	Shader_Billboard_SetWorldMatrix(mtxs * iv * mtxt);
+
+	// 5. 绘制
+	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
+}

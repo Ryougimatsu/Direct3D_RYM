@@ -24,6 +24,9 @@ public:
 	{
 		return m_HP <= 0.0f;
 	}
+	const DirectX::XMFLOAT3& GetPosition() const {
+		return m_position;
+	}
 
 	Sphere GetCollisionSphere() const { return {m_position,0.5f}; }
 private:

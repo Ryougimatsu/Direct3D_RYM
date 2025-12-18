@@ -151,3 +151,8 @@ float MeshField_GetDepth()
 {
 	return FIELD_MESH_V_COUNT * FIELD_MESH_SIZE;
 }
+
+float MeshField_GetHeight(float x, float z)
+{
+	return 1.0f;
+}

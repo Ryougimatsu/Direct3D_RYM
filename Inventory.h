@@ -52,3 +52,7 @@ bool Inventory_RemoveItem(int slotIndex, int count);
 
 // 检查背包是否打开
 bool Inventory_IsOpen();
+
+int Inventory_GetItemUVIndex(int itemId);
+
+int Inventory_GetIconsTextureID();

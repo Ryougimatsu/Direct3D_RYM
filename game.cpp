@@ -23,6 +23,7 @@ using namespace DirectX;
 #include "mouse.h"      
 #include "sprite.h"
 #include "Inventory.h"
+#include "DropItem.h"
 
 
 namespace 
@@ -61,6 +62,7 @@ void Game_Initialize()
 	Billboard_Initialize();
 	Enemy_Create({-3.0f,1.0f,5.0f});
 	Inventory_Initialize();
+	DropItem_Initialize();
 }
 
 void Game_Update(double elapsed_time)
@@ -77,6 +79,7 @@ void Game_Update(double elapsed_time)
 	Bullet_Update(elapsed_time);
 	BulletHitEffect_Update();
 	Inventory_Update(elapsed_time);
+	DropItem_Update(elapsed_time);
 	if (KeyLogger_IsTrigger(KK_TAB))
 	{
 		g_IsDebugCameraMode = !g_IsDebugCameraMode;
@@ -87,7 +90,7 @@ void Game_Update(double elapsed_time)
 			Mouse_SetMode(MOUSE_POSITION_MODE_RELATIVE);
 
 			// 2. (可选) 切换时把自由相机传送到玩家当前位置，实现无缝切换
-			// DebugCamera_SetPosition(Player_Camera_GetPosition());
+			DebugCamera_SetPosition(Player_Camera_GetPosition());
 		}
 		else
 		{
@@ -141,6 +144,14 @@ void Game_Update(double elapsed_time)
 				{
 					BulletHitEffect_Create(Bullet_GetSphere(i).center);
 					Enemy_GetEnemy(j)->Damage(50.0f);
+					if (Enemy_GetEnemy(j)->IsDestroyed()) // 假设你有 GetHP
+					{
+						// [核心] 在敌人死掉的位置生成掉落物
+						XMFLOAT3 enemyPos = Enemy_GetEnemy(j)->GetPosition();
+
+						// 比如掉落一个红药水 (ID 0)
+						DropItem_Spawn(enemyPos, 0);
+					}
 					Bullet_Destroy(i);
 				}
 			}
@@ -199,6 +210,7 @@ void Game_Draw()
 	Enemy_Draw();
 	Bullet_Draw();
 	BulletHitEffect_Draw();
+	DropItem_Draw();
 
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);
@@ -225,6 +237,7 @@ void Game_Finalize()
 	Map_Finalize();
 	Billboard_Finalize();
 	Inventory_Finalize();
+	DropItem_Finalize();
 }
 
 

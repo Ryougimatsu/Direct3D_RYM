@@ -300,3 +300,15 @@ bool Inventory_IsOpen()
 {
 	return g_IsOpen;
 }
+
+int Inventory_GetItemUVIndex(int itemId)
+{
+	if (g_ItemDatabase.find(itemId) == g_ItemDatabase.end()) return 0;
+
+	return g_ItemDatabase[itemId].uvIndex;
+}
+
+int Inventory_GetIconsTextureID()
+{
+	return g_TexIcons;
+}

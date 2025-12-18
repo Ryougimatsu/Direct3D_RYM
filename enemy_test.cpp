@@ -4,11 +4,13 @@
 using namespace DirectX;
 #include "cube.h"
 #include "shader_3d.h"
+#include "Meshfield.h"
 
 void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 {
 	m_AccumulatedTime += elapsed_time;
 	m_pOwner->m_position.x = m_PointX +sinf(m_AccumulatedTime);
+	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
 
 	if (Collision_IsOverlapSphere({ m_pOwner->m_position,m_pOwner->m_DetectionAngle}, Player_GetPosition()))
 	{
@@ -25,11 +27,22 @@ void EnemyTest::EnemyTest_StatePatrol::Draw() const
 void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 {
 
-	XMVECTOR toPlayer = XMLoadFloat3(&Player_GetPosition()) - XMLoadFloat3(&m_pOwner->m_position);
-	toPlayer = XMVector3Normalize(toPlayer);
+	XMFLOAT3 playerPos = Player_GetPosition();
+	XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
+	XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
+
+	XMVECTOR toPlayer = vPlayerPos - vEnemyPos;
+	toPlayer = XMVectorSetY(toPlayer, 0.0f);
 	//追踪速度0.5f
-	XMVECTOR position = XMLoadFloat3(&m_pOwner->m_position) + toPlayer * 1.5f * elapsed_time;
-	XMStoreFloat3(&m_pOwner->m_position, position);
+	if (XMVectorGetX(XMVector3LengthSq(toPlayer)) > 0.0001f)
+	{
+		toPlayer = XMVector3Normalize(toPlayer);
+
+		float speed = 2.5f; // 追踪速度
+		XMVECTOR vNewPos = vEnemyPos + toPlayer * speed * (float)elapsed_time;
+
+		XMStoreFloat3(&m_pOwner->m_position, vNewPos);
+	}
 
 	//放弃追踪
 	if (!Collision_IsOverlapSphere({ m_pOwner->m_position,m_pOwner->m_DetectionAngle }, Player_GetPosition()))

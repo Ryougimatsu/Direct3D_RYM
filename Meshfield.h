@@ -8,3 +8,4 @@ void MeshField_Draw(const DirectX::XMMATRIX& mtxW);
 
 float MeshField_GetWidth();
 float MeshField_GetDepth();
+float MeshField_GetHeight(float x, float z);

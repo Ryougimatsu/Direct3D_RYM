@@ -48,6 +48,7 @@ namespace
 	Bullet* g_Bullets[MAX_BULLET]{ nullptr };
 	int g_BulletCount = 0;
 	MODEL* g_BulletModel{ nullptr };
+	constexpr float BULLET_SPEED = 60.0f;
 }
 
 void Bullet_Initialize()
@@ -116,7 +117,14 @@ void Bullet_Draw()
 void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& velocity)
 {
 	if (g_BulletCount >= MAX_BULLET) return;
-	g_Bullets[g_BulletCount++] = new Bullet(position, velocity);
+	XMVECTOR vDir = XMLoadFloat3(&velocity);
+	vDir = XMVector3Normalize(vDir); 
+	vDir = vDir * BULLET_SPEED;      
+
+	XMFLOAT3 finalVelocity;
+	XMStoreFloat3(&finalVelocity, vDir);
+
+	g_Bullets[g_BulletCount++] = new Bullet(position, finalVelocity);
 }
 
 void Bullet_Destroy(int index)

@@ -22,6 +22,7 @@ public:
 	virtual void Draw() const;
 	void UpdateState();
 	virtual void Damage(float) {}
+	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
 	virtual bool IsDestroyed() const = 0;
 	virtual Sphere GetCollisionSphere() const { return {}; }
 protected:
