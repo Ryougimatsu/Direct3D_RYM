@@ -1,10 +1,10 @@
 #include "Inventory.h"
 #include "sprite.h"
 #include "texture.h"
-#include "keyboard.h"    // 用于输入控制
+#include "keyboard.h"   
 #include "key_logger.h"
-#include "direct3d.h"    // 获取屏幕宽高
-#include "debug_text.h"  // 暂时用 DebugText 显示文字，后期可以换专门的 Font
+#include "direct3d.h"   
+#include "debug_text.h" 
 #include <map>
 #include <cstdio>  
 #include <cstdarg> 
@@ -29,15 +29,13 @@ namespace
 	float g_ItemUseCooldown = 0.0f;// 道具使用冷却时间
 	int g_FontTexId = -1;        // DebugText 用的字体纹理
 
-	// --- 数据存储 ---
-	// 道具数据库 (ID -> 定义)
-	std::map<int, ItemDefinition> g_ItemDatabase;
 
-	// 玩家背包数据
+
+	std::map<int, ItemDefinition> g_ItemDatabase;
 	std::vector<InventorySlot> g_Inventory;
 }
 
-// 内部辅助：定义游戏里的道具 (相当于初始化数据库)
+
 void DefineItems()
 {
 	// ID, Name, Desc, Type, MaxStack, TexID, UV
@@ -58,14 +56,11 @@ void DrawDebugText(float x, float y, const char* fmt, ...)
 	vsnprintf(buffer, 256, fmt, args);
 	va_end(args);
 
-	// 2. 绘制参数设置
-	// 假设 consolab_ascii_512.png 是 512x512 的图，包含 16x16 个字符
-	// 每个字符在图上的尺寸是 32x32 像素
 	float srcSize = 32.0f;
 
-	// 屏幕上显示的尺寸 (可以调整这个值来缩放文字)
-	float drawW = 16.0f; // 宽 (字宽通常比字高窄)
-	float drawH = 32.0f; // 高
+	
+	float drawW = 16.0f;
+	float drawH = 32.0f;
 
 	float currentX = x;
 
@@ -74,10 +69,9 @@ void DrawDebugText(float x, float y, const char* fmt, ...)
 	{
 		unsigned char c = buffer[i];
 
-		// 跳过不可见字符
 		if (c < 32) continue;
 
-		// 计算字符在纹理中的网格位置 (ASCII 32 是起始的空格)
+
 		int index = c - 32;
 		int col = index % 16;
 		int row = index / 16;
@@ -85,9 +79,7 @@ void DrawDebugText(float x, float y, const char* fmt, ...)
 		float srcX = col * srcSize;
 		float srcY = row * srcSize;
 
-		// 调用 Sprite_Draw (使用支持源矩形裁剪的重载版本)
-		// 参数: TextureID, DestX, DestY, DestW, DestH, SrcX, SrcY, SrcW, SrcH
-		// 注意：如果你使用的 Sprite_Draw 没有这个重载，请参考 Score_Draw 的实现
+	
 		Sprite_Draw(g_FontTexId, currentX, y, drawW, drawH, srcX, srcY, srcSize, srcSize);
 
 		currentX += drawW; // 光标后移
@@ -99,24 +91,21 @@ void Inventory_Initialize()
 	// 1. 初始化数据库
 	DefineItems();
 
-	// 2. 初始化背包格子 (全部设为空)
+
 	g_Inventory.resize(MAX_SLOTS);
 	for (auto& slot : g_Inventory) {
 		slot.itemId = -1;
 		slot.count = 0;
 	}
 
-	// 3. 加载 UI 图片
-	// 请准备这些图片，或者暂时用白色方块代替
+
 	g_TexBackground = Texture_LoadFromFile(L"resource/texture/ui_inventory_bg.png");
 	if (g_TexBackground == -1) g_TexBackground = Texture_LoadFromFile(L"resource/texture/white.png");
 	g_TexCursor = Texture_LoadFromFile(L"resource/texture/ui_cursor.png");
 	if (g_TexCursor == -1) g_TexCursor = Texture_LoadFromFile(L"resource/texture/white.png");
 	g_TexIcons = Texture_LoadFromFile(L"resource/texture/ui_icons.png");
 	g_FontTexId = Texture_LoadFromFile(L"resource/texture/consolab_ascii_512.png");
-	// 为了测试，我们默认给几个简单的白色纹理 (如果你没有图)
-
-	// 4. [测试用] 开局送玩家一点东西
+	
 	Inventory_AddItem(0, 5); // 5瓶血药
 	Inventory_AddItem(1, 1); // 1把剑
 	Inventory_AddItem(3, 1);
@@ -128,14 +117,13 @@ void Inventory_Update(double elapsed_time)
 	if (g_ItemUseCooldown > 0.0f) {
 		g_ItemUseCooldown -= (float)elapsed_time;
 	}
-	// 1. 开关背包 (按 I 键)
 	if (KeyLogger_IsTrigger(KK_I)) {
 		g_IsOpen = !g_IsOpen;
 	}
 
 	if (!g_IsOpen) return;
 
-	// 2. 移动光标 (方向键)
+
 	if (KeyLogger_IsTrigger(KK_RIGHT)) {
 		g_CursorIndex++;
 		if (g_CursorIndex >= MAX_SLOTS) g_CursorIndex = 0; // 循环
@@ -161,23 +149,21 @@ void Inventory_Update(double elapsed_time)
 			int itemId = slot.itemId;
 			bool isUsed = false; // 标记是否成功使用了道具
 
-			// --- 特殊道具逻辑 ---
-			if (itemId == 0) // 红药水
+			
+			if (itemId == 0) 
 			{
 				Player_Heal(50.0f);
 				isUsed = true;
 			}
-			else if (itemId == 2) // 苹果
+			else if (itemId == 2) 
 			{
 				Player_Heal(20.0f);
 				isUsed = true;
 			}
-			// --- 通用/测试逻辑 ---
-			// 只有当上面没处理过，且是消耗品时，才执行通用逻辑
 			else if (g_ItemDatabase[slot.itemId].type == ItemType::Consumable)
 			{
-				// 这里可以写一些没有特殊功能的普通食物的逻辑
-				printf("Used generic consumable\n");
+				
+				//printf("Used generic consumable\n");
 				isUsed = true;
 			}
 
@@ -195,9 +181,9 @@ void Inventory_Draw()
 {
 	if (!g_IsOpen) return;
 
-	// 开启混合模式以支持半透明
+	
 	Direct3D_SetBlendState(true);
-	Direct3D_SetDepthEnable(false); // 关闭深度测试，保证 UI 在最上层
+	Direct3D_SetDepthEnable(false); 
 
 	// --- 1. 计算面板位置 ---
 	float screenW = (float)Direct3D_GetBackBufferWidth();
@@ -225,12 +211,11 @@ void Inventory_Draw()
 		float x = startX + col * (slotSize + gap);
 		float y = startY + row * (slotSize + gap);
 
-		// [修改点 1] 绘制格子底板 (所有格子都画)
-		// 如果是选中状态，底板稍微亮一点；没选中则暗一点
+		
 		XMFLOAT4 bgColor = (i == g_CursorIndex) ? XMFLOAT4{ 0.3f, 0.3f, 0.3f, 0.8f } : XMFLOAT4{ 0.0f, 0.0f, 0.0f, 0.5f };
 		Sprite_Draw(g_TexBackground, x, y, slotSize, slotSize, bgColor);
 
-		// [修改点 2] 绘制道具图标 (所有格子都画，只要不为空)
+		
 		InventorySlot& slot = g_Inventory[i];
 		if (!slot.isEmpty()) {
 			ItemDefinition& def = g_ItemDatabase[slot.itemId];
@@ -255,16 +240,15 @@ void Inventory_Draw()
 			// 画一个比格子稍微大一点的框
 			Sprite_Draw(g_TexCursor, x - 4, y - 4, slotSize + 8, slotSize + 8);
 
-			// --- 绘制下方的道具描述文字 ---
-			// 只有当选中且有道具时才显示详情
+		
 			if (!slot.isEmpty()) {
 				ItemDefinition& def = g_ItemDatabase[slot.itemId];
 
-				// Name
+				
 				std::string nameStr(def.name.begin(), def.name.end());
 				DrawDebugText(panelX + 20, panelY + panelH - 60, "Name: %s", nameStr.c_str());
 
-				// Desc
+			
 				std::string descStr(def.desc.begin(), def.desc.end());
 				DrawDebugText(panelX + 20, panelY + panelH - 30, "Desc: %s", descStr.c_str());
 			}
@@ -281,11 +265,11 @@ void Inventory_Finalize()
 	g_ItemDatabase.clear();
 }
 
-// --- 核心逻辑 ---
+
 
 bool Inventory_AddItem(int itemId, int count)
 {
-	// 1. 先找能不能堆叠 (已有相同物品且未满)
+	
 	for (auto& slot : g_Inventory) {
 		if (slot.itemId == itemId) {
 			if (slot.count < g_ItemDatabase[itemId].maxStack) {
@@ -298,7 +282,7 @@ bool Inventory_AddItem(int itemId, int count)
 		}
 	}
 
-	// 2. 找空位放剩下的
+	
 	for (auto& slot : g_Inventory) {
 		if (slot.isEmpty()) {
 			slot.itemId = itemId;
@@ -307,7 +291,7 @@ bool Inventory_AddItem(int itemId, int count)
 		}
 	}
 
-	return false; // 背包满了
+	return false; 
 }
 
 bool Inventory_RemoveItem(int slotIndex, int count)

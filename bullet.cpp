@@ -53,7 +53,7 @@ namespace
 
 void Bullet_Initialize()
 {
-	g_BulletModel = ModelLoad("resource/model/test.fbx", 0.05f);
+	g_BulletModel = ModelLoad("resource/model/Bullet.fbx", 0.05f);
 	for (int i = 0; i < g_BulletCount; i++)
 	{
 		delete g_Bullets[i];
@@ -86,13 +86,11 @@ void Bullet_Update(double elapsed_time)
 		// 检查是否死亡（寿命到了）
 		if (g_Bullets[i]->isDestroy())
 		{
-			// [关键] 在销毁前生成特效
+		
 			BulletHitEffect_Create(g_Bullets[i]->GetPosition());
 
-			// 释放内存
 			delete g_Bullets[i];
 
-			// Swap and Pop (用最后一个填补当前空缺)
 			g_Bullets[i] = g_Bullets[g_BulletCount - 1];
 			g_Bullets[g_BulletCount - 1] = nullptr;
 			g_BulletCount--;
@@ -107,8 +105,7 @@ void Bullet_Draw()
 	XMMATRIX world;
 	for (int i = 0; i < g_BulletCount; i++)
 	{
-		// 如果你想解决之前提到的子弹变形或朝向问题，请在这里应用 S*R*T 逻辑
-		// 目前保持你原本的平移逻辑：
+		
 		world = XMMatrixTranslationFromVector(XMLoadFloat3(&g_Bullets[i]->GetPosition()));
 		ModelDraw(g_BulletModel, world);
 	}

@@ -20,9 +20,15 @@ public:
 	virtual ~Enemy() = default;
 	virtual void Update(double elapsed_time);
 	virtual void Draw() const;
-	void UpdateState();
+	//virtual void UpdateState();
 	virtual void Damage(float) {}
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
+	virtual AABB GetAABB() {
+		DirectX::XMFLOAT3 pos = GetPosition(); return {
+		{pos.x - 0.5f, pos.y, pos.z - 0.5f},
+		{pos.x + 0.5f, pos.y + 1.0f, pos.z + 0.5f}
+		};
+	}
 	virtual bool IsDestroyed() const = 0;
 	virtual Sphere GetCollisionSphere() const { return {}; }
 protected:

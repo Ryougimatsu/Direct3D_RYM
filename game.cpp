@@ -89,15 +89,14 @@ void Game_Update(double elapsed_time)
 
 		if (g_IsDebugCameraMode)
 		{
-			// 1. 开启相对模式 (隐藏鼠标，锁定在中心，提供 Delta 值)
+			
 			Mouse_SetMode(MOUSE_POSITION_MODE_RELATIVE);
-
-			// 2. (可选) 切换时把自由相机传送到玩家当前位置，实现无缝切换
+			
 			DebugCamera_SetPosition(Player_Camera_GetPosition());
 		}
 		else
 		{
-			// 1. 恢复绝对模式 (显示鼠标，正常操作 UI)
+			
 			Mouse_SetMode(MOUSE_POSITION_MODE_ABSOLUTE);
 		}
 	}
@@ -124,14 +123,10 @@ void Game_Update(double elapsed_time)
 
 				if (Collision_IsOverLapAABB(bulletAABB, mapObjAABB))
 				{
-					// [新增] 在销毁子弹前，生成命中特效
-					// 使用子弹当前的位置 (center) 作为特效生成点
-					// 这样无论是打中树木(KindId=2)还是箱子(KindId=1)，都会有火花
+			
 					BulletHitEffect_Create(Bullet_GetSphere(i).center);
 
-					// 如果你想让地面(KindId=0)不产生特效，可以加个判断：
-					// if (pMapObj->KindId != 0) BulletHitEffect_Create(...);
-
+				
 					Bullet_Destroy(i);
 					break;
 				}
@@ -139,23 +134,40 @@ void Game_Update(double elapsed_time)
 		}
 		for (int j = 0; j < Enemy_GetEnemyCount(); j++)
 		{
+			Enemy* pEnemy = Enemy_GetEnemy(j);
+
+			
+			if (pEnemy == nullptr || pEnemy->IsDestroyed()) continue;
+
+			
+			AABB enemyAABB = pEnemy->GetAABB();
+
 			for (int i = 0; i < Bullet_GetCount(); i++)
 			{
-				Sphere bullet = Bullet_GetSphere(i);
-				Sphere enemy = Enemy_GetEnemy(j)->GetCollisionSphere();
-				if (Collision_IsOverlapSphere(bullet, enemy))
-				{
-					BulletHitEffect_Create(Bullet_GetSphere(i).center);
-					Enemy_GetEnemy(j)->Damage(50.0f);
-					if (Enemy_GetEnemy(j)->IsDestroyed()) // 假设你有 GetHP
-					{
-						// [核心] 在敌人死掉的位置生成掉落物
-						XMFLOAT3 enemyPos = Enemy_GetEnemy(j)->GetPosition();
+				if (!Bullet_GetSphere(i).radius > 0) continue;
+				
+				Sphere bulletSphere = Bullet_GetSphere(i);
 
-						// 比如掉落一个红药水 (ID 0)
+				
+				if (Collision_IsOverlapSphereAABB(bulletSphere, enemyAABB))
+				{
+					
+					BulletHitEffect_Create(bulletSphere.center);
+
+					// 2. 敌人扣血
+					pEnemy->Damage(10.0f);
+
+					// 3. 死亡判定
+					if (pEnemy->IsDestroyed())
+					{
+						XMFLOAT3 enemyPos = pEnemy->GetPosition();
+					
 						DropItem_Spawn(enemyPos, 0);
 					}
+
+					
 					Bullet_Destroy(i);
+					break;
 				}
 			}
 		}

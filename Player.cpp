@@ -8,6 +8,8 @@
 #include "map.h"
 #include "cube.h"
 #include "bullet.h"
+#include "Meshfield.h"
+#include "direct3d.h"
 using namespace DirectX;
 
 namespace {
@@ -17,8 +19,8 @@ namespace {
 	MODEL* g_pPlayerModel = nullptr;
 	bool g_IsJump = false;
 	const float PLAYER_HEIGHT = 1.2f;
-	const float PLAYER_HALF_WIDTH_X = 1.0f / 2.0f; // 假设测量后得到
-	const float PLAYER_HALF_WIDTH_Z = 1.0f / 2.0f; // 假设X和Z是对称的
+	const float PLAYER_HALF_WIDTH_X = 1.0f / 2.0f;
+	const float PLAYER_HALF_WIDTH_Z = 1.0f / 2.0f;
 	float g_PlayerHP = 100.0f;
 	float g_PlayerMaxHP = 100.0f;
 	float g_InvincibleTimer = 0.0f;
@@ -29,7 +31,7 @@ void Player_Initialize(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT
 	g_PlayerPosition = position;
 	g_PlayerVelocity = { 0.0f,0.0f,0.0f };
 	XMStoreFloat3(&g_PlayerFront, XMVector3Normalize(XMLoadFloat3(&front)));
-	g_pPlayerModel = ModelLoad("resource/Model/test.fbx", 0.05f);
+	g_pPlayerModel = ModelLoad("resource/Model/Player-T-Pose.fbx",0.01f);
 }
 
 void Player_Finalize()
@@ -89,7 +91,23 @@ void Player_Update(double elapsed_time)
 		velocity *= { 1.0f, 0.0f, 1.0f };
 		g_IsJump = false;
 	}*/
+	float groundHeight = MeshField_GetHeight(XMVectorGetX(position), XMVectorGetZ(position));
+	float heightOffset = -2.0f;
+	float finalY = groundHeight + heightOffset;
+	if (XMVectorGetY(position) <= finalY)
+	{
 
+		if (XMVectorGetY(velocity) <= 0.0f)
+		{
+			position = XMVectorSetY(position, finalY);
+
+		
+			velocity *= { 1.0f, 0.0f, 1.0f };
+
+		
+			g_IsJump = false;
+		}
+	}
 	XMVECTOR moveDir = XMVectorZero();
 
 	XMFLOAT3 camFront = Player_Camera_GetFront();
@@ -185,29 +203,28 @@ void Player_Update(double elapsed_time)
 	if (KeyLogger_IsTrigger(KK_F))
 	{
 		XMFLOAT3 b_velocity;
-		XMFLOAT3 shoot_pos; // 不需要先等于 g_PlayerPosition，后面会覆盖
+		XMFLOAT3 shoot_pos;
 
-		// 1. 加载向量
+		
 		XMVECTOR vPos = XMLoadFloat3(&g_PlayerPosition);
 		XMVECTOR vFront = XMLoadFloat3(&g_PlayerFront);
 
-		// 2. 计算发射位置
-		// OffsetY: 向上偏移 1.0f (大约在胸口或枪口高度)
+	
 		XMVECTOR vOffsetY = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-		// OffsetForward: 向角色前方偏移 0.5f (避免子弹生成在身体内部)
+		
 		float forwardDist = 0.5f;
 
-		// 最终位置 = 玩家位置 + 高度 + (朝向 * 距离)
+		
 		XMVECTOR vShootPos = vPos + vOffsetY + (vFront * forwardDist);
 
-		// 3. 存回 float3
+		
 		XMStoreFloat3(&shoot_pos, vShootPos);
 
-		// 4. 计算速度 (朝向 * 速度值)
-		XMStoreFloat3(&b_velocity, vFront * 10.0f); // 假设速度是 20
+		
+		XMStoreFloat3(&b_velocity, vFront * 10.0f); 
 
-		// 5. 创建子弹
+	
 		Bullet_Create(shoot_pos, b_velocity);
 	}
 }
@@ -222,12 +239,15 @@ void Player_Draw()
 
 	XMMATRIX t = XMMatrixTranslation(
 		g_PlayerPosition.x,
-		g_PlayerPosition.y + (PLAYER_HEIGHT / 2.0f),
+		g_PlayerPosition.y,
 		g_PlayerPosition.z);
 
 	XMMATRIX world = r * t;
 
 	ModelDraw(g_pPlayerModel, world);
+
+
+
 }
 
 AABB Player_GetAABB()

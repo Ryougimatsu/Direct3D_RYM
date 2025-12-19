@@ -32,7 +32,7 @@ namespace
 	ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ
 	ID3D11Buffer* g_pIndexBuffer = nullptr; // 頂点バッファ
 
-	// 注意！初期化で外部から設定されるもの。Release不要。
+	
 	ID3D11Device* g_pDevice = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 	int g_MeshFieldTexId0 = -1; // テクスチャID
@@ -154,5 +154,5 @@ float MeshField_GetDepth()
 
 float MeshField_GetHeight(float x, float z)
 {
-	return 1.0f;
+	return 0.0f;
 }

@@ -1,58 +1,59 @@
 #pragma once
 #include "enemy.h"
 #include <DirectXMath.h>
-#include "texture.h"
-
+#include "model.h"
 
 
 class EnemyTest : public Enemy {
 private:
-	DirectX::XMFLOAT3 m_position{};
-	float m_DetectionAngle = 5.0f;
-	float m_HP = 100.0f;
-	int m_TexID{};
+    // 子类独有的数据
+    DirectX::XMFLOAT3 m_position{};
+    DirectX::XMFLOAT3 m_Rotation = { 0.0f, 0.0f, 0.0f }; // [必须有]
+
+    float m_DetectionAngle = 5.0f;
+    float m_HP = 100.0f;
+
+    static MODEL* g_pEnemyModel;
+
 public:
-	EnemyTest(const DirectX::XMFLOAT3& position) : m_position(position) {
-		m_TexID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
-		ChangeState(new EnemyTest_StatePatrol(this));
-	}
+    EnemyTest(const DirectX::XMFLOAT3& position);
+    ~EnemyTest() override;
 
-	void Damage(float damage) override{
-		m_HP -= damage;
-	}
 
-	bool IsDestroyed() const override
-	{
-		return m_HP <= 0.0f;
-	}
-	const DirectX::XMFLOAT3& GetPosition() const {
-		return m_position;
-	}
+    const DirectX::XMFLOAT3& GetPosition() const override { return m_position; }
+    void Damage(float damage) override { m_HP -= damage; }
+    bool IsDestroyed() const override { return m_HP <= 0.0f; }
+    AABB GetAABB() override;
 
-	Sphere GetCollisionSphere() const { return {m_position,0.5f}; }
+
+    void SetRotationY(float angle) { m_Rotation.y = angle; }
+
+    void Update(double elapsed_time) override;
+    void Draw() const override;
+
+    static void LoadAssets();
+    static void UnloadAssets();
+
 private:
-	class EnemyTest_StatePatrol : public State {
-	private:
-		EnemyTest* m_pOwner = {};
-		float m_PointX = {};
-		double m_AccumulatedTime = {};
-	public:
-		EnemyTest_StatePatrol(EnemyTest* pOwner)
-			: m_pOwner(pOwner)
-			, m_PointX(pOwner->m_position.x){}
-		void Update(double elapsed_time) override;
-		void Draw() const override;
-	};
+    // 状态类声明
+    class EnemyTest_StatePatrol : public State {
+    private:
+        EnemyTest* m_pOwner = {};
+        float m_PointX = {};
+        double m_AccumulatedTime = {};
+    public:
+        EnemyTest_StatePatrol(EnemyTest* pOwner);
+        void Update(double elapsed_time) override;
+        void Draw() const override;
+    };
 
-	class EnemyTest_StateChase : public State {
-	private:
-		EnemyTest* m_pOwner = {};
-		double m_AccumulatedTime = {};
-	public:
-		EnemyTest_StateChase(EnemyTest* pOwner)
-			: m_pOwner(pOwner){
-		}
-		void Update(double elapsed_time) override;
-		void Draw() const override;
-	};
+    class EnemyTest_StateChase : public State {
+    private:
+        EnemyTest* m_pOwner = {};
+        double m_AccumulatedTime = {};
+    public:
+        EnemyTest_StateChase(EnemyTest* pOwner);
+        void Update(double elapsed_time) override;
+        void Draw() const override;
+    };
 };

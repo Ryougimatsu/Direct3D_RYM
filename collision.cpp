@@ -86,6 +86,25 @@ bool Collision_IsOverLapAABB(const AABB& a, const AABB& b)
 		&& a.max.z >= b.min.z;
 }
 
+bool Collision_IsOverlapSphereAABB(const Sphere& sphere, const AABB& aabb)
+{
+	// 1. 寻找 AABB 上距离球心最近的点 (Clamp 操作)
+	// 将球心的 x, y, z 限制在 AABB 的 min 和 max 之间
+	float closestX = std::max(aabb.min.x, std::min(sphere.center.x, aabb.max.x));
+	float closestY = std::max(aabb.min.y, std::min(sphere.center.y, aabb.max.y));
+	float closestZ = std::max(aabb.min.z, std::min(sphere.center.z, aabb.max.z));
+
+	// 2. 计算最近点到球心的距离的平方
+	float distanceX = sphere.center.x - closestX;
+	float distanceY = sphere.center.y - closestY;
+	float distanceZ = sphere.center.z - closestZ;
+
+	float distanceSq = (distanceX * distanceX) + (distanceY * distanceY) + (distanceZ * distanceZ);
+
+	// 3. 如果距离平方小于半径平方，说明碰撞了
+	return distanceSq < (sphere.radius * sphere.radius);
+}
+
 Hit Collision_IsHitAABB(const AABB& a, const AABB& b)
 {
 	Hit hit{};
@@ -270,13 +289,13 @@ void Collision_DebugDraw(const AABB& aabb, const DirectX::XMFLOAT4& color)
 	set_line(22, 4, 7);
 
 
-	// 3. 复制标准D3D绘制流程
+
 	Shader_Begin();
 
 	D3D11_MAPPED_SUBRESOURCE msr;
 	g_pContext->Map(g_pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 
-	// 将所有24个顶点数据复制到顶点缓冲区
+
 	memcpy(msr.pData, v, sizeof(Vertex) * 24);
 
 	g_pContext->Unmap(g_pVertexBuffer, 0);
@@ -287,7 +306,7 @@ void Collision_DebugDraw(const AABB& aabb, const DirectX::XMFLOAT4& color)
 
 	Shader_SetWorldMatrix(DirectX::XMMatrixIdentity());
 
-	// *** 注意：这里使用 LINELIST ***
+	
 	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	Texture_Set(g_WhiteId);

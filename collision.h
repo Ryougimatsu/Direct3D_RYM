@@ -52,6 +52,7 @@ bool Collision_OverlapCircleBox(const Box& a, const Box& b);
 bool Collision_IsOverlapSphere(const Sphere& a, const Sphere& b);
 bool Collision_IsOverlapSphere(const Sphere& a,const DirectX::XMFLOAT3& point);
 bool Collision_IsOverLapAABB(const AABB& a, const AABB& b);
+bool Collision_IsOverlapSphereAABB(const Sphere& sphere, const AABB& aabb);
 Hit Collision_IsHitAABB(const AABB& a, const AABB& b);
 
 void Collision_DebugInitialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
