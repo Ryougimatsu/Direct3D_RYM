@@ -26,7 +26,7 @@ namespace {
 
 void Map_Initialize()
 {
-	g_CubeTexID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
+	//g_CubeTexID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
 	g_Model = ModelLoad("resource/Model/Tree.fbx", 1.5f);
 
 	srand((unsigned int)time(nullptr));
