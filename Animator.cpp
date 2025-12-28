@@ -1,6 +1,8 @@
 ﻿#include "Animator.h"
-#include "skeleton.h"      // ★ 新增：包含 Skeleton / Bone 定义
+#include "Skeleton.h"
 #include <windows.h>
+#include <algorithm> // 用于 std::min
+
 using namespace DirectX;
 
 Animator::Animator()
@@ -8,10 +10,35 @@ Animator::Animator()
 	mCurrentAnim = nullptr;
 	mCurrentTime = 0.0;
 	mLoop = true;
+
+	// 新增过渡变量初始化
+	mOldAnim = nullptr;
+	mOldTime = 0.0;
+	mFadeTime = 0.3f;
+	mFadeFactor = 1.0f;
 }
 
-void Animator::PlayAnimation(const Animation* anim, bool loop)
+// ------------------------------------------------------------------
+// 播放接口：支持平滑过渡
+// ------------------------------------------------------------------
+void Animator::PlayAnimation(const Animation* anim, bool loop, float fadeTime)
 {
+	if (mCurrentAnim == anim) return;
+
+	// 如果当前有动画在播放，则将其切换为“旧动画”开始淡出
+	if (mCurrentAnim != nullptr && fadeTime > 0.0f)
+	{
+		mOldAnim = mCurrentAnim;
+		mOldTime = mCurrentTime;
+		mFadeFactor = 0.0f; // 从 0 开始混合
+		mFadeTime = fadeTime;
+	}
+	else
+	{
+		mOldAnim = nullptr;
+		mFadeFactor = 1.0f; // 无需过渡，直接显示新动画
+	}
+
 	mCurrentAnim = anim;
 	mCurrentTime = 0.0;
 	mLoop = loop;
@@ -19,187 +46,172 @@ void Animator::PlayAnimation(const Animation* anim, bool loop)
 
 void Animator::Update(double deltaTime)
 {
-	if (!mCurrentAnim)
-	{
-		OutputDebugStringA("[Animator] No current animation\n");
-		return;
-	}
+	if (!mCurrentAnim) return;
 
-	double tps = (mCurrentAnim->ticksPerSecond != 0.0)
-		? mCurrentAnim->ticksPerSecond
-		: 25.0;
-
-	double prevTime = mCurrentTime;
-
+	// 1. 更新当前动画时间
+	double tps = (mCurrentAnim->ticksPerSecond != 0.0) ? mCurrentAnim->ticksPerSecond : 25.0;
 	mCurrentTime += deltaTime * tps;
 
 	if (mLoop)
 	{
-		while (mCurrentTime >= mCurrentAnim->duration)
-			mCurrentTime -= mCurrentAnim->duration;
+		mCurrentTime = fmod(mCurrentTime, mCurrentAnim->duration);
 	}
 	else
 	{
-		if (mCurrentTime > mCurrentAnim->duration)
-			mCurrentTime = mCurrentAnim->duration;
+		mCurrentTime = (std::min)(mCurrentTime, mCurrentAnim->duration);
 	}
 
+	// 2. 更新旧动画时间及过渡因子
+	if (mOldAnim)
+	{
+		double oldTps = (mOldAnim->ticksPerSecond != 0.0) ? mOldAnim->ticksPerSecond : 25.0;
+		mOldTime += deltaTime * oldTps;
+		mOldTime = fmod(mOldTime, mOldAnim->duration); // 旧动画通常保持循环播放直到消失
+
+		mFadeFactor += (float)deltaTime / mFadeTime;
+		if (mFadeFactor >= 1.0f)
+		{
+			mFadeFactor = 1.0f;
+			mOldAnim = nullptr; // 过渡结束，彻底移除旧动作引用
+		}
+	}
 }
 
 // ------------------------------------------------------------------
-// 关键帧查找（保留原来的模板实现）
+// 核心逻辑：采样并混合两个动画的姿态
+// ------------------------------------------------------------------
+XMMATRIX Animator::CalculateBone(int boneIndex, const Skeleton& skeleton, const XMMATRIX& parentMatrix)
+{
+	const Bone& bone = skeleton.bones[boneIndex];
+
+	// --- 1. 获取初始 Local Bind Pose (逻辑保持不变) ---
+	XMMATRIX localBind = bone.bindPose;
+	if (bone.parent >= 0)
+	{
+		XMMATRIX invParentBind = XMMatrixInverse(nullptr, skeleton.bones[bone.parent].bindPose);
+		localBind = XMMatrixMultiply(bone.bindPose, invParentBind);
+	}
+
+	// 分解出初始的 S, R, T 作为默认值
+	XMVECTOR S, R, T;
+	XMMatrixDecompose(&S, &R, &T, localBind);
+
+	// --- 2. 采样新动画的 T, R, S ---
+	XMVECTOR curT = T, curR = R, curS = S;
+	if (mCurrentAnim)
+	{
+		auto it = mCurrentAnim->channels.find(bone.name);
+		if (it != mCurrentAnim->channels.end())
+		{
+			const AnimationChannel& ch = it->second;
+			if (!ch.positions.empty()) curT = SamplePosition(ch, mCurrentTime);
+			if (!ch.rotations.empty()) curR = SampleRotation(ch, mCurrentTime);
+			if (!ch.scales.empty())    curS = SampleScale(ch, mCurrentTime);
+		}
+	}
+
+	// --- 3. 采样旧动画并执行插值混合 (核心新增) ---
+	if (mOldAnim && mFadeFactor < 1.0f)
+	{
+		XMVECTOR oldT = T, oldR = R, oldS = S;
+		auto it = mOldAnim->channels.find(bone.name);
+		if (it != mOldAnim->channels.end())
+		{
+			const AnimationChannel& ch = it->second;
+			if (!ch.positions.empty()) oldT = SamplePosition(ch, mOldTime);
+			if (!ch.rotations.empty()) oldR = SampleRotation(ch, mOldTime);
+			if (!ch.scales.empty())    oldS = SampleScale(ch, mOldTime);
+		}
+
+		// 执行插值：混合 旧动作 -> 新动作
+		T = XMVectorLerp(oldT, curT, mFadeFactor);
+		S = XMVectorLerp(oldS, curS, mFadeFactor);
+		// 旋转必须使用球形线性插值 (Slerp)
+		R = XMQuaternionSlerp(oldR, curR, mFadeFactor);
+		R = XMQuaternionNormalize(R);
+	}
+	else
+	{
+		// 无需混合，直接使用当前动画值
+		T = curT;
+		R = curR;
+		S = curS;
+	}
+
+	// --- 4. 组合并计算全局矩阵 (逻辑保持不变) ---
+	XMMATRIX local = XMMatrixScalingFromVector(S) * XMMatrixRotationQuaternion(R) * XMMatrixTranslationFromVector(T);
+
+	return XMMatrixMultiply(local, parentMatrix);
+}
+
+// ------------------------------------------------------------------
+// 关键帧查找与采样 (保持原有底层逻辑不变)
 // ------------------------------------------------------------------
 template<typename T>
 int Animator::FindKeyIndex(const std::vector<std::pair<double, T>>& keys, double t)
 {
 	if (keys.empty()) return -1;
 	if (t <= keys.front().first) return 0;
-
 	for (int i = 0; i < (int)keys.size() - 1; i++)
 	{
-		if (t < keys[i + 1].first)
-			return i;
+		if (t < keys[i + 1].first) return i;
 	}
-
 	return (int)keys.size() - 1;
 }
 
 XMVECTOR Animator::SamplePosition(const AnimationChannel& ch, double t)
 {
 	if (ch.positions.empty()) return XMVectorZero();
-
 	int i = FindKeyIndex(ch.positions, t);
 	int j = i + 1;
-
-	if (j >= (int)ch.positions.size())
-		return XMLoadFloat3(&ch.positions[i].second);
-
-	auto& k1 = ch.positions[i];
-	auto& k2 = ch.positions[j];
-
-	double span = k2.first - k1.first;
-	float alpha = (span > 0.0) ? float((t - k1.first) / span) : 0.0f;
-
-	XMVECTOR p1 = XMLoadFloat3(&k1.second);
-	XMVECTOR p2 = XMLoadFloat3(&k2.second);
-
-	return XMVectorLerp(p1, p2, alpha);
+	if (j >= (int)ch.positions.size()) return XMLoadFloat3(&ch.positions[i].second);
+	auto& k1 = ch.positions[i]; auto& k2 = ch.positions[j];
+	float alpha = (k2.first - k1.first > 0.0) ? float((t - k1.first) / (k2.first - k1.first)) : 0.0f;
+	return XMVectorLerp(XMLoadFloat3(&k1.second), XMLoadFloat3(&k2.second), alpha);
 }
 
 XMVECTOR Animator::SampleScale(const AnimationChannel& ch, double t)
 {
 	if (ch.scales.empty()) return XMVectorSet(1, 1, 1, 0);
-
 	int i = FindKeyIndex(ch.scales, t);
 	int j = i + 1;
-
-	if (j >= (int)ch.scales.size())
-		return XMLoadFloat3(&ch.scales[i].second);
-
-	auto& k1 = ch.scales[i];
-	auto& k2 = ch.scales[j];
-
-	double span = k2.first - k1.first;
-	float alpha = (span > 0.0) ? float((t - k1.first) / span) : 0.0f;
-
-	XMVECTOR s1 = XMLoadFloat3(&k1.second);
-	XMVECTOR s2 = XMLoadFloat3(&k2.second);
-
-	return XMVectorLerp(s1, s2, alpha);
+	if (j >= (int)ch.scales.size()) return XMLoadFloat3(&ch.scales[i].second);
+	auto& k1 = ch.scales[i]; auto& k2 = ch.scales[j];
+	float alpha = (k2.first - k1.first > 0.0) ? float((t - k1.first) / (k2.first - k1.first)) : 0.0f;
+	return XMVectorLerp(XMLoadFloat3(&k1.second), XMLoadFloat3(&k2.second), alpha);
 }
 
 XMVECTOR Animator::SampleRotation(const AnimationChannel& ch, double t)
 {
 	if (ch.rotations.empty()) return XMQuaternionIdentity();
-
 	int i = FindKeyIndex(ch.rotations, t);
 	int j = i + 1;
-
-	if (j >= (int)ch.rotations.size())
-		return XMLoadFloat4(&ch.rotations[i].second);
-
-	auto& k1 = ch.rotations[i];
-	auto& k2 = ch.rotations[j];
-
-	double span = k2.first - k1.first;
-	float alpha = (span > 0.0) ? float((t - k1.first) / span) : 0.0f;
-
-	XMVECTOR q1 = XMLoadFloat4(&k1.second);
-	XMVECTOR q2 = XMLoadFloat4(&k2.second);
-
-	XMVECTOR q = XMQuaternionSlerp(q1, q2, alpha);
-
+	if (j >= (int)ch.rotations.size()) return XMLoadFloat4(&ch.rotations[i].second);
+	auto& k1 = ch.rotations[i]; auto& k2 = ch.rotations[j];
+	float alpha = (k2.first - k1.first > 0.0) ? float((t - k1.first) / (k2.first - k1.first)) : 0.0f;
+	XMVECTOR q = XMQuaternionSlerp(XMLoadFloat4(&k1.second), XMLoadFloat4(&k2.second), alpha);
 	return XMQuaternionNormalize(q);
 }
 
 // ------------------------------------------------------------------
-// 计算单个骨骼的 *global* 动画矩阵
+// 生成最终矩阵数组 (保持原有层级逻辑不变)
 // ------------------------------------------------------------------
-XMMATRIX Animator::CalculateBone(int boneIndex, const Skeleton& skeleton, const XMMATRIX& parentMatrix)
-{
-	const Bone& bone = skeleton.bones[boneIndex];
-	XMVECTOR T, R, S;
-
-	// 1) 计算 Local Bind Pose (相对于父骨骼的初始姿态)
-	XMMATRIX localBind = bone.bindPose;
-	if (bone.parent >= 0)
-	{
-		const Bone& parentBone = skeleton.bones[bone.parent];
-		XMMATRIX invParentBind = XMMatrixInverse(nullptr, parentBone.bindPose);
-
-		// ★ 修正 1：行主序下 Local = Global * inv(Parent)
-		// 逻辑：当前骨骼的全局绑定姿态 乘以 父骨骼全局绑定姿态的逆
-		localBind = XMMatrixMultiply(bone.bindPose, invParentBind);
-	}
-
-	// 2) 分解出初始的 S, R, T
-	XMMatrixDecompose(&S, &R, &T, localBind);
-
-	// 3) 动画采样 (逻辑保持不变)
-	if (mCurrentAnim) {
-		auto it = mCurrentAnim->channels.find(bone.name);
-		static int sFrameCount = 0;
-
-		if (it != mCurrentAnim->channels.end()) {
-			const AnimationChannel& ch = it->second;
-			if (!ch.positions.empty()) T = SamplePosition(ch, mCurrentTime);
-			if (!ch.rotations.empty()) R = SampleRotation(ch, mCurrentTime);
-			if (!ch.scales.empty())    S = SampleScale(ch, mCurrentTime);
-		}
-	}
-
-	// 4) 组合当前的 Local 矩阵 (缩放 * 旋转 * 平移)
-	XMMATRIX local = XMMatrixScalingFromVector(S) * XMMatrixRotationQuaternion(R) * XMMatrixTranslationFromVector(T);
-
-	// ★ 修正 2：行主序下 Global = Local * ParentGlobal
-	// 逻辑：先在局部空间变换，再叠加父级的全局变换
-	return XMMatrixMultiply(local, parentMatrix);
-}
-
-
-
 std::vector<DirectX::XMMATRIX> Animator::GetFinalBoneMatrices(const Skeleton& skeleton)
 {
 	size_t count = skeleton.bones.size();
 	std::vector<XMMATRIX> finalMatrices(count);
-
-
 	std::vector<XMMATRIX> globalMatrices(count);
 
 	for (int i = 0; i < (int)count; i++)
 	{
 		const Bone& bone = skeleton.bones[i];
-
-		// 从 globalMatrices 获取父级矩阵，而不是从结果数组取
 		XMMATRIX parentMat = (bone.parent == -1) ? XMMatrixIdentity() : globalMatrices[bone.parent];
 
-		// 1. 计算当前骨骼在模型空间下的全局动画姿态 (Local * Parent)
+		// 计算全局动画姿态
 		globalMatrices[i] = CalculateBone(i, skeleton, parentMat);
 
-		// 2. 合成蒙皮矩阵 (Final = invBind * Global)
-		// 这一步的结果仅用于发送给 GPU，不参与层级累加
+		// 合成蒙皮矩阵 (Final = invBind * Global)
 		finalMatrices[i] = XMMatrixMultiply(bone.invBindPose, globalMatrices[i]);
 	}
-
 	return finalMatrices;
 }

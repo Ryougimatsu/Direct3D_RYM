@@ -32,20 +32,44 @@ using namespace DirectX;
 #include "shader_3d.h"
 #include "Skeleton.h"
 #include "Animator.h"
-
+#include"PlayerCharacter.h"
 
 namespace
 {
 	bool g_IsDebugCameraMode = false;
-	SkinningModel* g_TestModel = nullptr;
-	Animator g_TestAnimator;
+	PlayerCharacter* g_Player = nullptr;
 	float g_AnimTime = 0.0f;
+	struct SkinnedEntity {
+		SkinningModel* Model = nullptr;
+		Animator EntityAnimator;
+		XMFLOAT3 Position = { 0, 0, 0 };
+		float Scale = 0.01f;
 
-	float g_ModelX = 0.0f;
-	float g_ModelY = 0.0f;
-	float g_ModelZ = 0.0f;
+		void Update(double dt) {
+			if (Model) EntityAnimator.Update(dt);
+		}
 
+		void Render(const XMMATRIX& view, const XMMATRIX& proj) {
+			if (!Model) return;
+			// 1. 设置着色器全局矩阵
+			SkinningShader_3D_SetViewMatrix(view);
+			SkinningShader_3D_SetProjectMatrix(proj);
 
+			// 2. 设置当前物体的世界矩阵
+			XMMATRIX mScale = XMMatrixScaling(Scale, Scale, Scale);
+			XMMATRIX mRot = XMMatrixRotationY(XM_PI);
+			XMMATRIX mTrans = XMMatrixTranslation(Position.x, Position.y, Position.z);
+			SkinningShader_3D_SetWorldMatrix(mScale * mRot * mTrans);
+
+			// 3. 传输当前帧骨骼矩阵
+			std::vector<XMMATRIX> finalBones = EntityAnimator.GetFinalBoneMatrices(Model->GetSkeleton());
+			SkinningShader_3D_SetBoneTransforms(finalBones);
+
+			// 4. 开始绘制底层
+			SkinningShader_3D_Begin();
+			Model->Draw(); // 这里调用了你刚才重构在 SkinningModel 里的 Draw 函数
+		}
+	} g_TestEntity;
 
 }
 
@@ -83,17 +107,18 @@ void Game_Initialize()
 	Inventory_Initialize();
 	DropItem_Initialize();
 	GameUI_Initialize();
-	g_TestModel = new SkinningModel();
-	if (g_TestModel->Load("resource/model/Throw.fbx", 1.0f)) //
+	g_TestEntity.Model = new SkinningModel();
+	if (g_TestEntity.Model->Load("resource/model/Idle.fbx", 1.0f))
 	{
-		// [新增] 加载成功后，让播放器开始播放该模型自带的第一个动画
-		const Animation& anim = g_TestModel->GetAnimation();
-		g_TestAnimator.PlayAnimation(&anim, true); //
+		// 获取默认动画并播放
+		const Animation* anim = g_TestEntity.Model->GetDefaultAnimation();
+		g_TestEntity.EntityAnimator.PlayAnimation(anim, true);
 	}
 
-	g_ModelX = 10.0f;
-	g_ModelY = 0.0f;
-	g_ModelZ = 5.0f;
+	g_TestEntity.Position = { 10.0f, 0.0f, 5.0f };
+	g_TestEntity.Scale = 0.01f;
+	g_Player = new PlayerCharacter();
+	g_Player->Initialize();
 }
 
 void Game_Update(double elapsed_time)
@@ -180,10 +205,8 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
-	if (g_TestModel)
-	{
-		g_TestAnimator.Update(elapsed_time); // 自动处理采样时间
-	}
+	g_TestEntity.Update(elapsed_time);
+	if (g_Player) g_Player->Update(elapsed_time);
 }
 
 void Game_Draw()
@@ -212,71 +235,8 @@ void Game_Draw()
 		camPos = Player_Camera_GetPosition();
 	}
 
-	if (g_TestModel)
-	{
-		// 1. 设置着色器通用的 View/Proj 矩阵
-		SkinningShader_3D_SetViewMatrix(view);
-		SkinningShader_3D_SetProjectMatrix(proj);
-
-		// 2. 计算模型空间变换 (World Matrix)
-		float scaleFactor = 0.01f; // 缩小 100 倍
-		XMMATRIX mScale = XMMatrixScaling(scaleFactor, scaleFactor, scaleFactor);
-		XMMATRIX mRot = XMMatrixRotationY(XM_PI);
-		XMMATRIX mTrans = XMMatrixTranslation(g_ModelX, g_ModelY, g_ModelZ);
-		XMMATRIX worldMatrix = mScale * mRot * mTrans;
-
-		SkinningShader_3D_SetWorldMatrix(worldMatrix);
-
-		// 3. [关键步骤] 获取当前帧计算好的骨骼矩阵数组并传给 GPU
-		// 获取 Final = GlobalAnimated * InvBindPose 的矩阵调色板
-		std::vector<XMMATRIX> finalBones = g_TestAnimator.GetFinalBoneMatrices(g_TestModel->GetSkeleton()); //
-		SkinningShader_3D_SetBoneTransforms(finalBones); //
-
-		// 4. 开启蒙皮着色器并执行绘制
-		SkinningShader_3D_Begin();
-
-		// 遍历模型的所有网格并提交 DrawCall
-		 // 5. 遍历模型网格并提交 DrawCall（这里加入材质 / 贴图绑定）
-		const auto& meshes = g_TestModel->GetMeshes();
-		const auto& materials = g_TestModel->GetMaterials();
-		ID3D11DeviceContext* ctx = Direct3D_GetDeviceContext();
-
-		for (const auto& mesh : meshes)
-		{
-			// --- 5.1 绑定材质贴图 ---
-			if (mesh.MaterialIndex < materials.size())
-			{
-				const SkinningMaterial& mat = materials[mesh.MaterialIndex];
-
-				DirectX::XMFLOAT4 finalColor = mat.DiffuseColor;
-				// 如果读取到的颜色是全黑 (0,0,0)，强制设为白色，防止 PS 乘法后结果全黑
-				if (finalColor.x == 0.0f && finalColor.y == 0.0f && finalColor.z == 0.0f) {
-					finalColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-				}
-				SkinningShader_3D_SetMaterialColor(finalColor);
-
-				// 如果有 Diffuse 贴图，就绑定到 t0
-				if (mat.DiffuseSRV) {
-					ctx->PSSetShaderResources(0, 1, &mat.DiffuseSRV);
-				}
-				else {
-					// 重要：如果没有贴图，必须解绑 t0，防止“贴图污染”
-					ID3D11ShaderResourceView* nullSRV = nullptr;
-					ctx->PSSetShaderResources(0, 1, &nullSRV);
-				}
-				// 如果你在 PS 里有材质颜色常量缓冲，
-				// 这里也可以顺便设置 mat.DiffuseColor（略）
-			}
-
-			// --- 5.2 绑定 VB / IB 并绘制 ---
-			UINT stride = sizeof(VertexSkinning);
-			UINT offset = 0;
-			ctx->IASetVertexBuffers(0, 1, &mesh.VertexBuffer, &stride, &offset);
-			ctx->IASetIndexBuffer(mesh.IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-			ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			ctx->DrawIndexed(mesh.IndexCount, 0, 0);
-		}
-	}
+	g_TestEntity.Render(view, proj);
+	if (g_Player) g_Player->Draw(view, proj);
 	Shader_3D_Begin();
 	Camera_SetMatrixToShader(view, proj);
 	XMMATRIX mtxWorld = XMMatrixIdentity();
@@ -312,11 +272,11 @@ void Game_Draw()
 
 void Game_Finalize()
 {
-	if (g_TestModel)
+	if (g_TestEntity.Model)
 	{
-		g_TestModel->Release();
-		delete g_TestModel;
-		g_TestModel = nullptr;
+		g_TestEntity.Model->Release();
+		delete g_TestEntity.Model;
+		g_TestEntity.Model = nullptr;
 	}
 	Sky_Finalize();
 	MeshField_Finalize();

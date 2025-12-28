@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <d3d11.h>
 #include <DirectXMath.h>
-
+#include <map>
 #include "Skeleton.h"   //
 #include "Animation.h"  //
 
@@ -55,17 +55,19 @@ public:
 
 	// 加载接口
 	bool Load(const std::string& fileName, float scale = 1.0f);
+	bool LoadAnimation(const std::string& animName, const std::string& fileName, float scale = 1.0f);
 	void Release();
-
+	void Draw();
 	// 数据访问
 	const Skeleton& GetSkeleton() const { return mSkeleton; }
-	const Animation& GetAnimation() const { return mAnimation; }
+	const Animation* GetAnimation(const std::string& name) const;
+	const Animation* GetDefaultAnimation() const;
 	const std::vector<SkinningMesh>& GetMeshes() const { return mMeshes; }
 	const std::vector<SkinningMaterial>& GetMaterials() const { return mMaterials; }
 
 private:
 	Skeleton mSkeleton;
-	Animation mAnimation;
+	std::map<std::string, Animation> mAnimations;
 	std::vector<SkinningMesh> mMeshes;
 	std::vector<SkinningMaterial> mMaterials;
 	std::unordered_map<std::string, ID3D11ShaderResourceView*> mTextures;
@@ -73,7 +75,7 @@ private:
 	// 内部加载助手
 	void ProcessSkeleton(const struct aiScene* scene);
 	void ProcessMesh(const struct aiScene* scene, float scale);
-	void ProcessAnimation(const struct aiScene* scene, float scale);
+	void ProcessAnimation(const struct aiScene* scene, const std::string& animName, float scale);
 	void ProcessMaterials(const struct aiScene* scene, const std::string& fileName);
 	ID3D11ShaderResourceView* CreateSRVFromEmbeddedTexture(const struct aiTexture* tex);
 };
