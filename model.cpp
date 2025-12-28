@@ -14,6 +14,8 @@ struct Vertex3D
 	XMFLOAT3 normal;   // 法線ベクトル
 	XMFLOAT4 color;
 	XMFLOAT2 uv; // uv座標
+	uint32_t boneIndices[4]; // 影响该顶点的4个骨骼ID
+	XMFLOAT4 boneWeights;    // 对应的4个权重
 };
 namespace {
 	int g_TextureWhite = -1;

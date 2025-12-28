@@ -33,10 +33,14 @@
 #include "Light.h"
 #include "shader3d_unlit.h"
 
+// 包含新的 Shader 头文件
+#include "SkinningShader.h" 
+#include <memory>
+
 //Window procedure prototype claim
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _In_ int nCmdShow)
+int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nCmdShow)
 {
 	(void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
@@ -60,6 +64,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 
 	Shader3DUnilt_Initialize();
 
+	SkinningShader_3D_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
+
 	Texture_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Polygon_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
@@ -71,7 +77,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Fade_Initialize();
 
 	Scene_Initialize();
-	
+
 	//Grid_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Cube_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
@@ -81,7 +87,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Light_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Light_SetPointLightCount(1);
-	
+
 	MeshField_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 
@@ -120,8 +126,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	MSG msg;
 
 
-	do{
-		if (PeekMessage(&msg,nullptr,0,0,PM_REMOVE))
+	do {
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
@@ -130,7 +136,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 
 			current_time = SystemTimer_GetTime();
 			double elapsed_time = current_time - fps_last_time;
-			
+
 			if (elapsed_time >= 1.0)
 			{
 				fps = frame_count / elapsed_time;
@@ -139,12 +145,12 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 			}
 
 			elapsed_time = current_time - exec_last_time;
-			//if (elapsed_time >= (1.0 / 60.0)) {  // 60FPSで更新する場合
+			//if (elapsed_time >= (1.0 / 60.0)) {  // 60FPSで更新する場合
 			if (elapsed_time > 0.1)
 			{
 				elapsed_time = 1.0 / 60.0;
 			}
-			if (true){
+			if (true) {
 				exec_last_time = current_time;
 
 
@@ -197,7 +203,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	Cube_Finalize();
 
 	Light_Finalize();
-	
+
 	MeshField_Finalize();
 
 	Scene_Finalize();
@@ -220,6 +226,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 
 	Shader3DUnilt_Finalize();
 
+	SkinningShader_3D_Finalize();
+
 	Polygon_Finalize();
 
 	Direct3D_Finalize();
@@ -229,5 +237,3 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE,_In_ LPSTR, _I
 	return static_cast<int>(msg.wParam);
 
 }
-
-

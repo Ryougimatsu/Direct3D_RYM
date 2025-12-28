@@ -6,6 +6,7 @@ using namespace DirectX;
 #include <fstream>
 #include "shader_3d.h"
 
+#define MAX_BONES 100
 namespace
 {
 	ID3D11VertexShader* g_pVertexShader = nullptr;
@@ -174,6 +175,10 @@ void Shader_3D_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
 void Shader_3D_SetColor(const XMFLOAT4& color)
 {
 	g_pContext->UpdateSubresource(g_pPSConstantBuffer0, 0, nullptr, &color, 0, 0);
+}
+
+void Shader_3D_SetBoneTransforms(const DirectX::XMFLOAT4X4* bones, int count)
+{
 }
 
 void Shader_3D_Begin()
