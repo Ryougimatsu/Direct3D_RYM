@@ -162,3 +162,57 @@ void Billboard_Draw(int texID, DirectX::XMFLOAT3 pos, float width, float height,
 	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
 }
+
+ID3D11Buffer* Billboard_GetVertexBuffer() {
+	return g_pVertexBuffer;
+}
+
+void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
+{
+	// 1. 计算线段信息
+	XMVECTOR dir = end - start;
+	float length = XMVectorGetX(XMVector3Length(dir));
+	if (length < 0.0001f) return;
+
+	XMVECTOR midPos = start + dir * 0.5f;
+
+	// 2. 构造朝向矩阵（轴向 billboard）
+	XMVECTOR up = XMVector3Normalize(dir);  // 激光方向 -> Y
+
+	XMVECTOR camPos = XMLoadFloat3(&Player_Camera_GetPosition());
+	XMVECTOR lookAt = XMVector3Normalize(camPos - midPos);
+
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(lookAt, up));
+	XMVECTOR forward = XMVector3Cross(up, right);
+
+	XMMATRIX mtxR;
+	mtxR.r[0] = right;
+	mtxR.r[1] = up;
+	mtxR.r[2] = forward;
+	mtxR.r[3] = XMVectorSet(0, 0, 0, 1);
+
+	XMMATRIX mtxS = XMMatrixScaling(width, length, 1.0f);
+	XMMATRIX mtxT = XMMatrixTranslationFromVector(midPos);
+
+	Shader_Billboard_Begin();
+
+
+	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
+
+
+	Shader_Billboard_SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
+
+	Shader_Billboard_SetWorldMatrix(mtxS * mtxR * mtxT);
+
+	Texture_Set(texid);
+
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	ID3D11DeviceContext* context = Direct3D_GetDeviceContext();
+	ID3D11Buffer* pVB = Billboard_GetVertexBuffer();
+	context->IASetVertexBuffers(0, 1, &pVB, &stride, &offset);
+	context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	context->Draw(4, 0);
+}

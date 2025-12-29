@@ -20,7 +20,8 @@ public:
 	void Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj);
 	DirectX::XMFLOAT3 GetPosition() const { return m_Position; }
 
-
+	DirectX::XMFLOAT3 m_CurrentMoveDir = { 0, 0, 0 }; // 当前平滑后的移动向量
+	float m_DampingSpeed = 10.0f; // 响应速度，值越大越灵敏
 
 private:
 	// 资源与组件

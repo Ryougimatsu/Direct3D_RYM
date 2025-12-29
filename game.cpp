@@ -73,7 +73,13 @@ void Game_Update(double elapsed_time)
 			Mouse_SetMode(MOUSE_POSITION_MODE_ABSOLUTE);
 		}
 	}
-	DirectX::XMFLOAT3 pPos = g_Player->GetPosition();
+
+	// 先安全地拿一下玩家位置
+	DirectX::XMFLOAT3 pPos = { 0.0f, 0.0f, 0.0f };
+	if (g_Player) {
+		pPos = g_Player->GetPosition();
+	}
+
 	// 2. 更新相机位置
 	if (g_IsDebugCameraMode) {
 		DebugCamera_Update(elapsed_time);
@@ -81,15 +87,12 @@ void Game_Update(double elapsed_time)
 	else {
 		Player_Camera_Update(elapsed_time, pPos);
 	}
+
 	Sky_SetPosition(Player_Camera_GetPosition());
 
+	
 	if (!g_IsDebugCameraMode && g_Player)
 	{
-		// 获取主角位置并更新相机
-		Player_Camera_Update(elapsed_time, pPos);
-	}
-
-	if (g_Player) {
 		g_Player->Update(elapsed_time);
 	}
 }

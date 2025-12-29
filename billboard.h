@@ -15,3 +15,4 @@ void Billboard_Draw(
 	const DirectX::XMFLOAT2& pivot = {0.0f,0.0f}
 	);
 void Billboard_Draw(int texID, DirectX::XMFLOAT3 pos, float width, float height, float u, float v, float uw, float vh);
+void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR end, float width);

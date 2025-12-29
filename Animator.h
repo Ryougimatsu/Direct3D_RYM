@@ -21,6 +21,7 @@ public:
 	DirectX::XMMATRIX GetBoneGlobalMatrix(int boneIndex) const;
 	std::vector<DirectX::XMMATRIX> GetFinalBoneMatrices(const Skeleton& skeleton);
 	std::vector<DirectX::XMMATRIX> m_CachedGlobalMatrices;
+	void SetSpeedScale(float scale) { m_SpeedScale = scale; }
 private:
 	// 当前动画状态
 	const Animation* mCurrentAnim;
@@ -32,6 +33,7 @@ private:
 	double mOldTime;
 	float  mFadeTime;   // 过渡总时长
 	float  mFadeFactor; // 0.0=旧, 1.0=新
+	float m_SpeedScale = 1.0f;
 	/**
 	 * @brief 核心计算函数：负责采样、混合以及递归计算骨骼的全局矩阵
 	 * @param boneIndex 当前计算的骨骼索引

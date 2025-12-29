@@ -27,6 +27,7 @@ void Direct3D_Present();
 
 unsigned int Direct3D_GetBackBufferWidth();// バックバッファの幅を取得
 unsigned int Direct3D_GetBackBufferHeight(); // バックバッファの幅と高さを取得
+HWND Direct3D_GetWindowHandle();
 
 ID3D11Device* Direct3D_GetDevice();
 ID3D11DeviceContext* Direct3D_GetDeviceContext();

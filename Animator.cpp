@@ -47,10 +47,10 @@ void Animator::PlayAnimation(const Animation* anim, bool loop, float fadeTime)
 void Animator::Update(double deltaTime)
 {
 	if (!mCurrentAnim) return;
-
+	double scaledDelta = deltaTime * m_SpeedScale;
 	// 1. 更新当前动画时间
 	double tps = (mCurrentAnim->ticksPerSecond != 0.0) ? mCurrentAnim->ticksPerSecond : 25.0;
-	mCurrentTime += deltaTime * tps;
+	mCurrentTime += scaledDelta * tps;
 
 	if (mLoop)
 	{
@@ -65,7 +65,7 @@ void Animator::Update(double deltaTime)
 	if (mOldAnim)
 	{
 		double oldTps = (mOldAnim->ticksPerSecond != 0.0) ? mOldAnim->ticksPerSecond : 25.0;
-		mOldTime += deltaTime * oldTps;
+		mOldTime += scaledDelta * oldTps;
 		mOldTime = fmod(mOldTime, mOldAnim->duration); // 旧动画通常保持循环播放直到消失
 
 		mFadeFactor += (float)deltaTime / mFadeTime;

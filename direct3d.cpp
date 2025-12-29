@@ -38,7 +38,7 @@ static D3D11_TEXTURE2D_DESC g_BackBufferDesc{};
 
 static bool configureBackBuffer(); // バックバッファの設定・生成
 static void releaseBackBuffer(); // バックバッファの解放
-
+static	HWND g_hWnd = NULL;
 
 /* オフスクリーンレンダリング関連 */
 static ID3D11Texture2D* g_pOffscreenBuffer = nullptr;
@@ -178,7 +178,7 @@ bool Direct3D_Initialize(HWND hWnd)
 	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthWriteDisable);
 	
 	Direct3D_SetDepthEnable(true);
-
+	g_hWnd = hWnd;
 	// ラスタライザステートの作成
 	D3D11_RASTERIZER_DESC rd = {};
 	rd.FillMode = D3D11_FILL_SOLID;
@@ -237,6 +237,11 @@ unsigned int Direct3D_GetBackBufferWidth()
 unsigned int Direct3D_GetBackBufferHeight()
 {
 	return g_BackBufferDesc.Height;
+}
+
+HWND Direct3D_GetWindowHandle()
+{
+	return g_hWnd;
 }
 
 ID3D11Device* Direct3D_GetDevice()

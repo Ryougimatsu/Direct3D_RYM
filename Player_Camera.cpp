@@ -98,3 +98,32 @@ const DirectX::XMFLOAT4X4& Player_Camera_GetProjectionMatrix()
 {
 	return g_ProjectionMatrix;
 }
+
+XMVECTOR GetMouseWorldPos(const XMMATRIX& view, const XMMATRIX& proj) {
+	POINT pt;
+	GetCursorPos(&pt);
+	ScreenToClient(Direct3D_GetWindowHandle(), &pt);
+
+	float sw = (float)Direct3D_GetBackBufferWidth();
+	float sh = (float)Direct3D_GetBackBufferHeight();
+
+	// 1. 转换到 NDC 空间
+	float ndcX = (2.0f * pt.x) / sw - 1.0f;
+	float ndcY = 1.0f - (2.0f * pt.y) / sh;
+
+	// 2. 计算逆矩阵
+	XMMATRIX invViewProj = XMMatrixInverse(nullptr, view * proj);
+
+	// 3. 计算射线起点（近平面）和终点（远平面）
+	XMVECTOR nearPoint = XMVectorSet(ndcX, ndcY, 0.0f, 1.0f);
+	XMVECTOR farPoint = XMVectorSet(ndcX, ndcY, 1.0f, 1.0f);
+
+	XMVECTOR worldNear = XMVector3TransformCoord(nearPoint, invViewProj);
+	XMVECTOR worldFar = XMVector3TransformCoord(farPoint, invViewProj);
+
+	// 4. 射线与地面 (Y=0) 求交
+	XMVECTOR rayDir = XMVector3Normalize(worldFar - worldNear);
+	float t = -XMVectorGetY(worldNear) / XMVectorGetY(rayDir);
+
+	return XMVectorAdd(worldNear, XMVectorScale(rayDir, t));
+}
