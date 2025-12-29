@@ -15,10 +15,14 @@ using namespace DirectX;
 namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, 0.0f };
-	DirectX::XMFLOAT4X4 g_CameraMatrix{};
 	DirectX::XMFLOAT4X4 g_ViewMatrix{};
 	DirectX::XMFLOAT4X4 g_ProjectionMatrix{};
+	DirectX::XMFLOAT4X4 g_CameraMatrix;
 
+	// --- 暗黑风格参数配置 ---
+	const float CAM_HEIGHT = 14.0f;       // 相机高度 (Y)
+	const float CAM_DISTANCE = -11.0f;    // 相机后退距离 (Z)
+	const float CAM_LERP_SPEED = 0.1f;    // 跟随平滑度 (0.1 表示每帧向玩家靠近 10%)
 }
 
 
@@ -31,52 +35,43 @@ void Player_Camera_Finalize()
 {
 }
 
-void Player_Camera_Update(double elapsed_time)
+void Player_Camera_Update(double elapsed_time, const DirectX::XMFLOAT3& playerPos)
 {
-	XMVECTOR position = XMLoadFloat3(&Player_GetPosition());
+	// 1. 计算理想的相机位置 (Target Position)
+	// 这个偏移量决定了“暗黑”视角的角度
+	XMVECTOR targetPlayer = XMLoadFloat3(&playerPos);
+	XMVECTOR offset = { 0.0f, CAM_HEIGHT, CAM_DISTANCE };
+	XMVECTOR idealPos = XMVectorAdd(targetPlayer, offset);
 
-	position = XMVectorMultiply(position, { 1.0f,0.0f,1.0f });
+	// 2. 平滑跟随逻辑 (Lerp)
+	// 让相机当前位置向理想位置平滑插值
+	XMVECTOR currentPos = XMLoadFloat3(&g_CameraPosition);
+	XMVECTOR newPos = XMVectorLerp(currentPos, idealPos, CAM_LERP_SPEED);
 
-	XMVECTOR target = position;
-
-	position = XMVectorAdd(position, { 0.0f,3.0f,-5.0f });
-
-
-	XMVECTOR front = XMVector3Normalize(target - position);
-
+	// 3. 存储位置和方向
+	XMStoreFloat3(&g_CameraPosition, newPos);
+	XMVECTOR front = XMVector3Normalize(targetPlayer - newPos);
 	XMStoreFloat3(&g_CameraFront, front);
-	XMStoreFloat3(&g_CameraPosition, position);
 
-	XMMATRIX mtxView = XMMatrixLookAtLH(
-		position, // 視点座標
-		target, // 注視点座標
-		{ 0.0f,1.0f,0.0f } // 上方向ベクトル
-	);
-
-	//Shader_3D_SetViewMatrix(mtxView);
-	//Shader_field_SetViewMatrix(mtxView);
-	//Shader_Billboard_SetViewMatrix(mtxView);
-	//Shader3DUnilt_SetViewMatrix(mtxView);
-
+	// 4. 生成观察矩阵
+	// 注视点可以是玩家位置稍微往前半米（Diablo 常用技巧，让前方视野更大）
+	XMVECTOR lookAtPoint = XMVectorAdd(targetPlayer, { 0.0f, 0.0f, 1.0f });
+	XMMATRIX mtxView = XMMatrixLookAtLH(newPos, lookAtPoint, { 0.0f, 1.0f, 0.0f });
 	XMStoreFloat4x4(&g_ViewMatrix, mtxView);
 
+	// 5. 生成投影矩阵 (关键：较小的 FOV)
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
-	float nearZ = 0.1f;
-	float farZ = 1000.0f;
+
 
 	XMMATRIX mtxPerspective = XMMatrixPerspectiveFovLH(
-		1.0f,
+		0.5f,
 		aspectRatio,
-		nearZ,
-		farZ
+		0.1f,
+		1000.0f
 	);
-
-	//Shader_3D_SetProjectMatrix(mtxPerspective);
-	//Shader_field_SetProjectMatrix(mtxPerspective);
-	//Shader_Billboard_SetProjectMatrix(mtxPerspective);
-	//Shader3DUnilt_SetProjectMatrix(mtxPerspective);
-
 	XMStoreFloat4x4(&g_ProjectionMatrix, mtxPerspective);
+	XMMATRIX mtxCamera = XMMatrixInverse(nullptr, mtxView);
+	XMStoreFloat4x4(&g_CameraMatrix, mtxCamera);
 }
 
 const DirectX::XMFLOAT3& Player_Camera_GetFront()

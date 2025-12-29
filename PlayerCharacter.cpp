@@ -1,19 +1,27 @@
 #include "PlayerCharacter.h"
 #include "SkinningShader.h"
+using namespace DirectX;
 
+namespace {
+
+	float m_GunPitch = DirectX::XMConvertToRadians(0.0f);  // 绕 X
+	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // 绕 Y
+	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // 绕 Z
+
+	DirectX::XMFLOAT3 m_GunOffset = { -0.01f, 0.19f, -0.02f };  // 手心里的偏移
+}
 bool PlayerCharacter::Initialize() {
 	m_pModel = new SkinningModel();
 
-	// 1. 加载带网格的基础模型（假设 Idle.fbx 带有身体模型）
 	if (!m_pModel->Load("resource/model/Idle.fbx", 1.0f)) return false;
 
-	// 2. 注入跑步动作（来自另一个只有骨骼动画的 FBX）
+
 	m_pModel->LoadAnimation("Running", "resource/model/Running.fbx", 1.0f);
 
-	// 3. 初始状态设置：播放 Idle 动作
-	// 注意：Load 内部默认将第一个动画存为 "Default"，这里我们可以直接按名字取
+
 	m_Animator.PlayAnimation(m_pModel->GetDefaultAnimation(), true);
 
+	m_pGunModel = ModelLoad("resource/model/M4a4.fbx", 1.0f);
 	return true;
 }
 
@@ -62,7 +70,7 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	SkinningShader_3D_SetProjectMatrix(proj);
 
 	// 2. 构造世界矩阵 (这里缩小了模型并设置位置)
-	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(0.01f, 0.01f, 0.01f) * DirectX::XMMatrixRotationY(DirectX::XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 	SkinningShader_3D_SetWorldMatrix(world);
 
 	// 3. 获取并传输当前的骨骼矩阵调色板
@@ -72,11 +80,35 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	// 4. 执行渲染
 	SkinningShader_3D_Begin();
 	m_pModel->Draw();
+	const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
+	if (nameMap.count("mixamorig:RightHand")) {
+		int handIdx = nameMap.at("mixamorig:RightHand");
+
+		XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+
+		// 只做缩放 + 旋转
+		XMMATRIX gunLocalNoOffset =
+			XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
+			XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll);
+
+		// 挂到手上，再在世界空间平移
+		XMMATRIX gunWorld =
+			gunLocalNoOffset *
+			handMat *
+			world *
+			XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+
+		ModelDraw(m_pGunModel, gunWorld);
+	}
 }
 
 PlayerCharacter::~PlayerCharacter() {
 	if (m_pModel) {
 		m_pModel->Release();
 		delete m_pModel;
+	}
+	if (m_pGunModel) {
+		ModelRelease(m_pGunModel);
+		m_pGunModel = nullptr;
 	}
 }

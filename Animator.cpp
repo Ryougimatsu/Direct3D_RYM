@@ -181,6 +181,14 @@ XMVECTOR Animator::SampleScale(const AnimationChannel& ch, double t)
 	return XMVectorLerp(XMLoadFloat3(&k1.second), XMLoadFloat3(&k2.second), alpha);
 }
 
+
+DirectX::XMMATRIX Animator::GetBoneGlobalMatrix(int boneIndex) const
+{
+	if (boneIndex < 0 || boneIndex >= m_CachedGlobalMatrices.size())
+		return DirectX::XMMatrixIdentity();
+	return m_CachedGlobalMatrices[boneIndex];
+}
+
 XMVECTOR Animator::SampleRotation(const AnimationChannel& ch, double t)
 {
 	if (ch.rotations.empty()) return XMQuaternionIdentity();
@@ -196,22 +204,33 @@ XMVECTOR Animator::SampleRotation(const AnimationChannel& ch, double t)
 // ------------------------------------------------------------------
 // 生成最终矩阵数组 (保持原有层级逻辑不变)
 // ------------------------------------------------------------------
-std::vector<DirectX::XMMATRIX> Animator::GetFinalBoneMatrices(const Skeleton& skeleton)
+std::vector<XMMATRIX> Animator::GetFinalBoneMatrices(const Skeleton& skeleton)
 {
 	size_t count = skeleton.bones.size();
+
+	// 确保缓存大小一致
+	if (m_CachedGlobalMatrices.size() != count)
+		m_CachedGlobalMatrices.resize(count);
+
 	std::vector<XMMATRIX> finalMatrices(count);
-	std::vector<XMMATRIX> globalMatrices(count);
 
 	for (int i = 0; i < (int)count; i++)
 	{
 		const Bone& bone = skeleton.bones[i];
-		XMMATRIX parentMat = (bone.parent == -1) ? XMMatrixIdentity() : globalMatrices[bone.parent];
+		XMMATRIX parentMat = (bone.parent == -1)
+			? XMMatrixIdentity()
+			: m_CachedGlobalMatrices[bone.parent];  // 父骨骼的 global
 
-		// 计算全局动画姿态
-		globalMatrices[i] = CalculateBone(i, skeleton, parentMat);
+		// 计算当前骨骼的 global
+		XMMATRIX global = CalculateBone(i, skeleton, parentMat);
 
-		// 合成蒙皮矩阵 (Final = invBind * Global)
-		finalMatrices[i] = XMMatrixMultiply(bone.invBindPose, globalMatrices[i]);
+		// 更新缓存的全局矩阵，给挂点用
+		m_CachedGlobalMatrices[i] = global;
+
+		// 蒙皮矩阵：invBindPose * global（你现在的顺序就保持不变即可）
+		finalMatrices[i] = XMMatrixMultiply(bone.invBindPose, global);
+		// 如果你原来是 global * invBindPose，就用 XMMatrixMultiply(global, bone.invBindPose);
 	}
+
 	return finalMatrices;
 }

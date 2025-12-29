@@ -18,8 +18,9 @@ public:
 	void Update(double deltaTime);
 
 	// 生成最终矩阵数组（主入口）
+	DirectX::XMMATRIX GetBoneGlobalMatrix(int boneIndex) const;
 	std::vector<DirectX::XMMATRIX> GetFinalBoneMatrices(const Skeleton& skeleton);
-
+	std::vector<DirectX::XMMATRIX> m_CachedGlobalMatrices;
 private:
 	// 当前动画状态
 	const Animation* mCurrentAnim;
@@ -31,7 +32,6 @@ private:
 	double mOldTime;
 	float  mFadeTime;   // 过渡总时长
 	float  mFadeFactor; // 0.0=旧, 1.0=新
-
 	/**
 	 * @brief 核心计算函数：负责采样、混合以及递归计算骨骼的全局矩阵
 	 * @param boneIndex 当前计算的骨骼索引
@@ -49,7 +49,6 @@ private:
 	DirectX::XMVECTOR SamplePosition(const AnimationChannel& ch, double t);
 	DirectX::XMVECTOR SampleRotation(const AnimationChannel& ch, double t);
 	DirectX::XMVECTOR SampleScale(const AnimationChannel& ch, double t);
-
 	// 查找关键帧索引的模板函数
 	template<typename T>
 	int FindKeyIndex(const std::vector<std::pair<double, T>>& keys, double t);
