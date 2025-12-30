@@ -4,15 +4,16 @@
 #include "direct3d.h"
 #include "texture.h"
 #include "billboard.h"
+#include "bullet.h"
 using namespace DirectX;
 
 namespace {
 
-	float m_GunPitch = DirectX::XMConvertToRadians(0.0f);  // 绕 X
+	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);  // 绕 X
 	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // 绕 Y
 	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // 绕 Z
-	DirectX::XMFLOAT3 m_GunOffset = { -0.01f, 0.19f, -0.02f };  // 手心里的偏移
-	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.0f, 0.02f, 0.35f };
+	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };  // 手心里的偏移
+	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.0f, 0.0f, 0.5f };
 	float m_LaserLength = 20.0f;
 	int m_LaserTexID = -1;
 
@@ -167,6 +168,50 @@ void PlayerCharacter::Update(double dt) {
 	m_Animator.Update(dt);
 
 
+	// --- 5. 开火逻辑 ---
+	if (m_ShootTimer > 0.0f) {
+		m_ShootTimer -= (float)dt; // 计时器倒计时
+	}
+
+	if (isFiring && m_ShootTimer <= 0.0f) {
+		// A. 计算当前帧枪口的世界矩阵 (参考 Draw 函数里的逻辑)
+		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
+		if (nameMap.count("mixamorig:RightHand")) {
+			int handIdx = nameMap.at("mixamorig:RightHand");
+			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+
+			// 构造枪支的世界矩阵
+			XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+
+			XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
+				XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
+				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+
+			XMMATRIX gunWorld = gunLocal * handMat * world;
+
+			// B. 获取枪口世界位置和方向
+			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
+			XMVECTOR bulletStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+
+			// 获取枪的朝向 (根据你上一轮调试的结果，可能是 r[2] 或 r[0])
+			XMVECTOR bulletDir = gunWorld.r[0];
+
+			float offsetDistance = 0.5f;
+			bulletStartPos = XMVectorAdd(bulletStartPos, XMVectorScale(bulletDir, offsetDistance));
+			// C. 创建子弹
+			XMFLOAT3 pos, vel;
+			XMStoreFloat3(&pos, bulletStartPos);
+			XMStoreFloat3(&vel, bulletDir);
+
+			Bullet_Create(pos, vel);
+
+			// D. 重置计时器
+			m_ShootTimer = m_FireRate;
+		}
+	}
+
+
+
 }
 
 void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj) {
@@ -194,16 +239,12 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 		XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
 
 		// 只做缩放 + 旋转
-		XMMATRIX gunLocalNoOffset =
+		XMMATRIX gunLocal =
 			XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
-			XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll);
-
-		// 挂到手上，再在世界空间平移
-		XMMATRIX gunWorld =
-			gunLocalNoOffset *
-			handMat *
-			world *
+			XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
 			XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+
+		XMMATRIX gunWorld = gunLocal * handMat * world;
 
 		ModelDraw(m_pGunModel, gunWorld);
 

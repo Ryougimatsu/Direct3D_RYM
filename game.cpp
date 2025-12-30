@@ -48,6 +48,7 @@ void Game_Initialize()
 	Camera_Initialize();
 	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
 
+	Bullet_Initialize();
 	Sky_Initialize();
 	Map_Initialize();         
 	Player_Camera_Initialize();
@@ -74,6 +75,7 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
+
 	// 先安全地拿一下玩家位置
 	DirectX::XMFLOAT3 pPos = { 0.0f, 0.0f, 0.0f };
 	if (g_Player) {
@@ -88,6 +90,7 @@ void Game_Update(double elapsed_time)
 		Player_Camera_Update(elapsed_time, pPos);
 	}
 
+	Bullet_Update(elapsed_time);
 	Sky_SetPosition(Player_Camera_GetPosition());
 
 	
@@ -133,6 +136,7 @@ void Game_Draw()
 
 	Sampler_SetFilterAnisotropic();
 	Sky_Draw();
+	Bullet_Draw();
 	Map_Draw(); // 此时 Map 只会画地面
 }
 
@@ -148,5 +152,6 @@ void Game_Finalize()
 
 	Sky_Finalize();
 	Map_Finalize();
+	Bullet_Finalize();
 	Player_Camera_Finalize();
 }

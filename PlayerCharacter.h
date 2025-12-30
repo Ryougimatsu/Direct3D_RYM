@@ -38,4 +38,6 @@ private:
 	float m_Scale = 0.01f;     // 修正未识别的关键：定义缩放系数
 	float m_MoveSpeed = 2.0f;
 	float m_GunScale = 1.0f;
+	float m_ShootTimer = 0.0f;          // 开火计时器
+	float m_FireRate = 0.1f;           // 射击间隔（0.1秒代表1秒10发）
 };

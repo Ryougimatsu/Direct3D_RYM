@@ -53,7 +53,7 @@ namespace
 
 void Bullet_Initialize()
 {
-	g_BulletModel = ModelLoad("resource/model/Bullet.fbx", 0.05f);
+	g_BulletModel = ModelLoadS("resource/model/Bullet.fbx", 0.1f);
 	for (int i = 0; i < g_BulletCount; i++)
 	{
 		delete g_Bullets[i];
@@ -102,11 +102,41 @@ void Bullet_Update(double elapsed_time)
 void Bullet_Draw()
 {
 
-	XMMATRIX world;
 	for (int i = 0; i < g_BulletCount; i++)
 	{
-		
-		world = XMMatrixTranslationFromVector(XMLoadFloat3(&g_Bullets[i]->GetPosition()));
+		// 1. 获取位置
+		XMVECTOR pos = XMLoadFloat3(&g_Bullets[i]->GetPosition());
+
+		// 2. 获取前进方向（即速度方向）
+		XMFLOAT3 frontF3 = g_Bullets[i]->GetFront();
+		XMVECTOR forward = XMLoadFloat3(&frontF3);
+
+		// 3. 构建旋转矩阵 (让模型的 Z 轴指向 forward 方向)
+		// 我们需要一个辅助向量（通常是世界坐标的上方向）来计算右方向和上方向
+		XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
+
+		// 防止子弹垂直上下飞行时与 worldUp 重合导致计算失败
+		if (fabs(XMVectorGetY(XMVector3Dot(forward, worldUp))) > 0.99f) {
+			worldUp = XMVectorSet(1, 0, 0, 0);
+		}
+
+		XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, forward));
+		XMVECTOR up = XMVector3Cross(forward, right);
+
+		XMMATRIX rotation;
+		rotation.r[0] = right;   // X轴
+		rotation.r[1] = up;      // Y轴
+		rotation.r[2] = forward; // Z轴 (前进方向)
+		rotation.r[3] = XMVectorSet(0, 0, 0, 1);
+
+		// 4. 【关键步骤】模型方向修正
+
+		XMMATRIX correction = XMMatrixRotationX(XM_PIDIV2); // 尝试旋转 90 度
+
+		// 5. 合成最终世界矩阵：缩放 * 修正 * 旋转 * 平移
+		// 假设缩放为 1.0，如果需要缩放可以加上 XMMatrixScaling
+		XMMATRIX world = correction * rotation * XMMatrixTranslationFromVector(pos);
+
 		ModelDraw(g_BulletModel, world);
 	}
 }

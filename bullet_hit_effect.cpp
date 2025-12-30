@@ -103,6 +103,11 @@ void BulletHitEffect_Update()
 
 void BulletHitEffect_Create(const DirectX::XMFLOAT3& position)
 {
+	if (g_EffectCount >= 50)
+	{
+		// 如果满了，直接返回，不创建新的特效，防止崩溃
+		return;
+	}
 	g_pEffects[g_EffectCount] = new BulletHitEffect(position);
 	g_EffectCount++;
 }
