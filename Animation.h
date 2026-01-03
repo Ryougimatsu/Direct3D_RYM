@@ -1,23 +1,23 @@
-#pragma once
+ï»¿#pragma once
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include <DirectXMath.h>
 
-// Ò»¸ö¹Ç÷ÀÔÚ¶¯»­ÀïµÄµ¥¶À¹ìµÀ
+// ä¸€ä¸ªéª¨éª¼åœ¨åŠ¨ç”»é‡Œçš„å•ç‹¬è½¨é“
 struct AnimationChannel
 {
-	// (Ê±¼ä, Öµ)
+	// (æ—¶é—´, å€¼)
 	std::vector<std::pair<double, DirectX::XMFLOAT3>> positions;
 	std::vector<std::pair<double, DirectX::XMFLOAT4>> rotations;
 	std::vector<std::pair<double, DirectX::XMFLOAT3>> scales;
 };
 
-// Õû¸ö¶¯»­
+// æ•´ä¸ªåŠ¨ç”»
 struct Animation
 {
-	double duration = 0.0;        // ¶¯»­Ê±³¤£¨tick£©
-	double ticksPerSecond = 25.0; // ËÙÂÊ
+	double duration = 0.0;        // åŠ¨ç”»æ—¶é•¿ï¼ˆtickï¼‰
+	double ticksPerSecond = 25.0; // é€Ÿç‡
 
 	// boneName -> AnimationChannel
 	std::unordered_map<std::string, AnimationChannel> channels;

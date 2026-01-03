@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <DirectXMath.h>
 #include "collision.h"
 class Enemy {
@@ -19,7 +19,7 @@ private:
 public:
 	virtual ~Enemy() = default;
 	virtual void Update(double elapsed_time);
-	virtual void Draw() const;
+	virtual void Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const = 0;
 	//virtual void UpdateState();
 	virtual void Damage(float) {}
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
@@ -38,7 +38,7 @@ protected:
 void Enemy_Initialize();
 void Enemy_Finalize();
 void Enemy_Update(double elapsed_time);
-void Enemy_Draw();
+void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj);
 void Enemy_Create(const DirectX::XMFLOAT3& position);
 int Enemy_GetEnemyCount();
 Enemy* Enemy_GetEnemy(int index);

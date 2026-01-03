@@ -4,10 +4,8 @@
 #include "Meshfield.h"
 #include "Light.h"
 #include <DirectXMath.h>
-using namespace DirectX;
 #include "model.h"
 #include "camera.h"
-#include "Player.h"
 #include "Player_Camera.h"
 #include "map.h"
 #include "billboard.h"
@@ -33,11 +31,14 @@ using namespace DirectX;
 #include "Skeleton.h"
 #include "Animator.h"
 #include"PlayerCharacter.h"
+#include "enemy_test.h"
+using namespace DirectX;
 
 namespace
 {
 	bool g_IsDebugCameraMode = false;
 	PlayerCharacter* g_Player = nullptr;
+
 }
 
 // ------------------------------------------------------------------
@@ -47,7 +48,6 @@ void Game_Initialize()
 {
 	Camera_Initialize();
 	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
-
 	Bullet_Initialize();
 	Sky_Initialize();
 	Map_Initialize();         
@@ -55,9 +55,13 @@ void Game_Initialize()
 
 	// 创建并初始化你的状态机角色
 	g_Player = new PlayerCharacter();
-	if (!g_Player->Initialize()) {
+	if (!g_Player->Initialize()) {  
 		OutputDebugStringA("[Game] PlayerCharacter Initialize Failed!\n");
 	}
+	EnemyTest::LoadAssets();
+	Enemy_Initialize();
+	GameUI_Initialize();
+
 }
 
 void Game_Update(double elapsed_time)
@@ -89,8 +93,9 @@ void Game_Update(double elapsed_time)
 	else {
 		Player_Camera_Update(elapsed_time, pPos);
 	}
-
+	Enemy_Update(elapsed_time);
 	Bullet_Update(elapsed_time);
+	Bullet_CheckCollisionWithEnemies();
 	Sky_SetPosition(Player_Camera_GetPosition());
 
 	
@@ -126,6 +131,7 @@ void Game_Draw()
 	if (g_Player) {
 		g_Player->Draw(view, proj);
 	}
+	Enemy_Draw(view, proj);
 
 	// --- 绘制静态环境 (通用着色器) ---
 	Shader_3D_Begin();
@@ -138,18 +144,21 @@ void Game_Draw()
 	Sky_Draw();
 	Bullet_Draw();
 	Map_Draw(); // 此时 Map 只会画地面
+
+	Direct3D_SetOffscreenTexture(0);
+	Direct3D_SetDepthEnable(false);
+	Sprite_Begin();
+	GameUI_Draw();
+	Direct3D_SetDepthEnable(true);
 }
 
-// ------------------------------------------------------------------
-// 释放：确保清理干净
-// ------------------------------------------------------------------
 void Game_Finalize()
 {
 	if (g_Player) {
 		delete g_Player;
 		g_Player = nullptr;
 	}
-
+	Enemy_Finalize();
 	Sky_Finalize();
 	Map_Finalize();
 	Bullet_Finalize();

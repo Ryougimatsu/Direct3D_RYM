@@ -1,23 +1,23 @@
-#pragma once
+ï»¿#pragma once
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <vector>
 
-// ³õÊ¼»¯ÓëÊÍ·Å
+// åˆå§‹åŒ–ä¸é‡Šæ”¾
 bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
 void SkinningShader_3D_Finalize();
 
-// ¿ªÊ¼äÖÈ¾ (°ó¶¨Shader)
+// å¼€å§‹æ¸²æŸ“ (ç»‘å®šShader)
 void SkinningShader_3D_Begin();
 
-// ÉèÖÃ¾ØÕó²ÎÊı
+// è®¾ç½®çŸ©é˜µå‚æ•°
 void SkinningShader_3D_SetWorldMatrix(const DirectX::XMMATRIX& matrix);
 void SkinningShader_3D_SetViewMatrix(const DirectX::XMMATRIX& matrix);
 void SkinningShader_3D_SetProjectMatrix(const DirectX::XMMATRIX& matrix);
 
-// ÉèÖÃ¹Ç÷À¾ØÕóÊı×é (Ö§³ÖÁ½ÖÖ½Ó¿Ú)
+// è®¾ç½®éª¨éª¼çŸ©é˜µæ•°ç»„ (æ”¯æŒä¸¤ç§æ¥å£)
 void SkinningShader_3D_SetBoneTransforms(const DirectX::XMFLOAT4X4* bones, int count);
 void SkinningShader_3D_SetBoneTransforms(const std::vector<DirectX::XMMATRIX>& boneMatrices);
 void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color);
-// ÉèÖÃÑÕÉ«
+// è®¾ç½®é¢œè‰²
 void SkinningShader_3D_SetColor(const DirectX::XMFLOAT4& color);

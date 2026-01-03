@@ -2,6 +2,8 @@
 #include "model.h"
 using namespace DirectX;
 #include "bullet_hit_effect.h"
+#include "collision.h"
+#include "enemy.h"
 class Bullet
 {
 private:
@@ -95,6 +97,34 @@ void Bullet_Update(double elapsed_time)
 			g_Bullets[g_BulletCount - 1] = nullptr;
 			g_BulletCount--;
 			i--;
+		}
+	}
+}
+
+void Bullet_CheckCollisionWithEnemies()
+{
+	for (int i = 0; i < Bullet_GetCount(); i++)
+	{
+		Sphere bulletSphere = Bullet_GetSphere(i);
+
+		for (int j = 0; j < Enemy_GetEnemyCount(); j++)
+		{
+			Enemy* pEnemy = Enemy_GetEnemy(j);
+			if (!pEnemy) continue;
+
+			// 检测子弹球体与敌人 AABB 是否碰撞
+			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
+			{
+				// 1. 敌人受伤/死亡逻辑
+				pEnemy->Damage(10.0f); // 假设每次命中造成 10 点伤害
+
+				// 3. 销毁子弹
+				Bullet_Destroy(i);
+
+				// 因为子弹被销毁后数组会缩减，所以需要回退索引并跳出当前敌人的循环
+				i--;
+				break;
+			}
 		}
 	}
 }

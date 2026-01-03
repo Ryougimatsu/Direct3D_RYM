@@ -8,7 +8,7 @@
 #include <map>
 #include <cstdio>  
 #include <cstdarg> 
-#include "Player.h"
+#include "PlayerCharacter.h"
 
 using namespace DirectX;
 
@@ -152,12 +152,12 @@ void Inventory_Update(double elapsed_time)
 			
 			if (itemId == 0) 
 			{
-				Player_Heal(50.0f);
+				//Player_Heal(50.0f);
 				isUsed = true;
 			}
 			else if (itemId == 2) 
 			{
-				Player_Heal(20.0f);
+				//Player_Heal(20.0f);
 				isUsed = true;
 			}
 			else if (g_ItemDatabase[slot.itemId].type == ItemType::Consumable)

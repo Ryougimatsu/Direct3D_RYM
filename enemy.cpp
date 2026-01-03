@@ -1,9 +1,10 @@
 #include "enemy.h"
 #include "enemy_test.h"
-#include "Player.h"
+#include "PlayerCharacter.h"
 #include <vector>
 #include <cstdlib>     
-#include <ctime>       
+#include <ctime>
+#include "SkinningShader.h"
 using namespace DirectX;
 
 
@@ -30,10 +31,12 @@ void Enemy::Update(double elapsed_time)
 	if (m_pState)
 		m_pState->Update(elapsed_time);
 }
-void Enemy::Draw() const
+void Enemy::Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const
 {
-	if (m_pState)
-		m_pState->Draw();
+	SkinningShader_3D_Begin();
+	for (auto* e : g_Enemies) {
+		e->Draw(view, proj);
+	}
 }
 void Enemy::ChangeState(State* pNextState)
 {
@@ -130,10 +133,11 @@ void Enemy_Finalize()
 	EnemyTest::UnloadAssets();
 }
 
-void Enemy_Draw()
+void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
 {
+	SkinningShader_3D_Begin();
 	for (auto* e : g_Enemies) {
-		e->Draw();
+		e->Draw(view,proj);
 	}
 }
 

@@ -1,14 +1,14 @@
-#include "SkeletonBuilder.h"
+ï»¿#include "SkeletonBuilder.h"
 #include <unordered_set>
 
 using namespace DirectX;
 
 //---------------------------------------------------------------------------
-// Assimp ¾ØÕó -> XMMATRIX (ĞĞÖ÷Ğò×ª»»)
+// Assimp çŸ©é˜µ -> XMMATRIX (è¡Œä¸»åºè½¬æ¢)
 //---------------------------------------------------------------------------
 XMMATRIX AiToXMMATRIX(const aiMatrix4x4& m)
 {
-	// Assimp µÄÆ½ÒÆÔÚµÚ4ÁĞ£¬×ªÖÃºó±äÎª D3D ĞĞÖ÷ĞòÒªÇóµÄµÚ4ĞĞ
+	// Assimp çš„å¹³ç§»åœ¨ç¬¬4åˆ—ï¼Œè½¬ç½®åå˜ä¸º D3D è¡Œä¸»åºè¦æ±‚çš„ç¬¬4è¡Œ
 	return XMMatrixTranspose(XMMATRIX(
 		(float)m.a1, (float)m.a2, (float)m.a3, (float)m.a4,
 		(float)m.b1, (float)m.b2, (float)m.b3, (float)m.b4,
@@ -16,7 +16,7 @@ XMMATRIX AiToXMMATRIX(const aiMatrix4x4& m)
 		(float)m.d1, (float)m.d2, (float)m.d3, (float)m.d4));
 }
 
-// Ç°ÏòÉùÃ÷
+// å‰å‘å£°æ˜
 static void BuildSkeletonRecursive(
 	aiNode* node,
 	const XMMATRIX& parentGlobal,
@@ -24,14 +24,14 @@ static void BuildSkeletonRecursive(
 	Skeleton& skeleton);
 
 //---------------------------------------------------------------------------
-// Ö÷Èë¿Ú£º¹¹½¨ Skeleton
+// ä¸»å…¥å£ï¼šæ„å»º Skeleton
 //---------------------------------------------------------------------------
 Skeleton BuildSkeletonFromAssimp(const aiScene* scene)
 {
 	Skeleton skel;
 	if (!scene) return skel;
 
-	// µÚ 1 & 2 ²½£ºÊÕ¼¯¹Ç÷À²¢ÌáÈ¡ Assimp È¨ÍşµÄ invBindPose (mOffsetMatrix)
+	// ç¬¬ 1 & 2 æ­¥ï¼šæ”¶é›†éª¨éª¼å¹¶æå– Assimp æƒå¨çš„ invBindPose (mOffsetMatrix)
 	for (unsigned int m = 0; m < scene->mNumMeshes; ++m)
 	{
 		aiMesh* mesh = scene->mMeshes[m];
@@ -45,7 +45,7 @@ Skeleton BuildSkeletonFromAssimp(const aiScene* scene)
 				Bone b;
 				b.name = name;
 				b.parent = -1;
-				// ¡ï ¹Ø¼ü£ºÖ±½ÓÊ¹ÓÃ Assimp Ìá¹©µÄ OffsetMatrix 
+				// â˜… å…³é”®ï¼šç›´æ¥ä½¿ç”¨ Assimp æä¾›çš„ OffsetMatrix 
 				b.invBindPose = AiToXMMATRIX(aibone->mOffsetMatrix);
 				b.bindPose = XMMatrixIdentity();
 
@@ -56,7 +56,7 @@ Skeleton BuildSkeletonFromAssimp(const aiScene* scene)
 		}
 	}
 
-	// µÚ 3 ²½£ºµİ¹é¹¹½¨²ã¼¶¹ØÏµ
+	// ç¬¬ 3 æ­¥ï¼šé€’å½’æ„å»ºå±‚çº§å…³ç³»
 	XMMATRIX identity = XMMatrixIdentity();
 	BuildSkeletonRecursive(scene->mRootNode, identity, -1, skel);
 
@@ -64,7 +64,7 @@ Skeleton BuildSkeletonFromAssimp(const aiScene* scene)
 }
 
 //---------------------------------------------------------------------------
-// µİ¹éº¯Êı£º¼ÆËã bindPose ²¢½¨Á¢¸¸×Ó¹ØÏµ
+// é€’å½’å‡½æ•°ï¼šè®¡ç®— bindPose å¹¶å»ºç«‹çˆ¶å­å…³ç³»
 //---------------------------------------------------------------------------
 static void BuildSkeletonRecursive(
 	aiNode* node,
@@ -76,9 +76,9 @@ static void BuildSkeletonRecursive(
 
 	std::string nodeName = node->mName.C_Str();
 
-	// µ±Ç°½ÚµãµÄ local ±ä»»
+	// å½“å‰èŠ‚ç‚¹çš„ local å˜æ¢
 	XMMATRIX local = AiToXMMATRIX(node->mTransformation);
-	// ¡ï Í³Ò»ĞĞÖ÷Ğò£ºLocal * ParentGlobal
+	// â˜… ç»Ÿä¸€è¡Œä¸»åºï¼šLocal * ParentGlobal
 	XMMATRIX global = local * parentGlobal;
 
 	int thisBoneIndex = parentBoneIndex;
@@ -90,10 +90,10 @@ static void BuildSkeletonRecursive(
 		Bone& b = skeleton.bones[thisBoneIndex];
 
 		b.parent = parentBoneIndex;
-		b.bindPose = global; // ¼ÇÂ¼µ±Ç°µÄÈ«¾Ö°ó¶¨×ËÌ¬
+		b.bindPose = global; // è®°å½•å½“å‰çš„å…¨å±€ç»‘å®šå§¿æ€
 	}
 
-	// µİ¹é×Ó½Úµã
+	// é€’å½’å­èŠ‚ç‚¹
 	for (unsigned int i = 0; i < node->mNumChildren; ++i)
 	{
 		BuildSkeletonRecursive(node->mChildren[i], global, thisBoneIndex, skeleton);

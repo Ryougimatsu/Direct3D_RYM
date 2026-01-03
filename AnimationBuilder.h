@@ -1,4 +1,4 @@
-// AnimationBuilder.h
+﻿// AnimationBuilder.h
 #pragma once
 #include "Animation.h"
 #include "Skeleton.h"

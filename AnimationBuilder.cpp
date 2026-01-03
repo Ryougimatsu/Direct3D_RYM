@@ -1,4 +1,4 @@
-// AnimationBuilder.cpp
+ï»¿// AnimationBuilder.cpp
 #include "AnimationBuilder.h"
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -26,7 +26,7 @@ Animation BuildAnimationFromAssimp(const aiScene* scene, int animIndex)
 	anim.duration = a->mDuration;
 	anim.ticksPerSecond = (a->mTicksPerSecond != 0.0) ? a->mTicksPerSecond : 25.0;
 
-	// Mixamo ¶¯»­Ò»°ãÃ¿¸ö¹Ç÷ÀÒ»¸ö aiNodeAnim
+	// Mixamo åŠ¨ç”»ä¸€èˆ¬æ¯ä¸ªéª¨éª¼ä¸€ä¸ª aiNodeAnim
 	for (unsigned int i = 0; i < a->mNumChannels; ++i)
 	{
 		const aiNodeAnim* ch = a->mChannels[i];

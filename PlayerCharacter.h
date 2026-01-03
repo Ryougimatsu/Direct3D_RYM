@@ -1,10 +1,10 @@
-#pragma once
+ï»¿#pragma once
 #include "SkinningModel.h"
 #include "Animator.h"
 #include <DirectXMath.h>
 #include "model.h"
 
-// ¶¨Òå×´Ì¬»ú×´Ì¬
+// å®šä¹‰çŠ¶æ€æœºçŠ¶æ€
 enum class CharacterState {
 	Idle,
 	Running
@@ -20,24 +20,36 @@ public:
 	void Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj);
 	DirectX::XMFLOAT3 GetPosition() const { return m_Position; }
 
-	DirectX::XMFLOAT3 m_CurrentMoveDir = { 0, 0, 0 }; // µ±Ç°Æ½»¬ºóµÄÒÆ¶¯ÏòÁ¿
-	float m_DampingSpeed = 10.0f; // ÏìÓ¦ËÙ¶È£¬ÖµÔ½´óÔ½ÁéÃô
+	DirectX::XMFLOAT3 m_CurrentMoveDir = { 0, 0, 0 }; // å½“å‰å¹³æ»‘åŽçš„ç§»åŠ¨å‘é‡
+	float m_DampingSpeed = 10.0f; // å“åº”é€Ÿåº¦ï¼Œå€¼è¶Šå¤§è¶Šçµæ•
+
+	bool IsInvincible() const { return m_InvincibleTimer > 0.0f; }
+	void ApplyDamage(float damage);
+	float GetHP() const { return m_HP; }
+	bool IsDead() const { return m_HP <= 0.0f; }
 
 private:
-	// ×ÊÔ´Óë×é¼þ
+	// èµ„æºä¸Žç»„ä»¶
 	SkinningModel* m_pModel = nullptr;
 	Animator       m_Animator;
 	MODEL* m_pGunModel;
-	// ×´Ì¬»ú±äÁ¿
+	// çŠ¶æ€æœºå˜é‡
 	CharacterState m_CurrentState = CharacterState::Idle;
-	float          m_StateTimer = 0.0f; // ÓÃÓÚ¿ØÖÆ²âÊÔÁ÷³ÌµÄ¼ÆÊ±Æ÷
+	float          m_StateTimer = 0.0f; // ç”¨äºŽæŽ§åˆ¶æµ‹è¯•æµç¨‹çš„è®¡æ—¶å™¨
 
-	// ¿Õ¼äÊôÐÔ
+	// ç©ºé—´å±žæ€§
 	DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f };
+	float m_HP = 100.0f;
 	float m_RotationY = 0.0f;
-	float m_Scale = 0.01f;     // ÐÞÕýÎ´Ê¶±ðµÄ¹Ø¼ü£º¶¨ÒåËõ·ÅÏµÊý
+	float m_Scale = 0.01f;     // ä¿®æ­£æœªè¯†åˆ«çš„å…³é”®ï¼šå®šä¹‰ç¼©æ”¾ç³»æ•°
 	float m_MoveSpeed = 2.0f;
 	float m_GunScale = 1.0f;
-	float m_ShootTimer = 0.0f;          // ¿ª»ð¼ÆÊ±Æ÷
-	float m_FireRate = 0.1f;           // Éä»÷¼ä¸ô£¨0.1Ãë´ú±í1Ãë10·¢£©
+	float m_ShootTimer = 0.0f;          // å¼€ç«è®¡æ—¶å™¨
+	float m_FireRate = 0.1f;           // å°„å‡»é—´éš”ï¼ˆ0.1ç§’ä»£è¡¨1ç§’10å‘ï¼‰
+	float m_InvincibleTimer = 0.0f;      // å½“å‰å‰©ä½™æ— æ•Œæ—¶é—´
+	const float m_InvincibleDuration = 1.0f; // å—åˆ°ä¼¤å®³åŽçš„æ— æ•Œæ—¶é•¿ï¼ˆç§’ï¼‰
 };
+
+DirectX::XMFLOAT3 Player_GetPosition();
+void Player_Damage(float damage);
+PlayerCharacter* Player_GetInstance();

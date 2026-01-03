@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <vector>
 #include <string>
 #include <map>
@@ -11,35 +11,46 @@ class Animator
 public:
 	Animator();
 
-	// ²¥·Å½Ó¿Ú£ºfadeTime Îª¹ı¶ÉÊ±³¤£¨Ãë£©
+	// æ’­æ”¾æ¥å£ï¼šfadeTime ä¸ºè¿‡æ¸¡æ—¶é•¿ï¼ˆç§’ï¼‰
 	void PlayAnimation(const Animation* pNewAnim, bool loop = true, float fadeTime = 0.3f);
 
-	// ¸üĞÂ½ø¶È
+	// æ›´æ–°è¿›åº¦
 	void Update(double deltaTime);
 
-	// Éú³É×îÖÕ¾ØÕóÊı×é£¨Ö÷Èë¿Ú£©
+	// ç”Ÿæˆæœ€ç»ˆçŸ©é˜µæ•°ç»„ï¼ˆä¸»å…¥å£ï¼‰
 	DirectX::XMMATRIX GetBoneGlobalMatrix(int boneIndex) const;
 	std::vector<DirectX::XMMATRIX> GetFinalBoneMatrices(const Skeleton& skeleton);
 	std::vector<DirectX::XMMATRIX> m_CachedGlobalMatrices;
 	void SetSpeedScale(float scale) { m_SpeedScale = scale; }
+
+	// è·å–å½“å‰åŠ¨ç”»è¿›åº¦ (0.0 åˆ° 1.0)
+	float GetCurrentAnimationProgress() const {
+		if (!mCurrentAnim || mCurrentAnim->duration <= 0.0) return 0.0f;
+		return (float)(mCurrentTime / mCurrentAnim->duration);
+	}
+
+	// åˆ¤æ–­å½“å‰æ˜¯å¦æ­£åœ¨æ’­æ”¾æŸä¸ªæŒ‡å®šåŠ¨ç”»
+	bool IsPlaying(const Animation* anim) const {
+		return mCurrentAnim == anim;
+	}
 private:
-	// µ±Ç°¶¯»­×´Ì¬
+	// å½“å‰åŠ¨ç”»çŠ¶æ€
 	const Animation* mCurrentAnim;
 	double mCurrentTime;
 	bool   mLoop;
 
-	// ¹ı¶É×´Ì¬£¨ÓÃÓÚÆ½»¬ÇĞ»»¶¯×÷£©
+	// è¿‡æ¸¡çŠ¶æ€ï¼ˆç”¨äºå¹³æ»‘åˆ‡æ¢åŠ¨ä½œï¼‰
 	const Animation* mOldAnim;
 	double mOldTime;
-	float  mFadeTime;   // ¹ı¶É×ÜÊ±³¤
-	float  mFadeFactor; // 0.0=¾É, 1.0=ĞÂ
+	float  mFadeTime;   // è¿‡æ¸¡æ€»æ—¶é•¿
+	float  mFadeFactor; // 0.0=æ—§, 1.0=æ–°
 	float m_SpeedScale = 1.0f;
 	/**
-	 * @brief ºËĞÄ¼ÆËãº¯Êı£º¸ºÔğ²ÉÑù¡¢»ìºÏÒÔ¼°µİ¹é¼ÆËã¹Ç÷ÀµÄÈ«¾Ö¾ØÕó
-	 * @param boneIndex µ±Ç°¼ÆËãµÄ¹Ç÷ÀË÷Òı
-	 * @param skeleton ¹Ç÷À²ã¼¶Êı¾İ
-	 * @param parentMatrix ¸¸¹Ç÷ÀµÄÈ«¾Ö¶¯»­¾ØÕó
-	 * @return µ±Ç°¹Ç÷ÀµÄÄ£ĞÍ¿Õ¼äÈ«¾Ö¶¯»­¾ØÕó
+	 * @brief æ ¸å¿ƒè®¡ç®—å‡½æ•°ï¼šè´Ÿè´£é‡‡æ ·ã€æ··åˆä»¥åŠé€’å½’è®¡ç®—éª¨éª¼çš„å…¨å±€çŸ©é˜µ
+	 * @param boneIndex å½“å‰è®¡ç®—çš„éª¨éª¼ç´¢å¼•
+	 * @param skeleton éª¨éª¼å±‚çº§æ•°æ®
+	 * @param parentMatrix çˆ¶éª¨éª¼çš„å…¨å±€åŠ¨ç”»çŸ©é˜µ
+	 * @return å½“å‰éª¨éª¼çš„æ¨¡å‹ç©ºé—´å…¨å±€åŠ¨ç”»çŸ©é˜µ
 	 */
 	DirectX::XMMATRIX CalculateBone(
 		int boneIndex,
@@ -47,11 +58,11 @@ private:
 		const DirectX::XMMATRIX& parentMatrix
 	);
 
-	// ¹Ø¼üÖ¡²ÉÑùÓë²åÖµÄÚ²¿º¯Êı
+	// å…³é”®å¸§é‡‡æ ·ä¸æ’å€¼å†…éƒ¨å‡½æ•°
 	DirectX::XMVECTOR SamplePosition(const AnimationChannel& ch, double t);
 	DirectX::XMVECTOR SampleRotation(const AnimationChannel& ch, double t);
 	DirectX::XMVECTOR SampleScale(const AnimationChannel& ch, double t);
-	// ²éÕÒ¹Ø¼üÖ¡Ë÷ÒıµÄÄ£°åº¯Êı
+	// æŸ¥æ‰¾å…³é”®å¸§ç´¢å¼•çš„æ¨¡æ¿å‡½æ•°
 	template<typename T>
 	int FindKeyIndex(const std::vector<std::pair<double, T>>& keys, double t);
 };

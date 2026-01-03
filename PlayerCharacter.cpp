@@ -1,4 +1,4 @@
-#include "PlayerCharacter.h"
+ï»¿#include "PlayerCharacter.h"
 #include "SkinningShader.h"
 #include "Player_Camera.h"
 #include "direct3d.h"
@@ -8,11 +8,11 @@
 using namespace DirectX;
 
 namespace {
-
-	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);  // ÈÆ X
-	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // ÈÆ Y
-	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // ÈÆ Z
-	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };  // ÊÖÐÄÀïµÄÆ«ÒÆ
+	PlayerCharacter* g_pPlayerInstance = nullptr;
+	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);  // ç»• X
+	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // ç»• Y
+	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // ç»• Z
+	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };  // æ‰‹å¿ƒé‡Œçš„åç§»
 	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.0f, 0.0f, 0.5f };
 	float m_LaserLength = 20.0f;
 	int m_LaserTexID = -1;
@@ -21,12 +21,12 @@ namespace {
 		using namespace DirectX;
 		XMVECTOR input = XMVectorSet(0, 0, 0, 0);
 
-		// ¼ì²â¼üÅÌ×´Ì¬
+		// æ£€æµ‹é”®ç›˜çŠ¶æ€
 		if (GetForegroundWindow() == Direct3D_GetWindowHandle()) {
-			if (GetAsyncKeyState('W')) input = XMVectorAdd(input, XMVectorSet(0, 0, 1, 0));  // Ç°
-			if (GetAsyncKeyState('S')) input = XMVectorAdd(input, XMVectorSet(0, 0, -1, 0)); // ºó
-			if (GetAsyncKeyState('A')) input = XMVectorAdd(input, XMVectorSet(-1, 0, 0, 0)); // ×ó
-			if (GetAsyncKeyState('D')) input = XMVectorAdd(input, XMVectorSet(1, 0, 0, 0));  // ÓÒ
+			if (GetAsyncKeyState('W')) input = XMVectorAdd(input, XMVectorSet(0, 0, 1, 0));  // å‰
+			if (GetAsyncKeyState('S')) input = XMVectorAdd(input, XMVectorSet(0, 0, -1, 0)); // åŽ
+			if (GetAsyncKeyState('A')) input = XMVectorAdd(input, XMVectorSet(-1, 0, 0, 0)); // å·¦
+			if (GetAsyncKeyState('D')) input = XMVectorAdd(input, XMVectorSet(1, 0, 0, 0));  // å³
 		}
 		if (XMVector3Greater(XMVector3LengthSq(input), XMVectorZero())) {
 			return XMVector3Normalize(input);
@@ -35,7 +35,16 @@ namespace {
 		return XMVectorZero();
 	}
 }
+
+
+PlayerCharacter* Player_GetInstance() {
+	return g_pPlayerInstance;
+}
+
 bool PlayerCharacter::Initialize() {
+
+	g_pPlayerInstance = this;
+
 	m_pModel = new SkinningModel();
 
 	if (!m_pModel->Load("resource/model/Idle.fbx", 1.0f)) return false;
@@ -63,31 +72,31 @@ bool PlayerCharacter::Initialize() {
 std::string SelectTacticalAnim(float angle) {
 	using namespace DirectX;
 
-	// ½«½Ç¶È×ª»»Îª¶ÈÊý£¬·½±ãµ÷ÊÔºÍÀí½â (·¶Î§: -180 µ½ 180)
+	// å°†è§’åº¦è½¬æ¢ä¸ºåº¦æ•°ï¼Œæ–¹ä¾¿è°ƒè¯•å’Œç†è§£ (èŒƒå›´: -180 åˆ° 180)
 	float degrees = XMConvertToDegrees(angle);
 
-	// 1. Forward (ÕýÇ°): -22.5 µ½ 22.5
+	// 1. Forward (æ­£å‰): -22.5 åˆ° 22.5
 	if (degrees >= -22.5f && degrees < 22.5f) return "Walk Forward";
 
-	// 2. Forward Right (ÓÒÇ°): 22.5 µ½ 67.5
+	// 2. Forward Right (å³å‰): 22.5 åˆ° 67.5
 	if (degrees >= 22.5f && degrees < 67.5f) return "Walk Forward Right";
 
-	// 3. Right (ÕýÓÒ): 67.5 µ½ 112.5
+	// 3. Right (æ­£å³): 67.5 åˆ° 112.5
 	if (degrees >= 67.5f && degrees < 112.5f) return "Walk Right";
 
-	// 4. Backward Right (ÓÒºó): 112.5 µ½ 157.5
+	// 4. Backward Right (å³åŽ): 112.5 åˆ° 157.5
 	if (degrees >= 112.5f && degrees < 157.5f) return "Walk Backward Right";
 
-	// 5. Backward (Õýºó): 157.5 µ½ 180 »ò -180 µ½ -157.5
+	// 5. Backward (æ­£åŽ): 157.5 åˆ° 180 æˆ– -180 åˆ° -157.5
 	if (degrees >= 157.5f || degrees < -157.5f) return "Walk Backward";
 
-	// 6. Backward Left (×óºó): -157.5 µ½ -112.5
+	// 6. Backward Left (å·¦åŽ): -157.5 åˆ° -112.5
 	if (degrees >= -157.5f && degrees < -112.5f) return "Walk Backward Left";
 
-	// 7. Left (Õý×ó): -112.5 µ½ -67.5
+	// 7. Left (æ­£å·¦): -112.5 åˆ° -67.5
 	if (degrees >= -112.5f && degrees < -67.5f) return "Walk Left";
 
-	// 8. Forward Left (×óÇ°): -67.5 µ½ -22.5
+	// 8. Forward Left (å·¦å‰): -67.5 åˆ° -22.5
 	if (degrees >= -67.5f && degrees < -22.5f) return "Walk Forward Left";
 
 	return "Rifle Aiming Idle";
@@ -96,25 +105,25 @@ std::string SelectTacticalAnim(float angle) {
 
 
 void PlayerCharacter::Update(double dt) {
-	// »ñÈ¡Ïà»ú¾ØÕóÓÃÓÚ¼ÆËãÊó±êÎ»ÖÃ
+	// èŽ·å–ç›¸æœºçŸ©é˜µç”¨äºŽè®¡ç®—é¼ æ ‡ä½ç½®
 	XMMATRIX view = XMLoadFloat4x4(&Player_Camera_GetViewMatrix());
 	XMMATRIX proj = XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
 
-	// --- 1. Ðý×ªÂß¼­£ºÊ¼ÖÕÖ¸ÏòÊó±ê ---
+	// --- 1. æ—‹è½¬é€»è¾‘ï¼šå§‹ç»ˆæŒ‡å‘é¼ æ ‡ ---
 	XMVECTOR mousePos = GetMouseWorldPos(view, proj);
 	XMVECTOR playerPos = XMLoadFloat3(&m_Position);
 	XMVECTOR lookDir = XMVectorSubtract(mousePos, playerPos);
 
-	// ¼ÆËãÄ¿±ê½Ç¶È
+	// è®¡ç®—ç›®æ ‡è§’åº¦
 	float targetAngle = atan2f(XMVectorGetX(lookDir), XMVectorGetZ(lookDir));
 
-	// Æ½»¬Ðý×ª (¸ø×ªÍäÒ»µãÖØÁ¿¸Ð)
+	// å¹³æ»‘æ—‹è½¬ (ç»™è½¬å¼¯ä¸€ç‚¹é‡é‡æ„Ÿ)
 	float angleDiff = targetAngle - m_RotationY;
 	while (angleDiff < -XM_PI) angleDiff += XM_2PI;
 	while (angleDiff > XM_PI) angleDiff -= XM_2PI;
-	m_RotationY += angleDiff * 0.15f; // 0.15f ÊÇ×ªÏòÁéÃô¶È
+	m_RotationY += angleDiff * 0.15f; // 0.15f æ˜¯è½¬å‘çµæ•åº¦
 
-	// --- 2. ÊäÈëÆ½»¬´¦Àí (Damping) ---
+	// --- 2. è¾“å…¥å¹³æ»‘å¤„ç† (Damping) ---
 	XMVECTOR inputVec = GetInputVector();
 	XMVECTOR currentSmoothed = XMLoadFloat3(&m_CurrentMoveDir);
 	XMVECTOR smoothedInput = XMVectorLerp(currentSmoothed, inputVec, 8.0f * (float)dt);
@@ -127,9 +136,9 @@ void PlayerCharacter::Update(double dt) {
 	std::string animToPlay = "Rifle Aiming Idle";
 	float crossfadeTime = 0.2f;
 
-	// --- 3. Õ½Êõ¶¯»­×´Ì¬»ú ---
+	// --- 3. æˆ˜æœ¯åŠ¨ç”»çŠ¶æ€æœº ---
 	if (moveLen > 0.05f) {
-		// ¡¾ÒÆ¶¯Âß¼­¡¿
+		// ã€ç§»åŠ¨é€»è¾‘ã€‘
 		XMVECTOR forward = XMVectorSet(sinf(m_RotationY), 0, cosf(m_RotationY), 0);
 		XMVECTOR right = XMVectorSet(cosf(m_RotationY), 0, -sinf(m_RotationY), 0);
 
@@ -137,18 +146,18 @@ void PlayerCharacter::Update(double dt) {
 		float sideDot = XMVectorGetX(XMVector3Dot(right, smoothedInput));
 
 		float angle = atan2f(sideDot, fwdDot);
-		animToPlay = SelectTacticalAnim(angle); // ÏÈ¸ù¾Ý·½ÏòÑ¡ºÃ²½·¨
+		animToPlay = SelectTacticalAnim(angle); // å…ˆæ ¹æ®æ–¹å‘é€‰å¥½æ­¥æ³•
 
-		// Èç¹ûÒÆ¶¯ÖÐ¿ª»ð£¬¸²¸ÇÎªÒÆ¶¯Éä»÷¶¯×÷
+		// å¦‚æžœç§»åŠ¨ä¸­å¼€ç«ï¼Œè¦†ç›–ä¸ºç§»åŠ¨å°„å‡»åŠ¨ä½œ
 		if (isFiring) {
 			animToPlay = "Firing Rifle";
 		}
 
-		m_Animator.SetSpeedScale(moveLen); // ÒÆ¶¯Ê±Æ¥Åä²½Æµ
+		m_Animator.SetSpeedScale(moveLen); // ç§»åŠ¨æ—¶åŒ¹é…æ­¥é¢‘
 	}
 	else {
-		// ¡¾¾²Ö¹Âß¼­¡¿
-		m_Animator.SetSpeedScale(1.0f); // ¾²Ö¹Ê±»Ö¸´Õý³£¶¯»­ËÙÂÊ
+		// ã€é™æ­¢é€»è¾‘ã€‘
+		m_Animator.SetSpeedScale(1.0f); // é™æ­¢æ—¶æ¢å¤æ­£å¸¸åŠ¨ç”»é€ŸçŽ‡
 
 		if (isFiring) {
 		
@@ -159,28 +168,28 @@ void PlayerCharacter::Update(double dt) {
 		}
 	}
 
-	// --- 4. Ó¦ÓÃÎïÀíÎ»ÒÆÓë¶¯»­ ---
+	// --- 4. åº”ç”¨ç‰©ç†ä½ç§»ä¸ŽåŠ¨ç”» ---
 	XMVECTOR pos = XMLoadFloat3(&m_Position);
-	pos += smoothedInput * m_MoveSpeed * (float)dt; // ½öÔÚ´Ë´¦¸üÐÂÒ»´ÎÎ»ÖÃ
+	pos += smoothedInput * m_MoveSpeed * (float)dt; // ä»…åœ¨æ­¤å¤„æ›´æ–°ä¸€æ¬¡ä½ç½®
 	XMStoreFloat3(&m_Position, pos);
 
 	m_Animator.PlayAnimation(m_pModel->GetAnimation(animToPlay), true, crossfadeTime);
 	m_Animator.Update(dt);
 
 
-	// --- 5. ¿ª»ðÂß¼­ ---
+	// --- 5. å¼€ç«é€»è¾‘ ---
 	if (m_ShootTimer > 0.0f) {
-		m_ShootTimer -= (float)dt; // ¼ÆÊ±Æ÷µ¹¼ÆÊ±
+		m_ShootTimer -= (float)dt; // è®¡æ—¶å™¨å€’è®¡æ—¶
 	}
 
 	if (isFiring && m_ShootTimer <= 0.0f) {
-		// A. ¼ÆËãµ±Ç°Ö¡Ç¹¿ÚµÄÊÀ½ç¾ØÕó (²Î¿¼ Draw º¯ÊýÀïµÄÂß¼­)
+		// A. è®¡ç®—å½“å‰å¸§æžªå£çš„ä¸–ç•ŒçŸ©é˜µ (å‚è€ƒ Draw å‡½æ•°é‡Œçš„é€»è¾‘)
 		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
 		if (nameMap.count("mixamorig:RightHand")) {
 			int handIdx = nameMap.at("mixamorig:RightHand");
 			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
 
-			// ¹¹ÔìÇ¹Ö§µÄÊÀ½ç¾ØÕó
+			// æž„é€ æžªæ”¯çš„ä¸–ç•ŒçŸ©é˜µ
 			XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 
 			XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
@@ -189,47 +198,51 @@ void PlayerCharacter::Update(double dt) {
 
 			XMMATRIX gunWorld = gunLocal * handMat * world;
 
-			// B. »ñÈ¡Ç¹¿ÚÊÀ½çÎ»ÖÃºÍ·½Ïò
+			// B. èŽ·å–æžªå£ä¸–ç•Œä½ç½®å’Œæ–¹å‘
 			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
 			XMVECTOR bulletStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
 
-			// »ñÈ¡Ç¹µÄ³¯Ïò (¸ù¾ÝÄãÉÏÒ»ÂÖµ÷ÊÔµÄ½á¹û£¬¿ÉÄÜÊÇ r[2] »ò r[0])
+			// èŽ·å–æžªçš„æœå‘ (æ ¹æ®ä½ ä¸Šä¸€è½®è°ƒè¯•çš„ç»“æžœï¼Œå¯èƒ½æ˜¯ r[2] æˆ– r[0])
 			XMVECTOR bulletDir = gunWorld.r[0];
 
 			float offsetDistance = 0.5f;
 			bulletStartPos = XMVectorAdd(bulletStartPos, XMVectorScale(bulletDir, offsetDistance));
-			// C. ´´½¨×Óµ¯
+			// C. åˆ›å»ºå­å¼¹
 			XMFLOAT3 pos, vel;
 			XMStoreFloat3(&pos, bulletStartPos);
 			XMStoreFloat3(&vel, bulletDir);
 
 			Bullet_Create(pos, vel);
 
-			// D. ÖØÖÃ¼ÆÊ±Æ÷
+			// D. é‡ç½®è®¡æ—¶å™¨
 			m_ShootTimer = m_FireRate;
 		}
 	}
 
-
+	// æ›´æ–°æ— æ•Œå¸§è®¡æ—¶å™¨
+	if (m_InvincibleTimer > 0.0f) {
+		m_InvincibleTimer -= (float)dt;
+		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
+	}
 
 }
 
 void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj) {
 	if (!m_pModel) return;
 
-	// 1. ÉèÖÃ×ÅÉ«Æ÷È«¾Ö¾ØÕó
+	// 1. è®¾ç½®ç€è‰²å™¨å…¨å±€çŸ©é˜µ
 	SkinningShader_3D_SetViewMatrix(view);
 	SkinningShader_3D_SetProjectMatrix(proj);
 
-	// 2. ¹¹ÔìÊÀ½ç¾ØÕó (ÕâÀïËõÐ¡ÁËÄ£ÐÍ²¢ÉèÖÃÎ»ÖÃ)
+	// 2. æž„é€ ä¸–ç•ŒçŸ©é˜µ (è¿™é‡Œç¼©å°äº†æ¨¡åž‹å¹¶è®¾ç½®ä½ç½®)
 	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 	SkinningShader_3D_SetWorldMatrix(world);
 
-	// 3. »ñÈ¡²¢´«Êäµ±Ç°µÄ¹Ç÷À¾ØÕóµ÷É«°å
+	// 3. èŽ·å–å¹¶ä¼ è¾“å½“å‰çš„éª¨éª¼çŸ©é˜µè°ƒè‰²æ¿
 	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
 	SkinningShader_3D_SetBoneTransforms(bones);
 
-	// 4. Ö´ÐÐäÖÈ¾
+	// 4. æ‰§è¡Œæ¸²æŸ“
 	SkinningShader_3D_Begin();
 	m_pModel->Draw();
 	const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
@@ -238,7 +251,7 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 
 		XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
 
-		// Ö»×öËõ·Å + Ðý×ª
+		// åªåšç¼©æ”¾ + æ—‹è½¬
 		XMMATRIX gunLocal =
 			XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
 			XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
@@ -249,22 +262,32 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 		ModelDraw(m_pGunModel, gunWorld);
 
 
-		// »æÖÆ¼¤¹âÃé×¼Ïß
+		// ç»˜åˆ¶æ¿€å…‰çž„å‡†çº¿
 		XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
 		XMVECTOR laserStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
 
-		// B. ÌáÈ¡ÊÀ½ç¿Õ¼äÖÐµÄÇ¹¿ÚÇ°·½·½Ïò (Forward Direction)
+		// B. æå–ä¸–ç•Œç©ºé—´ä¸­çš„æžªå£å‰æ–¹æ–¹å‘ (Forward Direction)
 		XMVECTOR gunForwardDir = gunWorld.r[0];
 
 		gunForwardDir = XMVector3Normalize(gunForwardDir);
 
-		// C. ¼ÆËãºìÏßÖÕµãÎ»ÖÃ (End Pos)
-		// ÖÕµã = Æðµã + (·½ÏòÏòÁ¿ * ³¤¶È)
+		// C. è®¡ç®—çº¢çº¿ç»ˆç‚¹ä½ç½® (End Pos)
+		// ç»ˆç‚¹ = èµ·ç‚¹ + (æ–¹å‘å‘é‡ * é•¿åº¦)
 		XMVECTOR laserEndPos = laserStartPos + (gunForwardDir * m_LaserLength);
 
-		// D. Ö´ÐÐ»æÖÆ
-		Laser_Billboard_Draw(m_LaserTexID, laserStartPos, laserEndPos, 0.02f); // ºìÉ«£¬´øÒ»µãÍ¸Ã÷
+		// D. æ‰§è¡Œç»˜åˆ¶
+		Laser_Billboard_Draw(m_LaserTexID, laserStartPos, laserEndPos, 0.02f); // çº¢è‰²ï¼Œå¸¦ä¸€ç‚¹é€æ˜Ž
 	}
+}
+
+void PlayerCharacter::ApplyDamage(float damage)
+{
+	if (m_InvincibleTimer > 0.0f) {
+		return;
+	}
+	m_HP -= damage;
+
+	m_InvincibleTimer = m_InvincibleDuration;
 }
 
 PlayerCharacter::~PlayerCharacter() {
@@ -278,3 +301,16 @@ PlayerCharacter::~PlayerCharacter() {
 	}
 }
 
+
+DirectX::XMFLOAT3 Player_GetPosition() {
+	if (g_pPlayerInstance) {
+		return g_pPlayerInstance->GetPosition(); // è°ƒç”¨ç±»æˆå‘˜
+	}
+	return { 0.0f, 0.0f, 0.0f };
+}
+
+void Player_Damage(float damage) {
+	if (g_pPlayerInstance) {
+		g_pPlayerInstance->ApplyDamage(damage);
+	}
+}

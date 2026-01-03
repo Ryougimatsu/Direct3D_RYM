@@ -1,23 +1,23 @@
 #include "GameUI.h"
 #include "sprite.h"
 #include "texture.h"
-#include "Player.h" // 引用 Player 头文件来获取血量
+#include "PlayerCharacter.h"
+
 
 namespace {
 	int g_TexWhite = -1; // 用白色图片染色
 }
 
 void GameUI_Initialize() {
-	// 加载一张纯白像素图 (或者复用之前的 ui_cursor.png 也可以，只要是纯色的)
 	g_TexWhite = Texture_LoadFromFile(L"resource/texture/white.png");
 }
 
 void GameUI_Draw() {
 	if (g_TexWhite == -1) return;
-
+	PlayerCharacter* g_Player = Player_GetInstance();
 	// 1. 获取数据
-	float hp = Player_GetHP();
-	float maxHp = Player_GetMaxHP();
+	float hp = g_Player->GetHP();
+	float maxHp = 100.0f;
 	float ratio = hp / maxHp;
 
 	// 2. 定义位置 (左上角)

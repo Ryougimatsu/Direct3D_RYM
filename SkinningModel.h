@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <vector>
 #include <string>
@@ -9,7 +9,7 @@
 #include "Skeleton.h"   //
 #include "Animation.h"  //
 
-// ¶ÔÓ¦ SkinningShader_VS.hlsl µÄÊäÈë²¼¾Ö
+// å¯¹åº” SkinningShader_VS.hlsl çš„è¾“å…¥å¸ƒå±€
 struct VertexSkinning
 {
 	DirectX::XMFLOAT3 Position;
@@ -23,7 +23,7 @@ struct VertexSkinning
 		memset(this, 0, sizeof(VertexSkinning));
 	}
 
-	// ¸¨Öúº¯Êı£ºÌí¼Ó¹Ç÷ÀÈ¨ÖØ²¢È·±£¹éÒ»»¯
+	// è¾…åŠ©å‡½æ•°ï¼šæ·»åŠ éª¨éª¼æƒé‡å¹¶ç¡®ä¿å½’ä¸€åŒ–
 	void AddBoneData(uint32_t boneID, float weight) {
 		for (int i = 0; i < 4; i++) {
 			if (BoneWeights[i] == 0.0f) {
@@ -53,12 +53,12 @@ public:
 	SkinningModel() = default;
 	~SkinningModel();
 
-	// ¼ÓÔØ½Ó¿Ú
+	// åŠ è½½æ¥å£
 	bool Load(const std::string& fileName, float scale = 1.0f);
 	bool LoadAnimation(const std::string& animName, const std::string& fileName, float scale = 1.0f);
 	void Release();
 	void Draw();
-	// Êı¾İ·ÃÎÊ
+	// æ•°æ®è®¿é—®
 	const Skeleton& GetSkeleton() const { return mSkeleton; }
 	const Animation* GetAnimation(const std::string& name) const;
 	const Animation* GetDefaultAnimation() const;
@@ -72,7 +72,7 @@ private:
 	std::vector<SkinningMaterial> mMaterials;
 	std::unordered_map<std::string, ID3D11ShaderResourceView*> mTextures;
 
-	// ÄÚ²¿¼ÓÔØÖúÊÖ
+	// å†…éƒ¨åŠ è½½åŠ©æ‰‹
 	void ProcessSkeleton(const struct aiScene* scene);
 	void ProcessMesh(const struct aiScene* scene, float scale);
 	void ProcessAnimation(const struct aiScene* scene, const std::string& animName, float scale);

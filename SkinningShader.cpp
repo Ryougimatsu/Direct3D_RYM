@@ -1,4 +1,4 @@
-#include "SkinningShader.h"
+ï»¿#include "SkinningShader.h"
 #include <fstream>
 #include <vector>
 
@@ -12,11 +12,11 @@ namespace
 	ID3D11PixelShader* g_pPixelShader = nullptr;
 	ID3D11InputLayout* g_pInputLayout = nullptr;
 
-	// ³£Á¿»º³åÇø
+	// å¸¸é‡ç¼“å†²åŒº
 	ID3D11Buffer* g_pCBWorld = nullptr; // b0
 	ID3D11Buffer* g_pCBView = nullptr; // b1
 	ID3D11Buffer* g_pCBProj = nullptr; // b2
-	ID3D11Buffer* g_pCBBones = nullptr; // b3 (¶¯Ì¬¸üĞÂÓÅ»¯)
+	ID3D11Buffer* g_pCBBones = nullptr; // b3 (åŠ¨æ€æ›´æ–°ä¼˜åŒ–)
 
 	ID3D11Buffer* g_pCBColor = nullptr; // PS b0
 
@@ -32,7 +32,7 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	g_pDevice = pDevice;
 	g_pContext = pContext;
 
-	// 1. ¼ÓÔØ VS ²¢´´½¨ Input Layout
+	// 1. åŠ è½½ VS å¹¶åˆ›å»º Input Layout
 	std::ifstream ifs_vs("resource/shader/SkinningShader_VS.cso", std::ios::binary);
 	if (!ifs_vs) return false;
 	std::vector<char> vsData((std::istreambuf_iterator<char>(ifs_vs)), std::istreambuf_iterator<char>());
@@ -48,7 +48,7 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	};
 	g_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout), vsData.data(), vsData.size(), &g_pInputLayout);
 
-	// 2. ´´½¨³£¹æ³£Á¿»º³åÇø (b0, b1, b2, PS b0)
+	// 2. åˆ›å»ºå¸¸è§„å¸¸é‡ç¼“å†²åŒº (b0, b1, b2, PS b0)
 	D3D11_BUFFER_DESC bd = {};
 	bd.Usage = D3D11_USAGE_DEFAULT;
 	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -60,30 +60,30 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	bd.ByteWidth = sizeof(XMFLOAT4);
 	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBColor);
 
-	// 3. ºËĞÄ¸Ä½ø£º´´½¨¶¯Ì¬¹Ç÷À»º³åÇø (b3)
+	// 3. æ ¸å¿ƒæ”¹è¿›ï¼šåˆ›å»ºåŠ¨æ€éª¨éª¼ç¼“å†²åŒº (b3)
 	D3D11_BUFFER_DESC boneBd = {};
-	boneBd.Usage = D3D11_USAGE_DYNAMIC;              // ¡ï ÉèÎª¶¯Ì¬
+	boneBd.Usage = D3D11_USAGE_DYNAMIC;              // â˜… è®¾ä¸ºåŠ¨æ€
 	boneBd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	boneBd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;  // ¡ï ÔÊĞí CPU Ğ´Èë
+	boneBd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;  // â˜… å…è®¸ CPU å†™å…¥
 	boneBd.ByteWidth = sizeof(XMMATRIX) * MAX_BONES;
 	g_pDevice->CreateBuffer(&boneBd, nullptr, &g_pCBBones);
 
-	// 4. ¼ÓÔØ PS Óë²ÉÑùÆ÷
+	// 4. åŠ è½½ PS ä¸é‡‡æ ·å™¨
 	std::ifstream ifs_ps("resource/shader/SkinningShader_PS.cso", std::ios::binary);
 	std::vector<char> psData((std::istreambuf_iterator<char>(ifs_ps)), std::istreambuf_iterator<char>());
 	g_pDevice->CreatePixelShader(psData.data(), psData.size(), nullptr, &g_pPixelShader);
 
 	D3D11_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-	samplerDesc.MaxAnisotropy = 16; // 16±¶¸÷ÏòÒìĞÔ¹ıÂË
-	// ±ØĞëÉèÖÃÎª WRAP£¬·ñÔò Mixamo Ä³Ğ©²¿Î»µÄÌùÍ¼»á³öÏÖ±ßÔµÀ­Éì
+	samplerDesc.MaxAnisotropy = 16; // 16å€å„å‘å¼‚æ€§è¿‡æ»¤
+	// å¿…é¡»è®¾ç½®ä¸º WRAPï¼Œå¦åˆ™ Mixamo æŸäº›éƒ¨ä½çš„è´´å›¾ä¼šå‡ºç°è¾¹ç¼˜æ‹‰ä¼¸
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 
 	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	samplerDesc.MinLOD = 0;
-	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX; // ÔÊĞíÊ¹ÓÃËùÓĞµÄ Mipmap µÈ¼¶
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX; // å…è®¸ä½¿ç”¨æ‰€æœ‰çš„ Mipmap ç­‰çº§
 
 	HRESULT hrSampler = g_pDevice->CreateSamplerState(&samplerDesc, &g_pSamplerState);
 	if (FAILED(hrSampler)) return false;
@@ -91,7 +91,7 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	return true;
 }
 
-// ¸¨Öú¸üĞÂ£ºMap/Unmap ·½Ê½
+// è¾…åŠ©æ›´æ–°ï¼šMap/Unmap æ–¹å¼
 void SkinningShader_3D_SetBoneTransforms(const std::vector<XMMATRIX>& boneMatrices)
 {
 	if (!g_pContext || !g_pCBBones) return;
@@ -106,24 +106,24 @@ void SkinningShader_3D_SetBoneTransforms(const std::vector<XMMATRIX>& boneMatric
 		XMMATRIX* pDest = (XMMATRIX*)mappedResource.pData;
 
 		size_t i = 0;
-		// 1) ¿½±´ Animator µÄ¾ØÕó
+		// 1) æ‹·è´ Animator çš„çŸ©é˜µ
 		for (; i < count; ++i)
 		{
 			pDest[i] = XMMatrixTranspose(boneMatrices[i]);
 		}
 
-		// 2) Ê£Óà²¿·Ö²¹³Éµ¥Î»¾ØÕó
+		// 2) å‰©ä½™éƒ¨åˆ†è¡¥æˆå•ä½çŸ©é˜µ
 		for (; i < MAX_BONES; ++i)
 		{
 			pDest[i] = XMMatrixIdentity();
 		}
 
-		// 3) Ò»´Î Unmap£¬½áÊø±¾´ÎĞ´Èë
+		// 3) ä¸€æ¬¡ Unmapï¼Œç»“æŸæœ¬æ¬¡å†™å…¥
 		g_pContext->Unmap(g_pCBBones, 0);
 	}
 }
 
-// ¼æÈİ¾É½Ó¿Ú
+// å…¼å®¹æ—§æ¥å£
 void SkinningShader_3D_SetBoneTransforms(const XMFLOAT4X4* bones, int count)
 {
 	std::vector<XMMATRIX> matrices;
@@ -143,7 +143,7 @@ void SkinningShader_3D_Begin()
 	g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
 }
 
-// ÆäËû¾ØÕóÉèÖÃº¯Êı±£³Ö UpdateSubresource ¼´¿É (ÒòÎªÃ¿Ö¡Ö»¸üĞÂÒ»´Î)
+// å…¶ä»–çŸ©é˜µè®¾ç½®å‡½æ•°ä¿æŒ UpdateSubresource å³å¯ (å› ä¸ºæ¯å¸§åªæ›´æ–°ä¸€æ¬¡)
 void SkinningShader_3D_SetWorldMatrix(const XMMATRIX& m) {
 	XMMATRIX mt = XMMatrixTranspose(m);
 	g_pContext->UpdateSubresource(g_pCBWorld, 0, nullptr, &mt, 0, 0);
@@ -164,7 +164,7 @@ void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color)
 {
 	if (!g_pContext || !g_pCBColor) return;
 
-	// ½«ÑÕÉ«Êı¾İ¸üĞÂµ½ PS µÄ³£Á¿»º³åÇø b0
+	// å°†é¢œè‰²æ•°æ®æ›´æ–°åˆ° PS çš„å¸¸é‡ç¼“å†²åŒº b0
 	g_pContext->UpdateSubresource(g_pCBColor, 0, nullptr, &color, 0, 0);
 }
 

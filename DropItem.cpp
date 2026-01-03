@@ -2,7 +2,7 @@
 #include "cube.h"       
 #include "texture.h"
 #include "collision.h"  
-#include "Player.h"     
+#include "PlayerCharacter.h"
 #include "billboard.h"
 #include "Inventory.h"  
 #include <vector>

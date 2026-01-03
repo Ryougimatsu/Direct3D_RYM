@@ -1,4 +1,4 @@
-// SkeletonBuilder.h
+ï»¿// SkeletonBuilder.h
 #pragma once
 
 #include "skeleton.h"
@@ -7,5 +7,5 @@
 
 Skeleton BuildSkeletonFromAssimp(const aiScene* scene);
 
-// Èç¹ûÄãÏîÄ¿Àï»¹Ã»ÓĞÕâ¸ö¹¤¾ßº¯Êı£¬¿ÉÒÔÒ»²¢ÉùÃ÷
+// å¦‚æœä½ é¡¹ç›®é‡Œè¿˜æ²¡æœ‰è¿™ä¸ªå·¥å…·å‡½æ•°ï¼Œå¯ä»¥ä¸€å¹¶å£°æ˜
 DirectX::XMMATRIX AiToXMMATRIX(const aiMatrix4x4& m);
