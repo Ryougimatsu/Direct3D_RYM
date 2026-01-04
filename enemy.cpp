@@ -46,6 +46,59 @@ void Enemy::ChangeState(State* pNextState)
 	m_pState = pNextState; // 切换新状态
 }
 
+void Enemy_ResolveCollisions() {
+	const float ENEMY_RADIUS = 0.4f;   // 敌人的碰撞半径
+	const float PLAYER_RADIUS = 0.5f;  // 玩家的碰撞半径
+	const float MIN_DIST_E2E = ENEMY_RADIUS * 2.0f;
+	const float MIN_DIST_E2P = ENEMY_RADIUS + PLAYER_RADIUS;
+
+	XMFLOAT3 pPos = Player_GetPosition(); //
+	XMVECTOR vPlayerPos = XMLoadFloat3(&pPos);
+
+	for (size_t i = 0; i < g_Enemies.size(); ++i) {
+		// --- 1. 敌人与敌人之间的排斥 ---
+		for (size_t j = i + 1; j < g_Enemies.size(); ++j) {
+			XMVECTOR posA = XMLoadFloat3(&g_Enemies[i]->GetPosition());
+			XMVECTOR posB = XMLoadFloat3(&g_Enemies[j]->GetPosition());
+
+			XMVECTOR diff = XMVectorSubtract(posA, posB);
+			diff = XMVectorSetY(diff, 0.0f); // 忽略高度差
+
+			float distSq = XMVectorGetX(XMVector3LengthSq(diff));
+			if (distSq < MIN_DIST_E2E * MIN_DIST_E2E && distSq > 0.00001f) {
+				float dist = sqrtf(distSq);
+				float overlap = MIN_DIST_E2E - dist;
+				XMVECTOR pushDir = XMVector3Normalize(diff);
+
+				// 双方平分排斥力
+				XMFLOAT3 newA, newB;
+				XMStoreFloat3(&newA, posA + pushDir * overlap * 0.5f);
+				XMStoreFloat3(&newB, posB - pushDir * overlap * 0.5f);
+
+				g_Enemies[i]->SetPosition(newA);
+				g_Enemies[j]->SetPosition(newB);
+			}
+		}
+
+		// --- 2. 敌人与玩家之间的排斥 ---
+		XMVECTOR posE = XMLoadFloat3(&g_Enemies[i]->GetPosition());
+		XMVECTOR diffToP = XMVectorSubtract(posE, vPlayerPos);
+		diffToP = XMVectorSetY(diffToP, 0.0f);
+
+		float distSqToP = XMVectorGetX(XMVector3LengthSq(diffToP));
+		if (distSqToP < MIN_DIST_E2P * MIN_DIST_E2P && distSqToP > 0.00001f) {
+			float dist = sqrtf(distSqToP);
+			float overlap = MIN_DIST_E2P - dist;
+			XMVECTOR pushDir = XMVector3Normalize(diffToP);
+
+			// 敌人单向避让玩家，不挤动玩家
+			XMFLOAT3 newE;
+			XMStoreFloat3(&newE, posE + pushDir * overlap);
+			g_Enemies[i]->SetPosition(newE);
+		}
+	}
+}
+
 void Enemy_Initialize()
 {
 	srand(static_cast<unsigned int>(time(nullptr)));
@@ -66,11 +119,10 @@ void Enemy_Update(double elapsed_time)
 	{
 		(*it)->Update(elapsed_time);
 
-		// 如果敌人死了 (IsDestroyed 返回 true)
 		if ((*it)->IsDestroyed())
 		{
 			delete (*it);
-			it = g_Enemies.erase(it); // 从列表中移除
+			it = g_Enemies.erase(it); 
 		}
 		else
 		{
@@ -78,8 +130,12 @@ void Enemy_Update(double elapsed_time)
 		}
 	}
 
+	Enemy_ResolveCollisions();
+
+	float repulsionRadius = 0.6f; // 碰撞半径
+
 	// ==========================================
-	// [新增] 随机生成逻辑
+	// 随机生成逻辑
 	// ==========================================
 
 	// 只有当敌人数量未达上限时，才开始计时

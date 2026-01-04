@@ -53,3 +53,4 @@ private:
 DirectX::XMFLOAT3 Player_GetPosition();
 void Player_Damage(float damage);
 PlayerCharacter* Player_GetInstance();
+bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius);

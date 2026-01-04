@@ -19,11 +19,14 @@ private:
 	float m_AttackRadius = 1.2f;     // 攻击半径
 	float m_AttackCooldown = 1.0f;   // 攻击间隔（秒）
 	double m_LastAttackTimer = 0.0;  // 攻击计时器
+	float m_FOVAngle = 90.0f;        // 视野总角度（度）
+
 
 	Animator m_Animator;            // 每个敌人私有的动画器
 	static const Animation* g_pIdleAnim;  // 全局共享的 Idle 动画资源
     static const Animation* g_pWalkAnim;
     static const Animation* g_pAttackAnim;
+    static const Animation* g_pScreamAnim;
 
 
 
@@ -33,6 +36,7 @@ public:
 
 
     const DirectX::XMFLOAT3& GetPosition() const override { return m_position; }
+    void SetPosition(const DirectX::XMFLOAT3& pos) override { m_position = pos; }
     void Damage(float damage) override { m_HP -= damage; }
     bool IsDestroyed() const override { return m_HP <= 0.0f; }
     AABB GetAABB() override;
@@ -53,6 +57,16 @@ private:
         EnemyTest* m_pOwner = {};
         float m_PointX = {};
         double m_AccumulatedTime = {};
+
+		DirectX::XMFLOAT3 m_PatrolOrigin; // 巡逻中心（通常是敌人的初始位置）
+		DirectX::XMFLOAT3 m_TargetPoint;  // 当前随机选中的目标点
+		float m_WaitTimer = 0.0f;       // 当前已等待时间
+		const float WAIT_DURATION = 2.0f; // 停顿观察的总时长（秒）
+        const float MAX_WANDER_RADIUS = 8.0f; // 随机巡逻的最大半径
+        bool m_bAlerted = false;
+
+        void PickRandomTarget();
+
     public:
         EnemyTest_StatePatrol(EnemyTest* pOwner);
         void Update(double elapsed_time) override;

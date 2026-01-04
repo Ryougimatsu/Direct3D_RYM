@@ -23,6 +23,7 @@ public:
 	//virtual void UpdateState();
 	virtual void Damage(float) {}
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
+	virtual void SetPosition(const DirectX::XMFLOAT3& pos) = 0;
 	virtual AABB GetAABB() {
 		DirectX::XMFLOAT3 pos = GetPosition(); return {
 		{pos.x - 0.5f, pos.y, pos.z - 0.5f},

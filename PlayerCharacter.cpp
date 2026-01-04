@@ -7,8 +7,8 @@
 #include "bullet.h"
 using namespace DirectX;
 
+PlayerCharacter* g_pPlayerInstance = nullptr;
 namespace {
-	PlayerCharacter* g_pPlayerInstance = nullptr;
 	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);  // 绕 X
 	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // 绕 Y
 	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // 绕 Z
@@ -34,11 +34,31 @@ namespace {
 
 		return XMVectorZero();
 	}
+
+	//声音
+	DirectX::XMFLOAT3 g_LastSoundPos = { 0, 0, 0 }; // 声音位置
+	float g_SoundIntensity = 0.0f;               // 声音强度（半径）
+	float g_SoundTimer = 0.0f;                    // 声音持续时间（秒）
 }
 
 
 PlayerCharacter* Player_GetInstance() {
 	return g_pPlayerInstance;
+}
+
+void Player_EmitSound(const DirectX::XMFLOAT3& pos, float radius) {
+	g_LastSoundPos = pos;
+	g_SoundIntensity = radius;
+	g_SoundTimer = 0.5f; // 声音在空气中存在 0.5 秒
+}
+
+bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius) {
+	if (g_SoundTimer > 0.0f) {
+		outPos = g_LastSoundPos;
+		outRadius = g_SoundIntensity;
+		return true;
+	}
+	return false;
 }
 
 bool PlayerCharacter::Initialize() {
@@ -213,11 +233,13 @@ void PlayerCharacter::Update(double dt) {
 			XMStoreFloat3(&vel, bulletDir);
 
 			Bullet_Create(pos, vel);
-
+			Player_EmitSound(m_Position, 25.0f);
 			// D. 重置计时器
 			m_ShootTimer = m_FireRate;
 		}
 	}
+
+	if (g_SoundTimer > 0.0f) g_SoundTimer -= (float)dt;// 声音衰减
 
 	// 更新无敌帧计时器
 	if (m_InvincibleTimer > 0.0f) {
@@ -314,3 +336,4 @@ void Player_Damage(float damage) {
 		g_pPlayerInstance->ApplyDamage(damage);
 	}
 }
+

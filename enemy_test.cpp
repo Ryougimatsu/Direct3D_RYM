@@ -15,6 +15,7 @@ using namespace DirectX;
 const Animation* EnemyTest::g_pIdleAnim = nullptr;
 const Animation* EnemyTest::g_pWalkAnim = nullptr;
 const Animation* EnemyTest::g_pAttackAnim = nullptr;
+const Animation* EnemyTest::g_pScreamAnim = nullptr;
 namespace 
 {
 	SkinningModel* g_pSkinningModel = nullptr;
@@ -23,40 +24,134 @@ namespace
 // 状态机逻辑实现
 // ========================================================
 
+static float GetRandomFloat(float min, float max) {
+	return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+}
+
+void EnemyTest::EnemyTest_StatePatrol::PickRandomTarget()
+{
+	// 在中心点周围的范围内随机生成 X 和 Z 坐标
+	m_TargetPoint.x = m_PatrolOrigin.x + GetRandomFloat(-MAX_WANDER_RADIUS, MAX_WANDER_RADIUS);
+	m_TargetPoint.z = m_PatrolOrigin.z + GetRandomFloat(-MAX_WANDER_RADIUS, MAX_WANDER_RADIUS);
+
+	// 立即通过 MeshField 获取该点在地面上的正确高度
+	m_TargetPoint.y = MeshField_GetHeight(m_TargetPoint.x, m_TargetPoint.z);
+}
+
 EnemyTest::EnemyTest_StatePatrol::EnemyTest_StatePatrol(EnemyTest* pOwner)
 	: m_pOwner(pOwner)
-	, m_PointX(pOwner->m_position.x) // 访问子类自己的 m_position
 {
 
-	if (g_pIdleAnim) {
-		m_pOwner->m_Animator.PlayAnimation(g_pIdleAnim, true, 0.5f);
-	}
+	m_PatrolOrigin = pOwner->m_position; // 记住出生点
+	PickRandomTarget();
 }
 
 void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 {
-	//m_AccumulatedTime += elapsed_time;
-
-	//m_pOwner->m_position.x = m_PointX + sinf((float)m_AccumulatedTime) * 2.0f; // * 2.0f 增加一点巡逻范围
-
-	// 贴合地面高度
-	m_pOwner->m_Animator.SetSpeedScale(1.0f);
-
-	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
-
 
 	XMFLOAT3 playerPos = Player_GetPosition(); // 获取玩家坐标
 	XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
 	XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
 
-	XMVECTOR distVec = XMVectorSubtract(vPlayerPos, vEnemyPos);
-	float distSq = XMVectorGetX(XMVector3LengthSq(distVec));
-
-	// 索敌判定
-	if (distSq < (m_pOwner->m_DetectionRadius * m_pOwner->m_DetectionRadius))
+	//视锥距离检测
+	XMVECTOR toPlayerVec = vPlayerPos - vEnemyPos;
+	float distSq = XMVectorGetX(XMVector3LengthSq(toPlayerVec));
+	if (distSq < (m_pOwner->m_DetectionRadius * m_pOwner->m_DetectionRadius)) //
 	{
-		m_pOwner->ChangeState(new EnemyTest_StateChase(m_pOwner));
+		// 3. 角度检查（第二层过滤）
+
+		// A. 计算敌人的正前方向量 (参考 PlayerCharacter.cpp 逻辑)
+		float rotY = m_pOwner->m_Rotation.y; //
+		XMVECTOR vForward = XMVectorSet(sinf(rotY), 0.0f, cosf(rotY), 0.0f);
+
+		// B. 计算指向玩家的单位向量
+		XMVECTOR vTargetDir = XMVector3Normalize(toPlayerVec);
+
+		// C. 计算点积（得到夹角的余弦值 cosθ）
+		// XMVector3Dot 返回的是向量，x分量存储结果
+		float dotProduct = XMVectorGetX(XMVector3Dot(vForward, vTargetDir));
+
+		// D. 计算视野阈值
+		// 如果 FOV 是 90度，那么 HalfFOV 是 45度。我们需要 cos(45°)
+		float halfFOVInRadians = XMConvertToRadians(m_pOwner->m_FOVAngle * 0.5f);
+		float threshold = cosf(halfFOVInRadians);
+
+		// E. 判定：如果 cosθ > cos(HalfFOV)，说明玩家在视野扇区内
+		if (dotProduct > threshold)
+		{
+			// 发现玩家！
+			m_pOwner->ChangeState(new EnemyTest_StateChase(m_pOwner)); //
+			return;
+		}
 	}
+
+
+	//听觉检测
+	XMFLOAT3 soundPos;
+	float soundRadius;
+	if (Sound_GetLatest(soundPos, soundRadius)) {
+		XMVECTOR vSoundPos = XMLoadFloat3(&soundPos);
+		XMVECTOR toSound = vSoundPos - vEnemyPos;
+		float distSq = XMVectorGetX(XMVector3LengthSq(toSound));
+
+		if (distSq < (soundRadius * soundRadius)) {
+	
+			m_TargetPoint = soundPos;
+			m_WaitTimer = 0.0f; // 停止当前的 Idle 等待
+
+			// 播放警觉动作 (非循环)
+			if (!m_bAlerted && !m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
+				m_pOwner->m_Animator.PlayAnimation(g_pScreamAnim, false, 0.2f);
+				m_bAlerted = true; 
+			}
+		}
+	}
+
+	if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
+		// 如果尖叫进度没到 90%，直接返回，不执行下面的位移代码
+		if (m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.9f) {
+			return;
+		}
+	}
+	if (m_WaitTimer > 0.0f)
+	{
+		m_WaitTimer -= (float)elapsed_time;
+		if (g_pIdleAnim) m_pOwner->m_Animator.PlayAnimation(g_pIdleAnim, true, 0.5f);
+		return;
+	}
+
+	// --- 移动逻辑 ---
+	XMVECTOR vPos = XMLoadFloat3(&m_pOwner->m_position);
+	XMVECTOR vTarget = XMLoadFloat3(&m_TargetPoint);
+	XMVECTOR toTarget = vTarget - vPos;
+	toTarget = XMVectorSetY(toTarget, 0.0f); // 忽略高度
+
+	float distToTarget = XMVectorGetX(XMVector3Length(toTarget));
+	if (distToTarget > 0.1f) // 还没走到
+	{
+		if (g_pWalkAnim) m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.8f);
+
+		XMVECTOR dir = XMVector3Normalize(toTarget);
+		float patrolSpeed = 0.8f;
+		XMVECTOR vNewPos = vPos + dir * patrolSpeed * (float)elapsed_time;
+		XMStoreFloat3(&m_pOwner->m_position, vNewPos);
+
+		float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
+		m_pOwner->SetRotationY(angle);
+		m_pOwner->m_Animator.SetSpeedScale(patrolSpeed / 1.0f);
+	}
+	else
+	{
+		// 到达随机目标点，进入等待，并生成下一个目标点
+		m_WaitTimer = WAIT_DURATION;
+		PickRandomTarget(); // 关键：下次出发前已经选好了新位置
+		m_bAlerted = false;// 重置警觉状态
+	}
+	m_pOwner->m_Animator.SetSpeedScale(1.0f);
+
+
+	// 维持原有的地形适配逻辑
+	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
 }
 
 void EnemyTest::EnemyTest_StatePatrol::Draw() const
@@ -209,12 +304,14 @@ void EnemyTest::LoadAssets()
 		// g_pSkinningModel->LoadAnimation("Run",   "resource/Model/Zombie/Zombie Run.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Walk",  "resource/Model/Zombie/Zombie Walk.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Attack","resource/Model/Zombie/Zombie Attack.fbx", 1.0f);
+		g_pSkinningModel->LoadAnimation("Scream","resource/Model/Zombie/Zombie Scream.fbx", 1.0f);
 
 
 		// 3. 获取动画指针
 		if (g_pIdleAnim == nullptr) g_pIdleAnim = g_pSkinningModel->GetDefaultAnimation();
 		if (g_pWalkAnim == nullptr)   g_pWalkAnim = g_pSkinningModel->GetAnimation("Walk");
 		if (g_pAttackAnim == nullptr) g_pAttackAnim = g_pSkinningModel->GetAnimation("Attack");
+		if (g_pScreamAnim == nullptr) g_pScreamAnim = g_pSkinningModel->GetAnimation("Scream");
 	}
 
 	// 3. 只取一次 Idle 动画指针，共享给所有敌人
