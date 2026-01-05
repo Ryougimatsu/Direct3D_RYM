@@ -21,13 +21,13 @@ public:
 	virtual void Update(double elapsed_time);
 	virtual void Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const = 0;
 	virtual void ChangeState(class State* pNextState) = 0;
-	//virtual void UpdateState();
-	virtual void Damage(float) {}
+	virtual void Damage(float damage, bool isMelee) = 0;
 	virtual bool IsAlerted() const = 0;
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
 	virtual void SetPosition(const DirectX::XMFLOAT3& pos) = 0;
 	virtual void ApplyKnockback(const DirectX::XMVECTOR& direction, float force) = 0;
 	virtual DirectX::XMFLOAT3 GetRotation() const = 0;
+
 	virtual AABB GetAABB() {
 		DirectX::XMFLOAT3 pos = GetPosition(); return {
 		{pos.x - 0.5f, pos.y, pos.z - 0.5f},

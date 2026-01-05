@@ -49,22 +49,23 @@ void Enemy::ChangeState(State* pNextState)
 }
 
 void Enemy_ResolveCollisions() {
-	const float ENEMY_RADIUS = 0.4f;   // 敌人的碰撞半径
-	const float PLAYER_RADIUS = 0.5f;  // 玩家的碰撞半径
+	const float ENEMY_RADIUS = 0.4f;
+	const float PLAYER_RADIUS = 0.5f;
 	const float MIN_DIST_E2E = ENEMY_RADIUS * 2.0f;
 	const float MIN_DIST_E2P = ENEMY_RADIUS + PLAYER_RADIUS;
 
-	XMFLOAT3 pPos = Player_GetPosition(); //
+	// 获取玩家当前位置
+	XMFLOAT3 pPos = Player_GetPosition();
 	XMVECTOR vPlayerPos = XMLoadFloat3(&pPos);
 
 	for (size_t i = 0; i < g_Enemies.size(); ++i) {
-		// --- 1. 敌人与敌人之间的排斥 ---
+		// --- 1. 敌人与敌人之间的排斥 (保持不变，防止敌人重叠) ---
 		for (size_t j = i + 1; j < g_Enemies.size(); ++j) {
 			XMVECTOR posA = XMLoadFloat3(&g_Enemies[i]->GetPosition());
 			XMVECTOR posB = XMLoadFloat3(&g_Enemies[j]->GetPosition());
 
 			XMVECTOR diff = XMVectorSubtract(posA, posB);
-			diff = XMVectorSetY(diff, 0.0f); // 忽略高度差
+			diff = XMVectorSetY(diff, 0.0f);
 
 			float distSq = XMVectorGetX(XMVector3LengthSq(diff));
 			if (distSq < MIN_DIST_E2E * MIN_DIST_E2E && distSq > 0.00001f) {
@@ -72,7 +73,7 @@ void Enemy_ResolveCollisions() {
 				float overlap = MIN_DIST_E2E - dist;
 				XMVECTOR pushDir = XMVector3Normalize(diff);
 
-				// 双方平分排斥力
+				// 互相推开
 				XMFLOAT3 newA, newB;
 				XMStoreFloat3(&newA, posA + pushDir * overlap * 0.5f);
 				XMStoreFloat3(&newB, posB - pushDir * overlap * 0.5f);
@@ -82,21 +83,30 @@ void Enemy_ResolveCollisions() {
 			}
 		}
 
-		// --- 2. 敌人与玩家之间的排斥 ---
+		// --- 2. 敌人与玩家之间的排斥 (修改此处) ---
 		XMVECTOR posE = XMLoadFloat3(&g_Enemies[i]->GetPosition());
-		XMVECTOR diffToP = XMVectorSubtract(posE, vPlayerPos);
+		XMVECTOR diffToP = XMVectorSubtract(posE, vPlayerPos); // 向量：玩家 -> 敌人
 		diffToP = XMVectorSetY(diffToP, 0.0f);
 
 		float distSqToP = XMVectorGetX(XMVector3LengthSq(diffToP));
+
+		// 判定重叠
 		if (distSqToP < MIN_DIST_E2P * MIN_DIST_E2P && distSqToP > 0.00001f) {
 			float dist = sqrtf(distSqToP);
 			float overlap = MIN_DIST_E2P - dist;
+
+			// pushDir 是 "从玩家指向敌人" 的方向
 			XMVECTOR pushDir = XMVector3Normalize(diffToP);
 
-			// 敌人单向避让玩家，不挤动玩家
-			XMFLOAT3 newE;
-			XMStoreFloat3(&newE, posE + pushDir * overlap);
-			g_Enemies[i]->SetPosition(newE);
+	
+			// 计算玩家被推开后的新位置
+			vPlayerPos = vPlayerPos - pushDir * overlap;
+
+			// 应用位置到玩家
+			XMFLOAT3 newP;
+			XMStoreFloat3(&newP, vPlayerPos);
+			Player_SetPosition(newP);
+
 		}
 	}
 }
@@ -261,7 +271,7 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 				}
 
 				// 应用伤害
-				enemy->Damage(finalDamage);
+				enemy->Damage(finalDamage, true);
 			}
 		}
 	}

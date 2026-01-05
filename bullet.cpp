@@ -116,7 +116,7 @@ void Bullet_CheckCollisionWithEnemies()
 			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
 			{
 				// 1. 敌人受伤/死亡逻辑
-				pEnemy->Damage(10.0f); // 假设每次命中造成 10 点伤害
+				pEnemy->Damage(10.0f,false); // 假设每次命中造成 10 点伤害
 
 				// 3. 销毁子弹
 				Bullet_Destroy(i);

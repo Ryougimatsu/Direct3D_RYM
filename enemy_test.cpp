@@ -16,6 +16,8 @@ const Animation* EnemyTest::g_pIdleAnim = nullptr;
 const Animation* EnemyTest::g_pWalkAnim = nullptr;
 const Animation* EnemyTest::g_pAttackAnim = nullptr;
 const Animation* EnemyTest::g_pScreamAnim = nullptr;
+const Animation* EnemyTest::g_pDyingAnim = nullptr;
+const Animation* EnemyTest::g_pReaction_HitAnim = nullptr;
 namespace 
 {
 	SkinningModel* g_pSkinningModel = nullptr;
@@ -103,6 +105,8 @@ void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 			if (!m_bAlerted && !m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
 				m_pOwner->m_Animator.PlayAnimation(g_pScreamAnim, false, 0.2f);
 				m_bAlerted = true; 
+
+				m_pOwner->SetAlerted(true);
 			}
 		}
 	}
@@ -180,6 +184,19 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	toPlayer = XMVectorSetY(toPlayer, 0.0f); // 忽略高度差进行导航
 
 	float dist = XMVectorGetX(XMVector3Length(toPlayer));
+
+	if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
+		// 如果播放进度小于 90%，就跳过移动逻辑
+		if (m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.9f) {
+
+			// 记得更新重力/高度，防止穿帮
+			m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+
+			// 仍然需要更新动画机的时间
+			// (注意：Enemy::Update 里已经调用了 m_Animator.Update，所以这里直接 return 即可)
+			return;
+		}
+	}
 
 	// --- 1. 状态判断：攻击范围判定 ---
 	bool inAttackRange = (dist < m_pOwner->m_AttackRadius);
@@ -304,6 +321,9 @@ void EnemyTest::LoadAssets()
 		g_pSkinningModel->LoadAnimation("Walk",  "resource/Model/Zombie/Zombie Walk.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Attack","resource/Model/Zombie/Zombie Attack.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Scream","resource/Model/Zombie/Zombie Scream.fbx", 1.0f);
+		g_pSkinningModel->LoadAnimation("Dying","resource/Model/Zombie/Zombie Dying.fbx", 1.0f);
+		g_pSkinningModel->LoadAnimation("Reaction Hit","resource/Model/Zombie/Zombie Reaction Hit.fbx", 1.0f);
+
 
 
 		// 3. 获取动画指针
@@ -311,14 +331,8 @@ void EnemyTest::LoadAssets()
 		if (g_pWalkAnim == nullptr)   g_pWalkAnim = g_pSkinningModel->GetAnimation("Walk");
 		if (g_pAttackAnim == nullptr) g_pAttackAnim = g_pSkinningModel->GetAnimation("Attack");
 		if (g_pScreamAnim == nullptr) g_pScreamAnim = g_pSkinningModel->GetAnimation("Scream");
-	}
-
-	// 3. 只取一次 Idle 动画指针，共享给所有敌人
-	if (g_pIdleAnim == nullptr)
-	{
-		g_pIdleAnim = g_pSkinningModel->GetDefaultAnimation();
-		// 或者，若你 Idle 不是默认动画：
-		// g_pIdleAnim = g_pSkinningModel->GetAnimation("Zombie Idle1");
+		if (g_pDyingAnim == nullptr)  g_pDyingAnim = g_pSkinningModel->GetAnimation("Dying");
+		if (g_pReaction_HitAnim == nullptr) g_pReaction_HitAnim = g_pSkinningModel->GetAnimation("Reaction Hit");
 	}
 }
 
@@ -328,23 +342,72 @@ void EnemyTest::UnloadAssets()
 		g_pSkinningModel->Release();
 		delete g_pSkinningModel;
 		g_pSkinningModel = nullptr;
+		g_pIdleAnim = nullptr;
+		g_pWalkAnim = nullptr;
+		g_pAttackAnim = nullptr;
+		g_pScreamAnim = nullptr;
+		g_pDyingAnim = nullptr;
+		g_pReaction_HitAnim = nullptr;
 	}
+}
+
+void EnemyTest::SetPosition(const DirectX::XMFLOAT3& pos)
+{
+	if (m_bIsDead) return;
+	m_position = pos;
+}
+
+void EnemyTest::Damage(float damage, bool isMelee)
+{
+	if (m_bIsDead) return;
+	if (!m_bAlertedStatus) {
+		m_bAlertedStatus = true; // 标记为已警觉
+
+		// 切换到追逐状态 (这样下一帧 Update 就会开始跑向玩家)
+		ChangeState(new EnemyTest_StateChase(this));
+		if (g_pScreamAnim) {
+			m_Animator.PlayAnimation(g_pScreamAnim, false, 0.1f);
+		}
+
+		m_HP -= damage; // 记得扣血
+		return;
+	}
+
+	// =========================================================
+	// 正常战斗状态
+	// =========================================================
+	m_HP -= damage;
+
+	if (m_HP <= 0.0f) {
+		// --- 死亡逻辑 ---
+		m_HP = 0.0f;
+		m_bIsDead = true;
+		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.1f);
+		m_DeathTimer = 3.5f;
+	}
+	else {
+		// --- 存活时的受击反馈 ---
+
+		// 需求 2 & 3: 只有近战才播放受击动画，枪击正常追击
+		if (isMelee) {
+			// 近战攻击：播放硬直动画
+			m_Animator.PlayAnimation(g_pReaction_HitAnim, false, 0.1f);
+		}
+		else {
+			// 枪击：什么都不做 (不播放 Hit 动画)
+			// 这样敌人如果是 Chase 状态，就会继续播放 Run/Walk 动画追你
+		}
+	}
+
 }
 
 AABB EnemyTest::GetAABB()
 {
 	float hw = 0.5f; // 半宽
 	float h = 2.0f;  // 高度
-
 	return {
-		{ m_position.x - hw, m_position.y,        m_position.z - hw },
-		{ m_position.x + hw, m_position.y + h,    m_position.z + hw }
-	};
-
-	
-	return {
-		{m_position.x - 1.0f, m_position.y, m_position.z - 1.0f},
-		{m_position.x + 1.0f, m_position.y + 2.0f, m_position.z + 1.0f}
+		{ m_position.x - hw, m_position.y,     m_position.z - hw },
+		{ m_position.x + hw, m_position.y + h, m_position.z + hw }
 	};
 }
 
@@ -355,7 +418,7 @@ void EnemyTest::ChangeState(State* pNextState)
 void EnemyTest::ApplyKnockback(const DirectX::XMVECTOR& direction, float force)
 {
 	// 如果已经死亡，不处理物理效果
-	if (m_bIsDestroyed) return;
+	if (m_bIsDead) return;
 
 	// 1. 计算击退向量 (忽略 Y 轴，防止被打飞上天)
 	XMVECTOR knockDir = XMVectorSetY(direction, 0.0f);
@@ -370,18 +433,23 @@ void EnemyTest::ApplyKnockback(const DirectX::XMVECTOR& direction, float force)
 
 	// 4. 确保贴地 (非常重要，否则击退后可能悬空或穿地)
 	m_position.y = MeshField_GetHeight(m_position.x, m_position.z);
-
-	// 5. [可选] 播放受击/尖叫动作造成硬直
-	// 只有当前不在播放尖叫时才播放，避免鬼畜
-	if (g_pScreamAnim && !m_Animator.IsPlaying(g_pScreamAnim)) {
-		m_Animator.PlayAnimation(g_pScreamAnim, false, 0.1f);
-	}
 }
 void EnemyTest::SetAlerted(bool alerted) { m_bAlertedStatus = alerted; }
 
 
+bool EnemyTest::IsDestroyed() const
+{
+	return m_bIsDead && (m_DeathTimer <= 0.0f);
+}
+
 void EnemyTest::Update(double elapsed_time)
 {
+	if (m_bIsDead) {
+		m_DeathTimer -= (float)elapsed_time;
+		m_Animator.Update(elapsed_time);
+		return;
+	}
+
 	Enemy::Update(elapsed_time);
 	m_Animator.Update(elapsed_time);
 }

@@ -19,6 +19,7 @@ public:
 	void Update(double dt);
 	void Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj);
 	DirectX::XMFLOAT3 GetPosition() const { return m_Position; }
+	void SetPosition(const DirectX::XMFLOAT3& pos) { m_Position = pos; }
 
 	DirectX::XMFLOAT3 m_CurrentMoveDir = { 0, 0, 0 }; // 当前平滑后的移动向量
 	float m_DampingSpeed = 10.0f; // 响应速度，值越大越灵敏
@@ -56,3 +57,4 @@ DirectX::XMFLOAT3 Player_GetPosition();
 void Player_Damage(float damage);
 PlayerCharacter* Player_GetInstance();
 bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius);
+void Player_SetPosition(const DirectX::XMFLOAT3& pos);

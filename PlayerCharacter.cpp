@@ -62,6 +62,13 @@ bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius) {
 	return false;
 }
 
+void Player_SetPosition(const DirectX::XMFLOAT3& pos)
+{
+	if (g_pPlayerInstance) {
+		g_pPlayerInstance->SetPosition(pos);
+	}
+}
+
 bool PlayerCharacter::Initialize() {
 
 	g_pPlayerInstance = this;
@@ -171,7 +178,7 @@ void PlayerCharacter::Update(double dt) {
 
 		// 2. 播放攻击动画 (关键：false 表示不循环，只播一次)
 		// 确保你在 Initialize() 里 LoadAnimation 加载了 "Slash Advance"
-		m_Animator.PlayAnimation(m_pModel->GetAnimation("Slash Advance"), false, 0.1f);
+		m_Animator.PlayAnimation(m_pModel->GetAnimation("Slash Advance"), false, 0.02f);
 
 		// 3. 设置硬直时间
 		// 假设动作长 1.2 秒，设置 1.5 秒冷却，留 0.3 秒后摇
