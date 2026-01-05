@@ -5,6 +5,7 @@
 #include <cstdlib>     
 #include <ctime>
 #include "SkinningShader.h"
+#include "Meshfield.h"
 using namespace DirectX;
 
 
@@ -38,6 +39,7 @@ void Enemy::Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const
 		e->Draw(view, proj);
 	}
 }
+
 void Enemy::ChangeState(State* pNextState)
 {
 	if (m_pState) {
@@ -132,8 +134,6 @@ void Enemy_Update(double elapsed_time)
 
 	Enemy_ResolveCollisions();
 
-	float repulsionRadius = 0.6f; // 碰撞半径
-
 	// ==========================================
 	// 随机生成逻辑
 	// ==========================================
@@ -212,4 +212,57 @@ Enemy* Enemy_GetEnemy(int index)
 {
 	if (index < 0 || index >= g_Enemies.size()) return nullptr;
 	return g_Enemies[index];
+}
+
+void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, float range, float angle) {
+	XMVECTOR vOrigin = XMLoadFloat3(&pPos);
+	float cosThreshold = cosf(XMConvertToRadians(angle * 0.5f));
+
+	for (auto* enemy : g_Enemies) {
+		XMVECTOR vEnemyPos = XMLoadFloat3(&enemy->GetPosition());
+		XMVECTOR diff = vEnemyPos - vOrigin;
+		diff = XMVectorSetY(diff, 0.0f); // 忽略高度
+
+		// [优化 2] 使用 LengthSq 避免开方运算，提高性能
+		float distSq = XMVectorGetX(XMVector3LengthSq(diff));
+		if (distSq < range * range) { // 比较距离的平方
+
+			XMVECTOR dirToEnemy = XMVector3Normalize(diff);
+			float dotFacing = XMVectorGetX(XMVector3Dot(playerFwd, dirToEnemy));
+
+			// 判定：玩家是否面向敌人 (在扇形攻击范围内)
+			if (dotFacing > cosThreshold) {
+
+				// === 背刺逻辑优化 ===
+
+				float enemyRotY = enemy->GetRotation().y;
+				XMVECTOR enemyFwd = XMVectorSet(sinf(enemyRotY), 0, cosf(enemyRotY), 0);
+
+				// 计算玩家朝向和敌人朝向的点积
+				// 如果 > 0.5，说明两人朝向大致相同 -> 玩家在敌人背后
+				float backstabDot = XMVectorGetX(XMVector3Dot(playerFwd, enemyFwd));
+
+				bool isBackstab = (backstabDot > 0.5f);
+				bool isAlerted = enemy->IsAlerted();
+
+				float finalDamage = 0.0f;
+
+				if (isBackstab && !isAlerted) {
+					// --- 潜行击杀 ---
+					finalDamage = 100.0f; // 致命一击
+					// PlaySound("Stab.wav"); 
+				}
+				else {
+					// --- 正面/警觉攻击 ---
+					finalDamage = 40.0f; // 普通伤害
+
+					// 施加击退
+					enemy->ApplyKnockback(dirToEnemy, 2.0f);
+				}
+
+				// 应用伤害
+				enemy->Damage(finalDamage);
+			}
+		}
+	}
 }

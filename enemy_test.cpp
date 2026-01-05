@@ -262,7 +262,6 @@ void EnemyTest::EnemyTest_StateChase::Draw() const
 EnemyTest::EnemyTest(const DirectX::XMFLOAT3& position)
 	: m_position(position) 
 {
-	m_HP = 30.0f; // 设置初始血量
 	m_DetectionAngle = 5.0f; // 设置索敌半径
 
 	// 初始化旋转
@@ -348,6 +347,38 @@ AABB EnemyTest::GetAABB()
 		{m_position.x + 1.0f, m_position.y + 2.0f, m_position.z + 1.0f}
 	};
 }
+
+void EnemyTest::ChangeState(State* pNextState)
+{
+	Enemy::ChangeState(pNextState);
+}
+void EnemyTest::ApplyKnockback(const DirectX::XMVECTOR& direction, float force)
+{
+	// 如果已经死亡，不处理物理效果
+	if (m_bIsDestroyed) return;
+
+	// 1. 计算击退向量 (忽略 Y 轴，防止被打飞上天)
+	XMVECTOR knockDir = XMVectorSetY(direction, 0.0f);
+	knockDir = XMVector3Normalize(knockDir);
+
+	// 2. 获取当前位置并施加位移
+	XMVECTOR currentPos = XMLoadFloat3(&m_position);
+	XMVECTOR newPos = currentPos + knockDir * force;
+
+	// 3. 更新位置
+	XMStoreFloat3(&m_position, newPos);
+
+	// 4. 确保贴地 (非常重要，否则击退后可能悬空或穿地)
+	m_position.y = MeshField_GetHeight(m_position.x, m_position.z);
+
+	// 5. [可选] 播放受击/尖叫动作造成硬直
+	// 只有当前不在播放尖叫时才播放，避免鬼畜
+	if (g_pScreamAnim && !m_Animator.IsPlaying(g_pScreamAnim)) {
+		m_Animator.PlayAnimation(g_pScreamAnim, false, 0.1f);
+	}
+}
+void EnemyTest::SetAlerted(bool alerted) { m_bAlertedStatus = alerted; }
+
 
 void EnemyTest::Update(double elapsed_time)
 {

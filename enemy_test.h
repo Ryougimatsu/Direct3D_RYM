@@ -20,6 +20,8 @@ private:
 	float m_AttackCooldown = 1.0f;   // 攻击间隔（秒）
 	double m_LastAttackTimer = 0.0;  // 攻击计时器
 	float m_FOVAngle = 90.0f;        // 视野总角度（度）
+    bool m_bAlertedStatus = false; //   状态标记
+	bool m_bIsDestroyed = false;   // 是否已被销毁
 
 
 	Animator m_Animator;            // 每个敌人私有的动画器
@@ -41,6 +43,12 @@ public:
     bool IsDestroyed() const override { return m_HP <= 0.0f; }
     AABB GetAABB() override;
 
+    DirectX::XMFLOAT3 GetRotation() const override { return m_Rotation; }
+
+    bool IsAlerted() const override { return m_bAlertedStatus; }
+    void ChangeState(State* pNextState) override;
+    void ApplyKnockback(const DirectX::XMVECTOR& direction, float force) override;
+    void SetAlerted(bool alerted);
 
     void SetRotationY(float angle) { m_Rotation.y = angle; }
 

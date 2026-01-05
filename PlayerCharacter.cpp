@@ -5,6 +5,7 @@
 #include "texture.h"
 #include "billboard.h"
 #include "bullet.h"
+#include "enemy.h"
 using namespace DirectX;
 
 PlayerCharacter* g_pPlayerInstance = nullptr;
@@ -79,7 +80,7 @@ bool PlayerCharacter::Initialize() {
 	m_pModel->LoadAnimation("Firing Rifle", "resource/model/Character_Model/Firing Rifle.fbx", 1.0f);
 	m_pModel->LoadAnimation("Firing Rifle Idle", "resource/model/Character_Model/Firing Rifle idle.fbx", 1.0f);
 
-	m_pModel->LoadAnimation("Running", "resource/model/Running.fbx", 1.0f);
+	m_pModel->LoadAnimation("Slash Advance", "resource/model/Character_Model/Slash Advance.fbx", 1.0f);
 
 	m_pGunModel = ModelLoad("resource/model/M4a4.fbx", 1.0f);
 
@@ -134,119 +135,128 @@ void PlayerCharacter::Update(double dt) {
 	XMVECTOR playerPos = XMLoadFloat3(&m_Position);
 	XMVECTOR lookDir = XMVectorSubtract(mousePos, playerPos);
 
-	// 计算目标角度
 	float targetAngle = atan2f(XMVectorGetX(lookDir), XMVectorGetZ(lookDir));
-
-	// 平滑旋转 (给转弯一点重量感)
 	float angleDiff = targetAngle - m_RotationY;
 	while (angleDiff < -XM_PI) angleDiff += XM_2PI;
 	while (angleDiff > XM_PI) angleDiff -= XM_2PI;
-	m_RotationY += angleDiff * 0.15f; // 0.15f 是转向灵敏度
+	m_RotationY += angleDiff * 0.15f;
 
-	// --- 2. 输入平滑处理 (Damping) ---
+	// --- 2. 输入平滑处理 ---
 	XMVECTOR inputVec = GetInputVector();
 	XMVECTOR currentSmoothed = XMLoadFloat3(&m_CurrentMoveDir);
 	XMVECTOR smoothedInput = XMVectorLerp(currentSmoothed, inputVec, 8.0f * (float)dt);
 	XMStoreFloat3(&m_CurrentMoveDir, smoothedInput);
 
 	float moveLen = XMVectorGetX(XMVector3Length(smoothedInput));
-
 	bool isFiring = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 
-	std::string animToPlay = "Rifle Aiming Idle";
-	float crossfadeTime = 0.2f;
 
-	// --- 3. 战术动画状态机 ---
-	if (moveLen > 0.05f) {
-		// 【移动逻辑】
-		XMVECTOR forward = XMVectorSet(sinf(m_RotationY), 0, cosf(m_RotationY), 0);
-		XMVECTOR right = XMVectorSet(cosf(m_RotationY), 0, -sinf(m_RotationY), 0);
-
-		float fwdDot = XMVectorGetX(XMVector3Dot(forward, smoothedInput));
-		float sideDot = XMVectorGetX(XMVector3Dot(right, smoothedInput));
-
-		float angle = atan2f(sideDot, fwdDot);
-		animToPlay = SelectTacticalAnim(angle); // 先根据方向选好步法
-
-		// 如果移动中开火，覆盖为移动射击动作
-		if (isFiring) {
-			animToPlay = "Firing Rifle";
-		}
-
-		m_Animator.SetSpeedScale(moveLen); // 移动时匹配步频
-	}
-	else {
-		// 【静止逻辑】
-		m_Animator.SetSpeedScale(1.0f); // 静止时恢复正常动画速率
-
-		if (isFiring) {
-		
-			animToPlay = "Firing Rifle Idle";
-		}
-		else {
-			animToPlay = "Rifle Aiming Idle";
-		}
-	}
-
-	// --- 4. 应用物理位移与动画 ---
-	XMVECTOR pos = XMLoadFloat3(&m_Position);
-	pos += smoothedInput * m_MoveSpeed * (float)dt; // 仅在此处更新一次位置
-	XMStoreFloat3(&m_Position, pos);
-
-	m_Animator.PlayAnimation(m_pModel->GetAnimation(animToPlay), true, crossfadeTime);
-	m_Animator.Update(dt);
-
-
-	// --- 5. 开火逻辑 ---
-	if (m_ShootTimer > 0.0f) {
-		m_ShootTimer -= (float)dt; // 计时器倒计时
-	}
-
-	if (isFiring && m_ShootTimer <= 0.0f) {
-		// A. 计算当前帧枪口的世界矩阵 (参考 Draw 函数里的逻辑)
-		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
-		if (nameMap.count("mixamorig:RightHand")) {
-			int handIdx = nameMap.at("mixamorig:RightHand");
-			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
-
-			// 构造枪支的世界矩阵
-			XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
-
-			XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
-				XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
-				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
-
-			XMMATRIX gunWorld = gunLocal * handMat * world;
-
-			// B. 获取枪口世界位置和方向
-			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-			XMVECTOR bulletStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
-
-			// 获取枪的朝向 (根据你上一轮调试的结果，可能是 r[2] 或 r[0])
-			XMVECTOR bulletDir = gunWorld.r[0];
-
-			float offsetDistance = 0.5f;
-			bulletStartPos = XMVectorAdd(bulletStartPos, XMVectorScale(bulletDir, offsetDistance));
-			// C. 创建子弹
-			XMFLOAT3 pos, vel;
-			XMStoreFloat3(&pos, bulletStartPos);
-			XMStoreFloat3(&vel, bulletDir);
-
-			Bullet_Create(pos, vel);
-			Player_EmitSound(m_Position, 25.0f);
-			// D. 重置计时器
-			m_ShootTimer = m_FireRate;
-		}
-	}
-
-	if (g_SoundTimer > 0.0f) g_SoundTimer -= (float)dt;// 声音衰减
-
-	// 更新无敌帧计时器
+	// --- 计时器更新 ---
+	if (m_MeleeTimer > 0.0f) m_MeleeTimer -= (float)dt;
+	if (m_ShootTimer > 0.0f) m_ShootTimer -= (float)dt;
+	if (g_SoundTimer > 0.0f) g_SoundTimer -= (float)dt;
 	if (m_InvincibleTimer > 0.0f) {
 		m_InvincibleTimer -= (float)dt;
 		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
 	}
 
+	// =========================================================
+	// 3. 近战触发逻辑 (优先级最高)
+	// =========================================================
+	if ((GetAsyncKeyState('F') & 0x8000) && m_MeleeTimer <= 0.0f) {
+		XMVECTOR forward = XMVectorSet(sinf(m_RotationY), 0, cosf(m_RotationY), 0);
+
+		// 1. 造成伤害
+		Enemy_ApplyMeleeDamage(m_Position, forward, 2.5f, 120.0f);
+
+		// 2. 播放攻击动画 (关键：false 表示不循环，只播一次)
+		// 确保你在 Initialize() 里 LoadAnimation 加载了 "Slash Advance"
+		m_Animator.PlayAnimation(m_pModel->GetAnimation("Slash Advance"), false, 0.1f);
+
+		// 3. 设置硬直时间
+		// 假设动作长 1.2 秒，设置 1.5 秒冷却，留 0.3 秒后摇
+		m_MeleeTimer = 2.0f;
+	}
+
+	// =========================================================
+	// 4. 动画状态机 & 移动逻辑
+	// =========================================================
+
+	// [动作锁]：如果 Timer > 0.3f，说明动作正在播放中，禁止切回站立或走路
+	bool isInMeleeAnimation = (m_MeleeTimer > 0.2f);
+
+	if (!isInMeleeAnimation)
+	{
+		// >>> 只要不是在攻击硬直中，就会进入这里 <<<
+
+		std::string animToPlay = "Rifle Aiming Idle"; // 默认目标：持枪站立
+		float crossfadeTime = 0.2f;
+
+		// --- A. 移动检测 ---
+		if (moveLen > 0.05f) {
+			// [正在移动]
+			XMVECTOR forward = XMVectorSet(sinf(m_RotationY), 0, cosf(m_RotationY), 0);
+			XMVECTOR right = XMVectorSet(cosf(m_RotationY), 0, -sinf(m_RotationY), 0);
+			float fwdDot = XMVectorGetX(XMVector3Dot(forward, smoothedInput));
+			float sideDot = XMVectorGetX(XMVector3Dot(right, smoothedInput));
+			float angle = atan2f(sideDot, fwdDot);
+
+			animToPlay = SelectTacticalAnim(angle);
+
+			if (isFiring) animToPlay = "Firing Rifle";
+
+			m_Animator.SetSpeedScale(moveLen);
+		}
+		else {
+			// [移动结束 / 站立不动]
+			// 这里的逻辑保证了：
+			// 1. 刚打完架(硬直结束) -> 进到这里 -> 设为 Idle
+			// 2. 刚跑完步(松开键盘) -> 进到这里 -> 设为 Idle
+			if (isFiring) animToPlay = "Firing Rifle Idle";
+			else animToPlay = "Rifle Aiming Idle";
+
+			m_Animator.SetSpeedScale(1.0f);
+		}
+
+		// [应用动画] (true = 循环播放)
+		// 这行代码会平滑过渡到上面选定的动作 (比如从 Slash 过渡回 Idle)
+		m_Animator.PlayAnimation(m_pModel->GetAnimation(animToPlay), true, crossfadeTime);
+
+		// --- B. 物理位移 ---
+		// 只有没在硬直时，才允许位移
+		XMVECTOR pos = XMLoadFloat3(&m_Position);
+		pos += smoothedInput * m_MoveSpeed * (float)dt;
+		XMStoreFloat3(&m_Position, pos);
+
+		// --- C. 开火逻辑 ---
+		if (isFiring && m_ShootTimer <= 0.0f) {
+			const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
+			if (nameMap.count("mixamorig:RightHand")) {
+				int handIdx = nameMap.at("mixamorig:RightHand");
+				XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+				XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+				XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) * XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) * XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+				XMMATRIX gunWorld = gunLocal * handMat * world;
+
+				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
+				XMVECTOR bulletStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+				XMVECTOR bulletDir = gunWorld.r[0];
+				float offsetDistance = 0.5f;
+				bulletStartPos = XMVectorAdd(bulletStartPos, XMVectorScale(bulletDir, offsetDistance));
+
+				XMFLOAT3 p, v;
+				XMStoreFloat3(&p, bulletStartPos);
+				XMStoreFloat3(&v, bulletDir);
+				Bullet_Create(p, v);
+
+				Player_EmitSound(m_Position, 25.0f);
+				m_ShootTimer = m_FireRate;
+			}
+		}
+	}
+
+	// --- 5. 动画更新 (必须在所有逻辑之后) ---
+	m_Animator.Update(dt);
 }
 
 void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj) {

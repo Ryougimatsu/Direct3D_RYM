@@ -32,6 +32,7 @@ private:
 	// 资源与组件
 	SkinningModel* m_pModel = nullptr;
 	Animator       m_Animator;
+
 	MODEL* m_pGunModel;
 	// 状态机变量
 	CharacterState m_CurrentState = CharacterState::Idle;
@@ -47,6 +48,7 @@ private:
 	float m_ShootTimer = 0.0f;          // 开火计时器
 	float m_FireRate = 0.1f;           // 射击间隔（0.1秒代表1秒10发）
 	float m_InvincibleTimer = 0.0f;      // 当前剩余无敌时间
+	float m_MeleeTimer = 0.0f;           // 近战攻击计时器
 	const float m_InvincibleDuration = 1.0f; // 受到伤害后的无敌时长（秒）
 };
 
