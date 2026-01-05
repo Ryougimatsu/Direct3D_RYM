@@ -34,5 +34,5 @@ bool Inventory_AddItem(int itemId, int count);
 bool Inventory_RemoveItem(int slotIndex, int count);
 bool Inventory_IsOpen();
 int Inventory_GetItemUVIndex(int itemId);
-
+void UI_DrawHUD();
 int Inventory_GetIconsTextureID();

@@ -6,6 +6,7 @@
 #include "billboard.h"
 #include "bullet.h"
 #include "enemy.h"
+#include "key_logger.h"
 using namespace DirectX;
 
 PlayerCharacter* g_pPlayerInstance = nullptr;
@@ -66,6 +67,20 @@ void Player_SetPosition(const DirectX::XMFLOAT3& pos)
 {
 	if (g_pPlayerInstance) {
 		g_pPlayerInstance->SetPosition(pos);
+	}
+}
+
+void Player_AddAmmo(int count)
+{
+	if (g_pPlayerInstance) {
+		g_pPlayerInstance->AddAmmo(count);
+	}
+}
+
+void Player_Heal(float amount)
+{
+	if (g_pPlayerInstance) {
+		g_pPlayerInstance->Heal(amount);
 	}
 }
 
@@ -167,6 +182,30 @@ void PlayerCharacter::Update(double dt) {
 		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
 	}
 
+	// --- 换弹逻辑 (R键) ---
+	// 条件：按下R 且 没在换弹 且 弹匣不满 且 有备弹
+	if (KeyLogger_IsTrigger(KK_R) && !m_IsReloading && m_CurrentAmmo < MAG_SIZE && m_TotalAmmo > 0) {
+		m_IsReloading = true;
+		m_ReloadTimer = RELOAD_TIME;
+	}
+
+	// --- 换弹过程更新 ---
+	if (m_IsReloading) {
+		m_ReloadTimer -= (float)dt;
+		if (m_ReloadTimer <= 0.0f) {
+			// 换弹完成
+			m_IsReloading = false;
+
+			// 计算需要多少子弹填满
+			int needed = MAG_SIZE - m_CurrentAmmo;
+
+			// 实际能填多少 (备弹可能不够)
+			int actualFill = (m_TotalAmmo >= needed) ? needed : m_TotalAmmo;
+
+			m_CurrentAmmo += actualFill;
+			m_TotalAmmo -= actualFill;
+		}
+	}
 	// =========================================================
 	// 3. 近战触发逻辑 (优先级最高)
 	// =========================================================
@@ -236,7 +275,7 @@ void PlayerCharacter::Update(double dt) {
 		XMStoreFloat3(&m_Position, pos);
 
 		// --- C. 开火逻辑 ---
-		if (isFiring && m_ShootTimer <= 0.0f) {
+		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && m_CurrentAmmo > 0) {
 			const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
 			if (nameMap.count("mixamorig:RightHand")) {
 				int handIdx = nameMap.at("mixamorig:RightHand");
@@ -255,6 +294,7 @@ void PlayerCharacter::Update(double dt) {
 				XMStoreFloat3(&p, bulletStartPos);
 				XMStoreFloat3(&v, bulletDir);
 				Bullet_Create(p, v);
+				m_CurrentAmmo--;
 
 				Player_EmitSound(m_Position, 25.0f);
 				m_ShootTimer = m_FireRate;
@@ -327,6 +367,22 @@ void PlayerCharacter::ApplyDamage(float damage)
 	m_HP -= damage;
 
 	m_InvincibleTimer = m_InvincibleDuration;
+}
+
+void PlayerCharacter::Heal(float amount)
+{
+	if (m_HP <= 0.0f) return; 
+
+	m_HP += amount;
+	if (m_HP > m_MaxHP) {
+		m_HP = m_MaxHP;
+	}
+}
+
+void PlayerCharacter::AddAmmo(int amount)
+{
+	m_TotalAmmo += amount;
+	if (m_TotalAmmo > 300) m_TotalAmmo = 300;
 }
 
 PlayerCharacter::~PlayerCharacter() {

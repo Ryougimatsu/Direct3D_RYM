@@ -52,6 +52,8 @@ void Game_Initialize()
 	Sky_Initialize();
 	Map_Initialize();         
 	Player_Camera_Initialize();
+	Inventory_Initialize();
+	DropItem_Initialize();
 
 	// 创建并初始化你的状态机角色
 	g_Player = new PlayerCharacter();
@@ -97,7 +99,8 @@ void Game_Update(double elapsed_time)
 	Bullet_Update(elapsed_time);
 	Bullet_CheckCollisionWithEnemies();
 	Sky_SetPosition(Player_Camera_GetPosition());
-
+	DropItem_Update(elapsed_time);
+	Inventory_Update(elapsed_time);
 	
 	if (!g_IsDebugCameraMode && g_Player)
 	{
@@ -105,9 +108,6 @@ void Game_Update(double elapsed_time)
 	}
 }
 
-// ------------------------------------------------------------------
-// 绘制：只渲染环境和你的主角
-// ------------------------------------------------------------------
 void Game_Draw()
 {
 	Direct3D_SetOffBackBuffer();
@@ -126,8 +126,6 @@ void Game_Draw()
 		view = XMLoadFloat4x4(&v);
 		proj = XMLoadFloat4x4(&p);
 	}
-
-	// --- 绘制你的主角 (蒙皮着色器) ---
 	if (g_Player) {
 		g_Player->Draw(view, proj);
 	}
@@ -143,12 +141,15 @@ void Game_Draw()
 	Sampler_SetFilterAnisotropic();
 	Sky_Draw();
 	Bullet_Draw();
+	DropItem_Draw();
 	Map_Draw(); // 此时 Map 只会画地面
 
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);
 	Sprite_Begin();
 	GameUI_Draw();
+	Inventory_Draw();
+	UI_DrawHUD();
 	Direct3D_SetDepthEnable(true);
 }
 
@@ -158,6 +159,8 @@ void Game_Finalize()
 		delete g_Player;
 		g_Player = nullptr;
 	}
+	Inventory_Finalize();
+	DropItem_Finalize();
 	Enemy_Finalize();
 	Sky_Finalize();
 	Map_Finalize();

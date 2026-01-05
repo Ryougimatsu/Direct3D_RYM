@@ -15,9 +15,9 @@ struct DropItem
 {
 	bool active;
 	XMFLOAT3 position;
-	int itemId;         
-	float floatAngle;   
-	float rotationY;    
+	int itemId;
+	float floatAngle;
+	float rotationY;
 };
 
 namespace
@@ -36,8 +36,6 @@ void DropItem_Initialize()
 	}
 
 	// 加载一个贴图作为掉落物外观
-	// 既然我们之前生成了金色的 ui_cursor.png，它很像一个宝箱框，正好拿来用！
-	// 或者你可以专门画一个 "Chest.png"
 	g_DropTexID = Texture_LoadFromFile(L"resource/texture/ui_cursor.png");
 
 	// 如果没找到，就用白色
@@ -46,19 +44,17 @@ void DropItem_Initialize()
 
 void DropItem_Finalize()
 {
-	// 不需要特殊清理，除非有动态申请的内存
 }
 
 void DropItem_Spawn(XMFLOAT3 position, int itemId)
 {
-	// 找一个空闲的坑位
 	for (int i = 0; i < MAX_DROPS; i++)
 	{
 		if (!g_Drops[i].active)
 		{
 			g_Drops[i].active = true;
 			g_Drops[i].position = position;
-			g_Drops[i].position.y -= 0.5f; // 稍微抬高一点，不要埋在地里
+			g_Drops[i].position.y -= 0.5f;
 			g_Drops[i].itemId = itemId;
 			g_Drops[i].floatAngle = 0.0f;
 			g_Drops[i].rotationY = 0.0f;
@@ -78,32 +74,36 @@ void DropItem_Update(double elapsed_time)
 
 		DropItem& item = g_Drops[i];
 
-	
-		item.rotationY += 2.0f * (float)elapsed_time; // 旋转速度
-		item.floatAngle += 3.0f * (float)elapsed_time; // 漂浮速度
+		// 1. 更新动画
+		item.rotationY += 2.0f * (float)elapsed_time; // 旋转
+		item.floatAngle += 3.0f * (float)elapsed_time; // 漂浮
 
-	
+		// 计算漂浮高度
+		// Update 里直接修改 position.y，这样绘制和碰撞检测都会使用最新的高度
 		float floatOffset = sinf(item.floatAngle) * 0.2f;
-
 		float groundHeight = MeshField_GetHeight(item.position.x, item.position.z);
 		float baseOffset = 0.5f;
 		item.position.y = groundHeight + baseOffset + floatOffset;
 
 
-		if (Collision_IsOverlapSphere({ item.position, pickupRange }, playerPos))
+		// 2. 拾取检测 (修正了参数不匹配和逻辑混乱的问题)
+		// 注意：这里需要给 playerPos 补一个半径 (0.5f) 构成球体，否则会报错
+		if (Collision_IsOverlapSphere({ item.position, pickupRange }, { playerPos, 0.5f }))
 		{
-	
-			bool success = Inventory_AddItem(item.itemId, 1);
-
-			if (success)
+			// 分流处理：子弹直接吃，道具进背包
+			if (item.itemId == 4)
 			{
-				item.active = false;
-
-
+				Player_AddAmmo(30);
+				item.active = false; // 直接销毁
 			}
 			else
 			{
-
+				// 尝试放入背包
+				bool success = Inventory_AddItem(item.itemId, 1);
+				if (success)
+				{
+					item.active = false; // 只有放进去了才销毁
+				}
 			}
 		}
 	}
@@ -111,52 +111,50 @@ void DropItem_Update(double elapsed_time)
 
 void DropItem_Draw()
 {
-	//for (int i = 0; i < MAX_DROPS; i++)
-	//{
-	//	if (!g_Drops[i].active) continue;
-
-	//	DropItem& item = g_Drops[i];
-
-	//	// 计算漂浮后的 Y 坐标
-	//	float currentY = item.position.y + sinf(item.floatAngle) * 0.2f;
-
-	//	// 构建世界矩阵：缩放 -> 旋转 -> 平移
-	//	XMMATRIX scale = XMMatrixScaling(0.5f, 0.5f, 0.5f); // 道具做小一点 (0.5米)
-	//	XMMATRIX rot = XMMatrixRotationY(item.rotationY);
-	//	XMMATRIX trans = XMMatrixTranslation(item.position.x, currentY, item.position.z);
-
-	//	XMMATRIX world = scale * rot * trans;
-
-	//	// 绘制方块
-	//	Cube_Draw(g_DropTexID, world);
-	//}
-	// 获取图集纹理 ID
-	int texID = Inventory_GetIconsTextureID();
-	if (texID == -1) return;
-
+	// ==========================================
+	// [已启用] 方块渲染模式 (测试用)
+	// ==========================================
 	for (int i = 0; i < MAX_DROPS; i++)
 	{
 		if (!g_Drops[i].active) continue;
 
 		DropItem& item = g_Drops[i];
 
-		
-		float currentY = item.position.y + 0.5f + sinf(item.floatAngle) * 0.2f;
-		XMFLOAT3 drawPos = { item.position.x, currentY, item.position.z };
+		// 构建世界矩阵
+		// 注意：因为 Update 里已经把 floatOffset 算进 item.position.y 了，
+		// 这里直接用 item.position 即可，不要再加 sinf 了，否则会鬼畜。
+		XMMATRIX scale = XMMatrixScaling(0.5f, 0.5f, 0.5f); // 0.5米的小方块
+		XMMATRIX rot = XMMatrixRotationY(item.rotationY);
+		XMMATRIX trans = XMMatrixTranslation(item.position.x, item.position.y, item.position.z);
 
-		
+		XMMATRIX world = scale * rot * trans;
+
+		// 绘制方块
+		Cube_Draw(g_DropTexID, world);
+	}
+
+	// ==========================================
+	// [已注释] 广告牌渲染模式
+	// ==========================================
+	/*
+	int texID = Inventory_GetIconsTextureID();
+	if (texID == -1) return;
+
+	for (int i = 0; i < MAX_DROPS; i++)
+	{
+		if (!g_Drops[i].active) continue;
+		DropItem& item = g_Drops[i];
+
 		int uvIndex = Inventory_GetItemUVIndex(item.itemId);
-
 		float iconSize = 32.0f;
 		float textureSize = 256.0f;
-
-	
 		float u = (uvIndex * iconSize) / textureSize;
-		float v = 0.0f; // 目前只有第一行
-		float uw = iconSize / textureSize; // 宽度比例 (32/256 = 0.125)
-		float vh = iconSize / textureSize; // 高度比例
+		float v = 0.0f;
+		float uw = iconSize / textureSize;
+		float vh = iconSize / textureSize;
 
-
-		Billboard_Draw(texID, drawPos, 1.0f, 1.0f, u, v, uw, vh);
+		// Update 里已经更新了 Y，这里直接画
+		Billboard_Draw(texID, item.position, 1.0f, 1.0f, u, v, uw, vh);
 	}
+	*/
 }

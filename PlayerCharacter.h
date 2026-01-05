@@ -27,7 +27,13 @@ public:
 	bool IsInvincible() const { return m_InvincibleTimer > 0.0f; }
 	void ApplyDamage(float damage);
 	float GetHP() const { return m_HP; }
+	void Heal(float amount);
 	bool IsDead() const { return m_HP <= 0.0f; }
+
+	int GetCurrentAmmo() const { return m_CurrentAmmo; }
+	int GetTotalAmmo() const { return m_TotalAmmo; } 
+	bool IsReloading() const { return m_IsReloading; }
+	void AddAmmo(int amount); // 捡到子弹时调用
 
 private:
 	// 资源与组件
@@ -42,6 +48,7 @@ private:
 	// 空间属性
 	DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f };
 	float m_HP = 100.0f;
+	float m_MaxHP = 100.0f;
 	float m_RotationY = 0.0f;
 	float m_Scale = 0.01f;     // 修正未识别的关键：定义缩放系数
 	float m_MoveSpeed = 2.0f;
@@ -51,6 +58,15 @@ private:
 	float m_InvincibleTimer = 0.0f;      // 当前剩余无敌时间
 	float m_MeleeTimer = 0.0f;           // 近战攻击计时器
 	const float m_InvincibleDuration = 1.0f; // 受到伤害后的无敌时长（秒）
+
+	
+	const int MAG_SIZE = 30;     // 弹匣容量
+	int m_CurrentAmmo = 30;      // 当前弹匣内的子弹
+	int m_TotalAmmo = 120;       // 备弹 (身上携带的总数，不含弹匣)
+
+	bool m_IsReloading = false;
+	float m_ReloadTimer = 0.0f;
+	const float RELOAD_TIME = 2.0f; // 换弹需要2秒
 };
 
 DirectX::XMFLOAT3 Player_GetPosition();
@@ -58,3 +74,5 @@ void Player_Damage(float damage);
 PlayerCharacter* Player_GetInstance();
 bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius);
 void Player_SetPosition(const DirectX::XMFLOAT3& pos);
+void Player_AddAmmo(int count);
+void Player_Heal(float amount);

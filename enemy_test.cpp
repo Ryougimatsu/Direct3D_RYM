@@ -9,6 +9,7 @@
 #include <ctime>
 #include "SkinningShader.h"
 #include "Skeleton.h"
+#include "DropItem.h"
 using namespace DirectX;
 
 
@@ -384,6 +385,17 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_bIsDead = true;
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.1f);
 		m_DeathTimer = 3.5f;
+
+		int rate = rand() % 100; // 0 ~ 99
+		if (rate < 50)
+		{
+			// 2. 决定掉落什么
+			// 假设 ID 4 是子弹盒 (参照 Inventory.cpp 的定义)
+			int dropItemID = 4;
+
+			// 3. 在敌人当前位置生成
+			DropItem_Spawn(m_position, dropItemID);
+		}
 	}
 	else {
 		// --- 存活时的受击反馈 ---

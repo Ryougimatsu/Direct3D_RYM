@@ -9,6 +9,8 @@
 #include <cstdio>  
 #include <cstdarg> 
 #include "PlayerCharacter.h"
+#include "collision.h"
+
 
 using namespace DirectX;
 
@@ -43,6 +45,7 @@ void DefineItems()
 	g_ItemDatabase[1] = { 1, L"Iron Sword",    L"A rusty sword",  ItemType::Equipment,  1,  -1, 1 };
 	g_ItemDatabase[2] = { 2, L"Magic Apple",   L"Grants XP",      ItemType::Consumable, 99, -1, 2 };
 	g_ItemDatabase[3] = { 3, L"Dungeon Key",   L"Opens the gate", ItemType::KeyItem,    1,  -1, 3 };
+	g_ItemDatabase[4] = { 4, L"5.56mm Ammo", L"Refills 30 rounds", ItemType::Consumable, 10, -1, 4 };
 }
 
 void DrawDebugText(float x, float y, const char* fmt, ...)
@@ -147,23 +150,27 @@ void Inventory_Update(double elapsed_time)
 		InventorySlot& slot = g_Inventory[g_CursorIndex];
 		if (!slot.isEmpty()) {
 			int itemId = slot.itemId;
-			bool isUsed = false; // 标记是否成功使用了道具
+			bool isUsed = false;
 
-			
-			if (itemId == 0) 
+			if (itemId == 0)
 			{
-				//Player_Heal(50.0f);
+				Player_Heal(50.0f); 
 				isUsed = true;
 			}
-			else if (itemId == 2) 
+			else if (itemId == 2)
 			{
-				//Player_Heal(20.0f);
+				// Player_AddExp(100); 
 				isUsed = true;
 			}
+			// [新增] 防止子弹在背包里由于通用逻辑被“吃掉”
+			else if (itemId == 4)
+			{
+				Player_AddAmmo(30);
+				isUsed = true;
+			}
+			// 通用消耗品逻辑
 			else if (g_ItemDatabase[slot.itemId].type == ItemType::Consumable)
 			{
-				
-				//printf("Used generic consumable\n");
 				isUsed = true;
 			}
 
@@ -175,6 +182,7 @@ void Inventory_Update(double elapsed_time)
 			}
 		}
 	}
+	
 }
 
 void Inventory_Draw()
@@ -319,6 +327,36 @@ int Inventory_GetItemUVIndex(int itemId)
 	if (g_ItemDatabase.find(itemId) == g_ItemDatabase.end()) return 0;
 
 	return g_ItemDatabase[itemId].uvIndex;
+}
+
+void UI_DrawHUD()
+{
+	// 1. 获取屏幕尺寸，确保 UI 永远在右下角
+	float screenW = (float)Direct3D_GetBackBufferWidth();
+	float screenH = (float)Direct3D_GetBackBufferHeight();
+
+	// 2. 获取玩家实例和数据
+	PlayerCharacter* pPlayer = Player_GetInstance(); // 假设你有这个单例获取函数
+	if (!pPlayer) return;
+
+	int cur = pPlayer->GetCurrentAmmo();
+	int tot = pPlayer->GetTotalAmmo();
+
+	// 3. 设置绘制位置 (右下角)
+	// 假设文字大约占 200宽 50高，所以从右下角往回减
+	float x = screenW - 250.0f;
+	float y = screenH - 80.0f;
+
+	// 4. 绘制弹药数字
+	// 格式示例: "AMMO: 30 / 120"
+
+	// 如果正在换弹，显示红色或提示文本 (这里简单处理，只显示数字)
+	if (pPlayer->IsReloading()) {
+		DrawDebugText(x, y, "RELOADING...");
+	}
+	else {
+		DrawDebugText(x, y, "AMMO: %d / %d", cur, tot);
+	}
 }
 
 int Inventory_GetIconsTextureID()
