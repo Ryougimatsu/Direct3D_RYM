@@ -7,6 +7,7 @@
 #include "bullet.h"
 #include "enemy.h"
 #include "key_logger.h"
+#include "Pathfinder.h"
 using namespace DirectX;
 
 PlayerCharacter* g_pPlayerInstance = nullptr;

@@ -32,6 +32,8 @@
 #include "Animator.h"
 #include"PlayerCharacter.h"
 #include "enemy_test.h"
+#include "cube.h"
+#include "Pathfinder.h"
 using namespace DirectX;
 
 namespace
@@ -54,6 +56,7 @@ void Game_Initialize()
 	Player_Camera_Initialize();
 	Inventory_Initialize();
 	DropItem_Initialize();
+	Pathfinder::Initialize();
 
 	// 创建并初始化你的状态机角色
 	g_Player = new PlayerCharacter();
@@ -63,6 +66,10 @@ void Game_Initialize()
 	EnemyTest::LoadAssets();
 	Enemy_Initialize();
 	GameUI_Initialize();
+
+	Pathfinder::SetObstacle(3.0f, 0.0f, true); // (3, 0) 位置有墙
+	Pathfinder::SetObstacle(2.0f, 0.0f, true);
+	Pathfinder::SetObstacle(3.0f, 1.0f, true);
 
 }
 
@@ -106,6 +113,7 @@ void Game_Update(double elapsed_time)
 	{
 		g_Player->Update(elapsed_time);
 	}
+
 }
 
 void Game_Draw()
@@ -142,7 +150,7 @@ void Game_Draw()
 	Sky_Draw();
 	Bullet_Draw();
 	DropItem_Draw();
-	Map_Draw(); // 此时 Map 只会画地面
+	Map_Draw(); 
 
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);

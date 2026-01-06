@@ -19,6 +19,8 @@ public:
 	void Update(double dt);
 	void Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj);
 	DirectX::XMFLOAT3 GetPosition() const { return m_Position; }
+	DirectX::XMFLOAT3 GetRotation() const {return { 0.0f, m_RotationY, 0.0f };
+	}
 	void SetPosition(const DirectX::XMFLOAT3& pos) { m_Position = pos; }
 
 	DirectX::XMFLOAT3 m_CurrentMoveDir = { 0, 0, 0 }; // 当前平滑后的移动向量

@@ -24,6 +24,12 @@ struct Box
 	float halfWidth; // 水平半宽
 	float halfHeight; // 垂直半宽
 };
+
+struct Ray {
+	DirectX::XMFLOAT3 origin;    // 起点
+	DirectX::XMFLOAT3 direction; // 方向 (单位向量)
+};
+
 struct AABB
 {
 	DirectX::XMFLOAT3 min;
@@ -54,6 +60,8 @@ bool Collision_IsOverlapSphere(const Sphere& a,const DirectX::XMFLOAT3& point);
 bool Collision_IsOverLapAABB(const AABB& a, const AABB& b);
 bool Collision_IsOverlapSphereAABB(const Sphere& sphere, const AABB& aabb);
 Hit Collision_IsHitAABB(const AABB& a, const AABB& b);
+
+bool Collision_IntersectRayAABB(const Ray& ray, const AABB& box, float& outDist);// 返回是否相交，并输出距离
 
 void Collision_DebugInitialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext);
 void Collision_DebugFinalize();

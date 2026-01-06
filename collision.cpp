@@ -2,7 +2,8 @@
 
 #include <d3d11.h>
 #include <DirectXMath.h>
-
+#include <limits> 
+#include <cmath>  
 #include "debug_ostream.h"
 #include "direct3d.h"
 #include "shader.h"
@@ -132,6 +133,50 @@ Hit Collision_IsHitAABB(const AABB& a, const AABB& b)
 	return hit;
 }
 
+
+bool Collision_IntersectRayAABB(const Ray& ray, const AABB& box, float& outDist)
+{
+	float tMin = 0.0f;
+	float tMax = std::numeric_limits<float>::max();
+
+	// 分别获取射线起点(O)、方向(D) 和 AABB的范围(minB, maxB)
+	float O[3] = { ray.origin.x, ray.origin.y, ray.origin.z };
+	float D[3] = { ray.direction.x, ray.direction.y, ray.direction.z };
+	float minB[3] = { box.min.x, box.min.y, box.min.z };
+	float maxB[3] = { box.max.x, box.max.y, box.max.z };
+
+	// 遍历 X, Y, Z 三个轴进行切片测试
+	for (int i = 0; i < 3; ++i)
+	{
+		// 如果射线在这个轴上近似平行 (方向分量接近0)
+		if (std::abs(D[i]) < 1e-6f)
+		{
+			// 如果起点不在盒子在这个轴的范围内，则射线完全错过盒子
+			if (O[i] < minB[i] || O[i] > maxB[i])
+				return false;
+		}
+		else
+		{
+			// 计算射线穿入平面(t1)和穿出平面(t2)的距离
+			float t1 = (minB[i] - O[i]) / D[i];
+			float t2 = (maxB[i] - O[i]) / D[i];
+
+			// 确保 t1 是近平面，t2 是远平面
+			if (t1 > t2) std::swap(t1, t2);
+
+			// 更新整体的 tMin (最晚进入时间) 和 tMax (最早离开时间)
+			tMin = std::max(tMin, t1);
+			tMax = std::min(tMax, t2);
+
+			// 如果错过了 (离开比进入早) 或者 盒子在射线背面 (tMax < 0)
+			if (tMin > tMax || tMax < 0.0f) return false;
+		}
+	}
+
+	// 检测通过，返回最近的交点距离
+	outDist = tMin;
+	return true;
+}
 
 void Collision_DebugInitialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 {

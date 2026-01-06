@@ -5,6 +5,7 @@
 #include "Animator.h"
 #include "SkinningModel.h"
 #include "Player_Camera.h"
+#include <vector>
 
 
 class EnemyTest : public Enemy {
@@ -23,6 +24,9 @@ private:
     bool m_bAlertedStatus = false; //   状态标记
 	bool m_bIsDead = false;       // 逻辑死亡标记 (HP<=0 但尸体还在)
 	float m_DeathTimer = 0.0f;    // 尸体存在倒计时
+	std::vector<DirectX::XMFLOAT3> m_Path;
+	int m_CurrentPathIndex = 0; // 当前走到第几个点了
+
 
 
 	Animator m_Animator;            // 每个敌人私有的动画器
@@ -33,7 +37,7 @@ private:
     static const Animation* g_pDyingAnim;
     static const Animation* g_pReaction_HitAnim;
 
-
+    bool CanSeePlayer();
 
 
 public:
@@ -61,6 +65,7 @@ public:
 
     static void LoadAssets();
     static void UnloadAssets();
+    static std::vector<EnemyTest*> g_AllEnemies;
 
 private:
     // 状态类声明
@@ -88,6 +93,7 @@ private:
     private:
         EnemyTest* m_pOwner = {};
         bool m_HasDealtDamageInThisCycle = false;
+        float m_RePathTimer = 0.0f;
     public:
         EnemyTest_StateChase(EnemyTest* pOwner);
         void Update(double elapsed_time) override;

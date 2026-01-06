@@ -194,6 +194,7 @@
     <ClCompile Include="model.cpp" />
     <ClCompile Include="mouse.cpp" />
     <ClCompile Include="Pad_Logger.cpp" />
+    <ClCompile Include="Pathfinder.cpp" />
     <ClCompile Include="PlayerCharacter.cpp" />
     <ClCompile Include="Player_Camera.cpp" />
     <ClCompile Include="polygon.cpp" />
@@ -232,6 +233,7 @@
     <ClInclude Include="LightCamera.h" />
     <ClInclude Include="MapCamera.h" />
     <ClInclude Include="Pad_Logger.h" />
+    <ClInclude Include="Pathfinder.h" />
     <ClInclude Include="PlayerCharacter.h" />
     <ClInclude Include="shader3d_unlit.h" />
     <ClInclude Include="Skeleton.h" />

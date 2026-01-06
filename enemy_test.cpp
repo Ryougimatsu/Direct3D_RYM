@@ -9,6 +9,7 @@
 #include <ctime>
 #include "SkinningShader.h"
 #include "Skeleton.h"
+#include "Pathfinder.h"
 #include "DropItem.h"
 using namespace DirectX;
 
@@ -19,9 +20,11 @@ const Animation* EnemyTest::g_pAttackAnim = nullptr;
 const Animation* EnemyTest::g_pScreamAnim = nullptr;
 const Animation* EnemyTest::g_pDyingAnim = nullptr;
 const Animation* EnemyTest::g_pReaction_HitAnim = nullptr;
+std::vector<EnemyTest*> EnemyTest::g_AllEnemies;
 namespace 
 {
 	SkinningModel* g_pSkinningModel = nullptr;
+	
 }
 // ========================================================
 // 状态机逻辑实现
@@ -51,62 +54,32 @@ EnemyTest::EnemyTest_StatePatrol::EnemyTest_StatePatrol(EnemyTest* pOwner)
 
 void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 {
-
-	XMFLOAT3 playerPos = Player_GetPosition(); // 获取玩家坐标
-	XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
-	XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
-
-	//视锥距离检测
-	XMVECTOR toPlayerVec = vPlayerPos - vEnemyPos;
-	float distSq = XMVectorGetX(XMVector3LengthSq(toPlayerVec));
-	if (distSq < (m_pOwner->m_DetectionRadius * m_pOwner->m_DetectionRadius)) //
+	if (m_pOwner->CanSeePlayer())
 	{
-		// 3. 角度检查（第二层过滤）
+		// 1. 标记为警觉状态
+		m_pOwner->SetAlerted(true);
 
-		// A. 计算敌人的正前方向量 (参考 PlayerCharacter.cpp 逻辑)
-		float rotY = m_pOwner->m_Rotation.y; //
-		XMVECTOR vForward = XMVectorSet(sinf(rotY), 0.0f, cosf(rotY), 0.0f);
+		// 2. 切换到追逐状态 (StateChase)
+		m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner));
 
-		// B. 计算指向玩家的单位向量
-		XMVECTOR vTargetDir = XMVector3Normalize(toPlayerVec);
-
-		// C. 计算点积（得到夹角的余弦值 cosθ）
-		// XMVector3Dot 返回的是向量，x分量存储结果
-		float dotProduct = XMVectorGetX(XMVector3Dot(vForward, vTargetDir));
-
-		// D. 计算视野阈值
-		// 如果 FOV 是 90度，那么 HalfFOV 是 45度。我们需要 cos(45°)
-		float halfFOVInRadians = XMConvertToRadians(m_pOwner->m_FOVAngle * 0.5f);
-		float threshold = cosf(halfFOVInRadians);
-
-		// E. 判定：如果 cosθ > cos(HalfFOV)，说明玩家在视野扇区内
-		if (dotProduct > threshold)
-		{
-			// 发现玩家！
-			m_pOwner->ChangeState(new EnemyTest_StateChase(m_pOwner)); //
-			return;
-		}
+		return;
 	}
 
-
-	//听觉检测
 	XMFLOAT3 soundPos;
 	float soundRadius;
 	if (Sound_GetLatest(soundPos, soundRadius)) {
+		XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position); // 需要重新获取一下位置
 		XMVECTOR vSoundPos = XMLoadFloat3(&soundPos);
 		XMVECTOR toSound = vSoundPos - vEnemyPos;
 		float distSq = XMVectorGetX(XMVector3LengthSq(toSound));
 
 		if (distSq < (soundRadius * soundRadius)) {
-	
 			m_TargetPoint = soundPos;
-			m_WaitTimer = 0.0f; // 停止当前的 Idle 等待
+			m_WaitTimer = 0.0f;
 
-			// 播放警觉动作 (非循环)
 			if (!m_bAlerted && !m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
 				m_pOwner->m_Animator.PlayAnimation(g_pScreamAnim, false, 0.2f);
-				m_bAlerted = true; 
-
+				m_bAlerted = true;
 				m_pOwner->SetAlerted(true);
 			}
 		}
@@ -167,7 +140,7 @@ void EnemyTest::EnemyTest_StatePatrol::Draw() const
 // 状态机 - 追逐
 // ========================================================
 EnemyTest::EnemyTest_StateChase::EnemyTest_StateChase(EnemyTest* pOwner)
-	: m_pOwner(pOwner)
+	: m_pOwner(pOwner), m_RePathTimer(0.0f)
 {
 	if (g_pWalkAnim) {
 		m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.3f); // 0.3秒平滑过渡
@@ -231,55 +204,203 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			}
 			m_HasDealtDamageInThisCycle = true; // 锁定本轮伤害
 		}
-	}
-	else
-	{
-		// ==========================================
-		// 【状态 B：移动逻辑】
-		// ==========================================
-
-		// 播放行走动画
-		if (g_pWalkAnim) {
-			m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.3f);
-		}
-
-		// 计算移动
 		XMVECTOR dir = XMVector3Normalize(toPlayer);
-		float moveSpeed = 1.0f; // 统一追逐速度
-		XMVECTOR vNewPos = vEnemyPos + dir * moveSpeed * (float)elapsed_time;
-		XMStoreFloat3(&m_pOwner->m_position, vNewPos);
+		float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
+		m_pOwner->SetRotationY(angle);
 
-		// 防止打滑：根据实际位移速度缩放动画
-		m_pOwner->m_Animator.SetSpeedScale(moveSpeed / 1.0f);
+		return;
+	}
+
+	m_pOwner->m_Animator.SetSpeedScale(1.0f);
+
+	bool isBlocked = Pathfinder::RaycastHit(m_pOwner->m_position, playerPos);
+
+	if (!isBlocked)
+	{
+		// -----------------------------------------------------
+		// 【情况 A：直线通畅】-> 直接追！
+		// -----------------------------------------------------
+
+		// 清空路径，表示现在不需要 A*
+		m_pOwner->m_Path.clear();
+		m_pOwner->m_CurrentPathIndex = 0;
+
+		// 直接计算朝向玩家的向量
+		XMVECTOR vPos = XMLoadFloat3(&m_pOwner->m_position);
+		XMVECTOR vTarget = XMLoadFloat3(&playerPos);
+		XMVECTOR toPlayer = vTarget - vPos;
+		toPlayer = XMVectorSetY(toPlayer, 0.0f); // 忽略高度
+
+		// --- 简单的直线移动 ---
+		XMVECTOR dir = XMVector3Normalize(toPlayer);
+
+		XMVECTOR separationForce = XMVectorSet(0, 0, 0, 0);
+		float separateRadius = 1.2f; // 排斥半径
+
+		for (EnemyTest* other : EnemyTest::g_AllEnemies) {
+			if (other == m_pOwner || other->IsDestroyed()) continue;
+
+			XMVECTOR vOtherPos = XMLoadFloat3(&other->GetPosition());
+			XMVECTOR vToOther = vOtherPos - vPos;
+			float dSq = XMVectorGetX(XMVector3LengthSq(vToOther));
+
+			if (dSq < separateRadius * separateRadius && dSq > 0.001f) {
+				XMVECTOR pushAway = vPos - vOtherPos;
+				pushAway = XMVector3Normalize(pushAway) / sqrtf(dSq); // 越近推力越大
+				separationForce += pushAway;
+			}
+		}
+		// 混合推力 (1.0 追击 + 1.5 排斥)
+		dir = XMVector3Normalize(dir * 1.0f + separationForce * 1.5f);
+
+		float moveSpeed = 1.0f; // 奔跑速度
+		// 甚至可以在直线追击时跑得更快一点
+		// moveSpeed = 1.5f; 
+
+		XMVECTOR vNewPos = vPos + dir * moveSpeed * (float)elapsed_time;
+		XMStoreFloat3(&m_pOwner->m_position, vNewPos);
 
 		// 更新朝向
 		float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
 		m_pOwner->SetRotationY(angle);
 
-		// 不在攻击范围内时，重置攻击计时器（可选，保证下次接触瞬间能攻击）
-		m_pOwner->m_LastAttackTimer = m_pOwner->m_AttackCooldown; 
+		// 播放奔跑动画
+		// if (g_pRunAnim) m_pOwner->m_Animator.PlayAnimation(g_pRunAnim, true, 0.2f);
+		if (g_pWalkAnim) m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.2f);
 	}
-
-	// --- 3. 退出条件与地形适配 ---
-
-	// 放弃追逐：玩家跑得太远
-	if (dist > m_pOwner->m_DetectionRadius * 1.5f)
+	else
 	{
-		m_pOwner->ChangeState(new EnemyTest_StatePatrol(m_pOwner));
-		return; // 切换状态后立即返回
-	}
+		// -----------------------------------------------------
+		// 【情况 B：有障碍物】-> 启用 A* 寻路
+		// -----------------------------------------------------
 
-	// 更新地面高度
-	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+		m_RePathTimer -= (float)elapsed_time;
+
+		// 需要重新寻路的情况：
+		// 1. 路径是空的 (刚从直线状态切过来)
+		// 2. 计时器到了
+		if (m_pOwner->m_Path.empty() || m_RePathTimer <= 0.0f)
+		{
+			// 调用 A*
+			m_pOwner->m_Path = Pathfinder::FindPath(m_pOwner->m_position, playerPos);
+			m_pOwner->m_CurrentPathIndex = 0;
+
+			// 稍微随机化寻路间隔
+			m_RePathTimer = 0.5f + (rand() % 100) / 200.0f;
+		}
+
+		// --- 沿着路径点移动 (原有的 A* 移动代码) ---
+		if (!m_pOwner->m_Path.empty())
+		{
+			if (m_pOwner->m_CurrentPathIndex >= m_pOwner->m_Path.size()) return;
+
+			XMFLOAT3 targetNode = m_pOwner->m_Path[m_pOwner->m_CurrentPathIndex];
+
+			XMVECTOR vPos = XMLoadFloat3(&m_pOwner->m_position);
+			XMVECTOR vTarget = XMLoadFloat3(&targetNode);
+			XMVECTOR toTarget = vTarget - vPos;
+			toTarget = XMVectorSetY(toTarget, 0.0f);
+
+			float dist = XMVectorGetX(XMVector3Length(toTarget));
+
+			// 到达路点，切下一个
+			if (dist < 0.5f) {
+				m_pOwner->m_CurrentPathIndex++;
+			}
+			else {
+				XMVECTOR dir = XMVector3Normalize(toTarget);
+
+				XMVECTOR separationForce = XMVectorSet(0, 0, 0, 0);
+				float separateRadius = 1.2f;
+
+				for (EnemyTest* other : EnemyTest::g_AllEnemies) {
+					if (other == m_pOwner || other->IsDestroyed()) continue;
+					XMVECTOR vOtherPos = XMLoadFloat3(&other->GetPosition());
+					XMVECTOR vToOther = vOtherPos - vPos; // 注意 vPos 需要在上面定义好
+					float dSq = XMVectorGetX(XMVector3LengthSq(vToOther));
+
+					if (dSq < separateRadius * separateRadius && dSq > 0.001f) {
+						XMVECTOR pushAway = vPos - vOtherPos;
+						pushAway = XMVector3Normalize(pushAway) / sqrtf(dSq);
+						separationForce += pushAway;
+					}
+				}
+				dir = XMVector3Normalize(dir * 1.0f + separationForce * 1.5f);
+
+				float moveSpeed = 1.0f;
+				XMVECTOR vNewPos = vPos + dir * moveSpeed * (float)elapsed_time;
+				XMStoreFloat3(&m_pOwner->m_position, vNewPos);
+
+				float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
+				m_pOwner->SetRotationY(angle);
+
+				if (g_pWalkAnim) m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.5f);
+			}
+		}
+	}
+		// 更新地面高度
+		m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
 }
 void EnemyTest::EnemyTest_StateChase::Draw() const
 {
 
 }
 
+bool EnemyTest::CanSeePlayer()
+{
+	// 1. 获取位置信息
+	XMFLOAT3 playerPos = Player_GetPosition();
+	XMFLOAT3 enemyPos = m_position;
+
+	// 2. 计算 [敌人 -> 玩家] 的向量
+	XMVECTOR vToPlayer = XMLoadFloat3(&playerPos) - XMLoadFloat3(&enemyPos);
+
+	// 计算距离
+	float distSq = XMVectorGetX(XMVector3LengthSq(vToPlayer));
+	float range = m_DetectionRadius;
+
+	// [检查 1] 距离检测：如果太远，直接看不见
+	if (distSq > range * range) return false;
+
+	// 3. 归一化方向向量 (变成长度为1的单位向量)
+	vToPlayer = XMVector3Normalize(vToPlayer);
+
+	// 4. 获取敌人的正前方向量
+	// 假设 m_Rotation.y 是 Yaw 角 (绕Y轴旋转)
+	// 注意：这里需要根据你的模型朝向微调，通常是 sin, 0, cos
+	XMVECTOR vEnemyForward = XMVectorSet(sinf(m_Rotation.y), 0.0f, cosf(m_Rotation.y), 0.0f);
+
+	// 5. 计算点积 (Dot Product)
+	// Dot = cos(theta) * |A| * |B|。因为都是单位向量，所以 Dot = cos(theta)
+	float dot = XMVectorGetX(XMVector3Dot(vEnemyForward, vToPlayer));
+
+	// 6. 计算视锥阈值
+	// m_FOVAngle 是总视野角度 (例如 90度)
+	// 我们需要一半的角度 (45度) 的余弦值
+	float halfFOV = XMConvertToRadians(m_FOVAngle * 0.5f);
+	float threshold = cosf(halfFOV);
+
+	// 7. [检查 2] 角度检测
+	// 如果 dot > threshold，说明夹角比 halfFOV 小，也就是在扇形内
+	if (dot > threshold)
+	{
+		// 玩家在扇形内，且在距离内！
+
+		// --- 进阶预告：射线检测 (Raycast) ---
+		// 将来我们要在这里加一个 "Collision_IntersectRayMap" 
+		// 看看中间有没有墙。现在先默认没有墙。
+
+		return true;
+	}
+
+	return false;
+}
+
 EnemyTest::EnemyTest(const DirectX::XMFLOAT3& position)
 	: m_position(position) 
 {
+	g_AllEnemies.push_back(this);
+
 	m_DetectionAngle = 5.0f; // 设置索敌半径
 
 	// 初始化旋转
@@ -303,7 +424,8 @@ EnemyTest::EnemyTest(const DirectX::XMFLOAT3& position)
 
 EnemyTest::~EnemyTest()
 {
-
+	auto it = std::remove(g_AllEnemies.begin(), g_AllEnemies.end(), this);
+	g_AllEnemies.erase(it, g_AllEnemies.end());
 }
 
 
@@ -387,7 +509,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_DeathTimer = 3.5f;
 
 		int rate = rand() % 100; // 0 ~ 99
-		if (rate < 50)
+		if (rate < 30)
 		{
 			// 2. 决定掉落什么
 			// 假设 ID 4 是子弹盒 (参照 Inventory.cpp 的定义)
