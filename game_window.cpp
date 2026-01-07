@@ -9,7 +9,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 //Window info
 static constexpr char WINDOW_CLASS[] = "GameWindow";//メインウインドウクラス名
-static constexpr char TITLE[] = "ウィンドウ表示"; //タイトルバ一のテキスト
+static constexpr char TITLE[] = "MYGAME"; //タイトルバ一のテキスト
 
 HWND GameWindow_Generate(HINSTANCE hInstance)
 {
@@ -26,18 +26,11 @@ HWND GameWindow_Generate(HINSTANCE hInstance)
 	RegisterClassEx(&wcex);
 	/* メインウインドウの作成 */
 
-	constexpr int SCREEN_WIDTH = 1920;
-	constexpr int SCREEN_HEIGHT = 1080;
-	DWORD WINDOW_STYLE = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-	RECT window_rect{
-		0,0,SCREEN_WIDTH,SCREEN_HEIGHT
-	};
-	AdjustWindowRect(
-		&window_rect,
-		WINDOW_STYLE,
-		FALSE
-	);
-
+	DWORD WINDOW_STYLE = WS_OVERLAPPEDWINDOW;
+	RECT window_rect{ 0, 0, 1920, 1080 };
+	AdjustWindowRect(&window_rect, WINDOW_STYLE, FALSE);
+	int windowWidth = window_rect.right - window_rect.left;
+	int windowHeight = window_rect.bottom - window_rect.top;
 	const int WINDOW_WIDTH = window_rect.right - window_rect.left;
 	const int WINDOW_HEIGHT = window_rect.bottom - window_rect.top;
 
@@ -53,17 +46,15 @@ HWND GameWindow_Generate(HINSTANCE hInstance)
 		WINDOW_CLASS,
 		TITLE,
 		WINDOW_STYLE,
-		//WS_OVERLAPPEDWINDOW ^WS_THICKFRAME,
-		WINDOW_X,
-		WINDOW_Y,
-		WINDOW_WIDTH,
-		WINDOW_HEIGHT,
+		CW_USEDEFAULT, 0, 
+		windowWidth,
+		windowHeight,
 		nullptr,
 		nullptr,
 		hInstance,
 		nullptr);
+
 	return hWnd;
-	//	return HWND();
 }
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {

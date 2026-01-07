@@ -39,7 +39,12 @@ void Fade_Update(double elapsed_time)
 
 	if (ratio >= 1.0)
 	{
-		g_State = g_State == FADE_STATE_FADEIN ? FADE_STATE_FINISHED_IN : FADE_STATE_FINISHED_OUT;
+		if (g_State == FADE_STATE_FADEIN) {
+			g_State = FADE_STATE_NONE;
+		}
+		else {
+			g_State = FADE_STATE_FINISHED_OUT;
+		}
 	}
 	g_Alpha = (float)(g_State == FADE_STATE_FADEIN ? 1.0 - ratio : ratio);
 }

@@ -177,8 +177,10 @@
     <ClCompile Include="enemy.cpp" />
     <ClCompile Include="enemy_test.cpp" />
     <ClCompile Include="fade.cpp" />
+    <ClCompile Include="Font.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="gameover.cpp" />
     <ClCompile Include="GameUI.cpp" />
     <ClCompile Include="game_window.cpp" />
     <ClCompile Include="Grid.cpp" />
@@ -187,6 +189,7 @@
     <ClCompile Include="key_logger.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightCamera.cpp" />
+    <ClCompile Include="loading.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map.cpp" />
     <ClCompile Include="MapCamera.cpp" />
@@ -227,10 +230,13 @@
     <ClInclude Include="DropItem.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
+    <ClInclude Include="Font.h" />
     <ClInclude Include="GameObject.h" />
+    <ClInclude Include="gameover.h" />
     <ClInclude Include="GameUI.h" />
     <ClInclude Include="Inventory.h" />
     <ClInclude Include="LightCamera.h" />
+    <ClInclude Include="loading.h" />
     <ClInclude Include="MapCamera.h" />
     <ClInclude Include="Pad_Logger.h" />
     <ClInclude Include="Pathfinder.h" />

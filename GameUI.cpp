@@ -2,7 +2,7 @@
 #include "sprite.h"
 #include "texture.h"
 #include "PlayerCharacter.h"
-
+#include <algorithm>
 
 namespace {
 	int g_TexWhite = -1; // 用白色图片染色
@@ -17,6 +17,7 @@ void GameUI_Draw() {
 	PlayerCharacter* g_Player = Player_GetInstance();
 	// 1. 获取数据
 	float hp = g_Player->GetHP();
+	float displayHP = std::max(0.0f, hp);
 	float maxHp = 100.0f;
 	float ratio = hp / maxHp;
 

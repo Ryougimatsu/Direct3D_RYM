@@ -3,11 +3,14 @@
 #include "Animator.h"
 #include <DirectXMath.h>
 #include "model.h"
+#include "collision.h"
+
 
 // 定义状态机状态
 enum class CharacterState {
 	Idle,
-	Running
+	Running,
+	Dead
 };
 
 class PlayerCharacter {
@@ -37,6 +40,10 @@ public:
 	bool IsReloading() const { return m_IsReloading; }
 	void AddAmmo(int amount); // 捡到子弹时调用
 
+	AABB GetAABB() const;
+
+	bool IsDeathAnimationFinished() const { return m_IsDeadFinished; }
+
 private:
 	// 资源与组件
 	SkinningModel* m_pModel = nullptr;
@@ -60,6 +67,8 @@ private:
 	float m_InvincibleTimer = 0.0f;      // 当前剩余无敌时间
 	float m_MeleeTimer = 0.0f;           // 近战攻击计时器
 	const float m_InvincibleDuration = 1.0f; // 受到伤害后的无敌时长（秒）
+	bool  m_IsDeadFinished = false; // 标记：2秒倒计时是否结束
+	float m_DeathTimer = 0.0f;      // 计时器
 
 	
 	const int MAG_SIZE = 30;     // 弹匣容量

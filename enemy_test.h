@@ -7,6 +7,7 @@
 #include "Player_Camera.h"
 #include <vector>
 
+extern bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end);
 
 class EnemyTest : public Enemy {
 private:
@@ -36,6 +37,7 @@ private:
     static const Animation* g_pScreamAnim;
     static const Animation* g_pDyingAnim;
     static const Animation* g_pReaction_HitAnim;
+    static const Animation* g_pScratchIdleAnim;
 
     bool CanSeePlayer();
 
@@ -43,7 +45,6 @@ private:
 public:
     EnemyTest(const DirectX::XMFLOAT3& position);
     ~EnemyTest() override;
-
 
     const DirectX::XMFLOAT3& GetPosition() const override { return m_position; }
     void SetPosition(const DirectX::XMFLOAT3& pos) override;
@@ -66,6 +67,11 @@ public:
     static void LoadAssets();
     static void UnloadAssets();
     static std::vector<EnemyTest*> g_AllEnemies;
+
+	DirectX::XMFLOAT3 m_LastKnownPosition; // 玩家最后出现的位置
+    DirectX::XMFLOAT3 m_PersonalSearchTarget;
+	bool m_HasLostSight;                   // 是否处于丢失视野（搜索）状态
+    float m_StuckTimer = 0.0f;
 
 private:
     // 状态类声明
@@ -99,4 +105,16 @@ private:
         void Update(double elapsed_time) override;
         void Draw() const override;
     };
+	class EnemyTest_StateSearch : public State
+	{
+	public:
+		EnemyTest_StateSearch(EnemyTest* pOwner);
+		void Update(double elapsed_time) override;
+		void Draw() const override {} // 不需要额外绘制
+
+	private:
+		EnemyTest* m_pOwner;
+		float m_SearchTimer; // 搜索动作持续时间
+	};
+
 };

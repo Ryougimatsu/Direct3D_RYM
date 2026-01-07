@@ -8,6 +8,7 @@
 ==============================================================================*/
 #include <d3d11.h>
 #include "direct3d.h"
+#include <d3d11_1.h>
 #include "debug_ostream.h"
 using namespace DirectX;
 
@@ -62,8 +63,8 @@ bool Direct3D_Initialize(HWND hWnd)
     DXGI_SWAP_CHAIN_DESC swap_chain_desc{};
     swap_chain_desc.Windowed = TRUE;
     swap_chain_desc.BufferCount = 2;
-    // swap_chain_desc.BufferDesc.Width = 0;
-    // swap_chain_desc.BufferDesc.Height = 0;
+    swap_chain_desc.BufferDesc.Width = 0;
+    swap_chain_desc.BufferDesc.Height = 0;
 	// ⇒ ウィンドウサイズに合わせて自動的に設定される
     swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -116,6 +117,12 @@ bool Direct3D_Initialize(HWND hWnd)
 		MessageBox(hWnd, "Direct3Dの初期化に失敗しました", "エラー", MB_OK);
         return false;
     }
+	ID3D10Multithread* pMultithread = nullptr;
+	hr = g_pDevice->QueryInterface(__uuidof(ID3D10Multithread), (void**)&pMultithread);
+	if (SUCCEEDED(hr)) {
+		pMultithread->SetMultithreadProtected(TRUE);
+		pMultithread->Release();
+	}
 
 	if (!configureBackBuffer()) {
 		MessageBox(hWnd, "バックバッファの設定に失敗しました", "エラー", MB_OK);
@@ -215,7 +222,7 @@ void Direct3D_Finalize()
 void Direct3D_Clear()
 {
 	g_pDeviceContext->RSSetViewports(1, &g_Viewport); // ビューポートの設定
-	float clear_color[4] = { 0.2f, 0.4f, 0.8f, 1.0f };
+	float clear_color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	g_pDeviceContext->ClearRenderTargetView(g_pRenderTargetView, clear_color);
 	g_pDeviceContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 

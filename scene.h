@@ -14,7 +14,9 @@ void Scene_Refresh();
 enum scene : std::uint8_t
 {
 	SCENE_TITLE,
+	SCENE_LOADING,
 	SCENE_GAME,
+	SCENE_GAMEOVER,
 	SCENE_RESULT,
 	SCENE_MAX
 };

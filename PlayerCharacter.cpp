@@ -8,6 +8,7 @@
 #include "enemy.h"
 #include "key_logger.h"
 #include "Pathfinder.h"
+#include "game.h"
 using namespace DirectX;
 
 PlayerCharacter* g_pPlayerInstance = nullptr;
@@ -102,8 +103,8 @@ bool PlayerCharacter::Initialize() {
 	m_pModel->LoadAnimation("Walk Backward Left", "resource/model/Character_Model/Walk Backward Left.fbx", 1.0f);
 	m_pModel->LoadAnimation("Firing Rifle", "resource/model/Character_Model/Firing Rifle.fbx", 1.0f);
 	m_pModel->LoadAnimation("Firing Rifle Idle", "resource/model/Character_Model/Firing Rifle idle.fbx", 1.0f);
-
 	m_pModel->LoadAnimation("Slash Advance", "resource/model/Character_Model/Slash Advance.fbx", 1.0f);
+	m_pModel->LoadAnimation("Rifle Death", "resource/model/Character_Model/Rifle Death.fbx", 1.0f);
 
 	m_pGunModel = ModelLoad("resource/model/M4a4.fbx", 1.0f);
 
@@ -149,6 +150,41 @@ std::string SelectTacticalAnim(float angle) {
 
 
 void PlayerCharacter::Update(double dt) {
+
+
+
+	if (m_CurrentState == CharacterState::Dead)
+	{
+		// 累加计时器
+		m_DeathTimer += (float)dt;
+
+		// 持续更新动画 (让角色倒下的动作播放出来)
+		m_Animator.Update(dt);
+
+		// 如果超过 2 秒
+		if (m_DeathTimer >= 4.0f)
+		{
+			m_IsDeadFinished = true; // 标记为“彻底死亡”，通知 Game.cpp 删除模型
+		}
+
+		return;
+	}
+
+	if (m_HP <= 0.0f)
+	{
+		// 切换状态
+		m_CurrentState = CharacterState::Dead;
+
+		// 播放死亡动画 (false = 不循环，只播一次; 0.1f = 融合时间)
+		m_Animator.PlayAnimation(m_pModel->GetAnimation("Rifle Death"), false, 0.1f);
+
+		// 重置计时器
+		m_DeathTimer = 0.0f;
+
+		// 同样直接 return，防止这一帧还能动
+		return;
+	}
+
 	// 获取相机矩阵用于计算鼠标位置
 	XMMATRIX view = XMLoadFloat4x4(&Player_Camera_GetViewMatrix());
 	XMMATRIX proj = XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
@@ -271,9 +307,27 @@ void PlayerCharacter::Update(double dt) {
 
 		// --- B. 物理位移 ---
 		// 只有没在硬直时，才允许位移
-		XMVECTOR pos = XMLoadFloat3(&m_Position);
-		pos += smoothedInput * m_MoveSpeed * (float)dt;
-		XMStoreFloat3(&m_Position, pos);
+		XMVECTOR inputVec = smoothedInput * m_MoveSpeed * (float)dt;
+		XMFLOAT3 moveDelta;
+		XMStoreFloat3(&moveDelta, inputVec);
+
+		// 1. 尝试沿 X 轴移动
+		float oldX = m_Position.x;
+		m_Position.x += moveDelta.x;
+
+		// 如果撞墙了，撤销 X 轴移动
+		if (Game_CheckCollisionWithWalls(this->GetAABB())) {
+			m_Position.x = oldX;
+		}
+
+		// 2. 尝试沿 Z 轴移动
+		float oldZ = m_Position.z;
+		m_Position.z += moveDelta.z;
+
+		// 如果撞墙了，撤销 Z 轴移动
+		if (Game_CheckCollisionWithWalls(this->GetAABB())) {
+			m_Position.z = oldZ;
+		}
 
 		// --- C. 开火逻辑 ---
 		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && m_CurrentAmmo > 0) {
@@ -384,6 +438,16 @@ void PlayerCharacter::AddAmmo(int amount)
 {
 	m_TotalAmmo += amount;
 	if (m_TotalAmmo > 300) m_TotalAmmo = 300;
+}
+
+AABB PlayerCharacter::GetAABB() const {
+	float halfWidth = 0.5f;  // 半宽 0.5 -> 宽度 1.0
+	float height = 1.8f;     // 高度 1.8
+
+	return {
+		{ m_Position.x - halfWidth, m_Position.y,          m_Position.z - halfWidth },
+		{ m_Position.x + halfWidth, m_Position.y + height, m_Position.z + halfWidth } 
+	};
 }
 
 PlayerCharacter::~PlayerCharacter() {

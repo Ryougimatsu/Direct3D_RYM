@@ -31,9 +31,8 @@
 #include "camera.h"
 #include "Meshfield.h"
 #include "Light.h"
+#include "Font.h"
 #include "shader3d_unlit.h"
-
-// 包含新的 Shader 头文件
 #include "SkinningShader.h" 
 #include <memory>
 
@@ -75,6 +74,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	SpriteAnime_Initialize();
 
 	Fade_Initialize();
+
+	Font_Initialize();
 
 	Scene_Initialize();
 
@@ -208,6 +209,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 
 	Scene_Finalize();
 
+	Font_Finalize();
+	
 	Fade_Finalize();
 
 	SpriteAnime_Finalize();

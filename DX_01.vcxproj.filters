@@ -189,6 +189,15 @@
     <ClCompile Include="Pathfinder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameover.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug_ostream.h">
@@ -375,6 +384,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pathfinder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="loading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameover.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

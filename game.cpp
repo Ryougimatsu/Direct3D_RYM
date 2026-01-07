@@ -32,8 +32,9 @@
 #include "Animator.h"
 #include"PlayerCharacter.h"
 #include "enemy_test.h"
-#include "cube.h"
 #include "Pathfinder.h"
+#include "fade.h"
+#include "scene.h"
 using namespace DirectX;
 
 namespace
@@ -43,34 +44,59 @@ namespace
 
 }
 
+bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end)
+{
+	return Map_CheckLineOfSightBlocked(start, end);
+}
+
+bool Game_CheckCollisionWithWalls(const AABB& objAabb)
+{
+	return Map_CheckCollision(objAabb);
+}
+
 // ------------------------------------------------------------------
 // 初始化：仅保留核心环境和你的测试主角
 // ------------------------------------------------------------------
-void Game_Initialize()
+void Game_LoadContent()
 {
-	Camera_Initialize();
-	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
+	// 这里放所有耗时的加载函数
 	Bullet_Initialize();
 	Sky_Initialize();
-	Map_Initialize();         
+	Pathfinder::Initialize();
+	Map_Initialize();
+
 	Player_Camera_Initialize();
 	Inventory_Initialize();
 	DropItem_Initialize();
-	Pathfinder::Initialize();
 
-	// 创建并初始化你的状态机角色
-	g_Player = new PlayerCharacter();
-	if (!g_Player->Initialize()) {  
-		OutputDebugStringA("[Game] PlayerCharacter Initialize Failed!\n");
+	// 注意：g_Player 的 new 操作也可以放在这里，但要小心全局变量竞争
+	// 如果 g_Player 是全局指针，在这里初始化是可以的
+	if (!g_Player) { // 防止重复创建
+		g_Player = new PlayerCharacter();
+		if (!g_Player->Initialize()) {
+			OutputDebugStringA("[Game] PlayerCharacter Initialize Failed!\n");
+		}
 	}
-	EnemyTest::LoadAssets();
-	Enemy_Initialize();
+
+	EnemyTest::LoadAssets(); // 加载敌人资源
+	Enemy_Initialize();      // 初始化敌人
 	GameUI_Initialize();
+}
+void Game_Initialize()
+{
+	// 此时资源已经由 Loading 线程加载完毕了！
 
-	Pathfinder::SetObstacle(3.0f, 0.0f, true); // (3, 0) 位置有墙
-	Pathfinder::SetObstacle(2.0f, 0.0f, true);
-	Pathfinder::SetObstacle(3.0f, 1.0f, true);
+	Camera_Initialize();
+	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
 
+	// 可以在这里重置玩家位置
+	if (g_Player) {
+		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
+		// 重置血量等逻辑...
+	}
+
+	// 【重要】开始淡入，让画面亮起来
+	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
 }
 
 void Game_Update(double elapsed_time)
@@ -112,6 +138,14 @@ void Game_Update(double elapsed_time)
 	if (!g_IsDebugCameraMode && g_Player)
 	{
 		g_Player->Update(elapsed_time);
+
+
+		if (g_Player->IsDeathAnimationFinished())
+		{
+			delete g_Player;    
+			g_Player = nullptr; 
+			Scene_Change(SCENE_GAMEOVER);
+		}
 	}
 
 }
@@ -152,6 +186,7 @@ void Game_Draw()
 	DropItem_Draw();
 	Map_Draw(); 
 
+
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);
 	Sprite_Begin();
@@ -175,3 +210,4 @@ void Game_Finalize()
 	Bullet_Finalize();
 	Player_Camera_Finalize();
 }
+
