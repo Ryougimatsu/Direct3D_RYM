@@ -17,6 +17,8 @@ class PlayerCharacter {
 public:
 	PlayerCharacter() = default;
 	~PlayerCharacter();
+	static void LoadAssets();
+	static void UnloadAssets();
 
 	bool Initialize();
 	void Update(double dt);
@@ -53,6 +55,8 @@ private:
 	// 状态机变量
 	CharacterState m_CurrentState = CharacterState::Idle;
 	float          m_StateTimer = 0.0f; // 用于控制测试流程的计时器
+
+
 
 	// 空间属性
 	DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f };

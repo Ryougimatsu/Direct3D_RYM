@@ -196,7 +196,7 @@ void Enemy_Finalize()
 {
 	for (auto* e : g_Enemies) delete e;
 	g_Enemies.clear();
-	EnemyTest::UnloadAssets();
+	//EnemyTest::UnloadAssets();
 }
 
 void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)

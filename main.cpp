@@ -35,7 +35,8 @@
 #include "shader3d_unlit.h"
 #include "SkinningShader.h" 
 #include <memory>
-
+#include "enemy_test.h"
+#include "PlayerCharacter.h"
 //Window procedure prototype claim
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -208,6 +209,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	MeshField_Finalize();
 
 	Scene_Finalize();
+
+	PlayerCharacter::UnloadAssets();
+
+	EnemyTest::UnloadAssets();
 
 	Font_Finalize();
 	

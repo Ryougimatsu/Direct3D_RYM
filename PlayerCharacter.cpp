@@ -43,6 +43,9 @@ namespace {
 	DirectX::XMFLOAT3 g_LastSoundPos = { 0, 0, 0 }; // 声音位置
 	float g_SoundIntensity = 0.0f;               // 声音强度（半径）
 	float g_SoundTimer = 0.0f;                    // 声音持续时间（秒）
+
+	SkinningModel* g_pSharedPlayerModel = nullptr;
+	MODEL* g_pSharedGunModel = nullptr;
 }
 
 
@@ -86,28 +89,54 @@ void Player_Heal(float amount)
 	}
 }
 
-bool PlayerCharacter::Initialize() {
+void PlayerCharacter::LoadAssets()
+{
+	// 如果模型已经存在，直接返回，不再重复加载
+	if (g_pSharedPlayerModel) return;
 
+	// --- 原来 Initialize 里的加载代码搬到这里 ---
+	g_pSharedPlayerModel = new SkinningModel();
+	g_pSharedPlayerModel->Load("resource/model/Idle.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Forward", "resource/model/Character_Model/Walk Forward.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Backward", "resource/model/Character_Model/Walk Backward.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Left", "resource/model/Character_Model/Walk Left.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Right", "resource/model/Character_Model/Walk Right.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Forward Right", "resource/model/Character_Model/Walk Forward Right.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Forward Left", "resource/model/Character_Model/Walk Forward Left.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Backward Right", "resource/model/Character_Model/Walk Backward Right.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Walk Backward Left", "resource/model/Character_Model/Walk Backward Left.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Firing Rifle", "resource/model/Character_Model/Firing Rifle.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Firing Rifle Idle", "resource/model/Character_Model/Firing Rifle idle.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Slash Advance", "resource/model/Character_Model/Slash Advance.fbx", 1.0f);
+	g_pSharedPlayerModel->LoadAnimation("Rifle Death", "resource/model/Character_Model/Rifle Death.fbx", 1.0f);
+
+	g_pSharedGunModel = ModelLoad("resource/model/M4a4.fbx", 1.0f);
+}
+
+void PlayerCharacter::UnloadAssets()
+{
+	if (g_pSharedPlayerModel) {
+		g_pSharedPlayerModel->Release();
+		delete g_pSharedPlayerModel;
+		g_pSharedPlayerModel = nullptr;
+	}
+	if (g_pSharedGunModel) {
+		ModelRelease(g_pSharedGunModel);
+		g_pSharedGunModel = nullptr;
+	}
+}
+
+bool PlayerCharacter::Initialize() {
 	g_pPlayerInstance = this;
 
-	m_pModel = new SkinningModel();
+	// 确保资源已加载
+	LoadAssets();
 
-	if (!m_pModel->Load("resource/model/Idle.fbx", 1.0f)) return false;
-	m_pModel->LoadAnimation("Walk Forward", "resource/model/Character_Model/Walk Forward.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Backward", "resource/model/Character_Model/Walk Backward.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Left", "resource/model/Character_Model/Walk Left.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Right", "resource/model/Character_Model/Walk Right.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Forward Right", "resource/model/Character_Model/Walk Forward Right.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Forward Left", "resource/model/Character_Model/Walk Forward Left.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Backward Right", "resource/model/Character_Model/Walk Backward Right.fbx", 1.0f);
-	m_pModel->LoadAnimation("Walk Backward Left", "resource/model/Character_Model/Walk Backward Left.fbx", 1.0f);
-	m_pModel->LoadAnimation("Firing Rifle", "resource/model/Character_Model/Firing Rifle.fbx", 1.0f);
-	m_pModel->LoadAnimation("Firing Rifle Idle", "resource/model/Character_Model/Firing Rifle idle.fbx", 1.0f);
-	m_pModel->LoadAnimation("Slash Advance", "resource/model/Character_Model/Slash Advance.fbx", 1.0f);
-	m_pModel->LoadAnimation("Rifle Death", "resource/model/Character_Model/Rifle Death.fbx", 1.0f);
+	// 【修改】直接指向共享资源
+	m_pModel = g_pSharedPlayerModel;
+	m_pGunModel = g_pSharedGunModel;
 
-	m_pGunModel = ModelLoad("resource/model/M4a4.fbx", 1.0f);
-
+	// 下面这两行保持不变，Animator 是每个玩家独有的
 	m_Animator.PlayAnimation(m_pModel->GetDefaultAnimation(), true);
 	m_LaserTexID = Texture_LoadFromFile(L"resource/texture/Laser.png");
 	Billboard_Initialize();
@@ -451,14 +480,7 @@ AABB PlayerCharacter::GetAABB() const {
 }
 
 PlayerCharacter::~PlayerCharacter() {
-	if (m_pModel) {
-		m_pModel->Release();
-		delete m_pModel;
-	}
-	if (m_pGunModel) {
-		ModelRelease(m_pGunModel);
-		m_pGunModel = nullptr;
-	}
+
 }
 
 
