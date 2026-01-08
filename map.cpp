@@ -19,13 +19,13 @@ namespace {
 	int g_WallTextureID = -1;
 }
 
-static void AddWall(float x, float z)
+static void AddWall(float x, float z, float y = 0.5f)
 {
 	MapObject wall;
 	wall.KindId = MAP_KIND_WALL;
 
-	// 设置位置 (Y=0.5 让它立在地面上)
-	wall.Position = { x, 0.5f, z };
+	// 使用传入的 y 坐标
+	wall.Position = { x, y, z };
 
 	// 创建物理碰撞盒
 	wall.Aabb = Cube_CreateAABB(wall.Position);
@@ -33,29 +33,44 @@ static void AddWall(float x, float z)
 	// 添加到列表
 	g_MapObjects.push_back(wall);
 
-	// 【重要】同步通知 Pathfinder 设置障碍
+	// 【重要】Pathfinder 是 2D 网格寻路，无论堆多高，只要有箱子，这个 (x,z) 就是障碍
 	Pathfinder::SetObstacle(x, z, true);
 }
 void Map_Initialize()
 {
 	// 1. 清空旧数据
 	g_MapObjects.clear();
-	g_WallTextureID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
+	g_WallTextureID = Texture_LoadFromFile(L"resource/texture/Stone.png");
+
 	// 2. 仅创建地面对象 (KindId: 0)
 	MapObject ground;
-	ground.KindId = 0;
+	ground.KindId = MAP_KIND_GROUND; // 建议使用枚举 MAP_KIND_GROUND 代替 0，增加可读性
 	ground.Position = { 0.0f, 0.0f, 0.0f };
 
-	// 根据 MeshField 的尺寸计算地面的 AABB 碰撞盒
+	// 确保 MeshField_GetWidth / GetDepth 函数存在且可用
+	// 如果报错找不到标识符，请确保 #include "Meshfield.h" 并且函数名拼写正确
 	float w = MeshField_GetWidth() / 2.0f;
 	float d = MeshField_GetDepth() / 2.0f;
+
+	// 地面的碰撞盒 (稍作下沉，防止Z-Fighting或误判)
 	ground.Aabb = { {-w, -1.0f, -d}, {w, 0.0f, d} };
 
 	g_MapObjects.push_back(ground);
-	
-	AddWall(3.0f, 0.0f);
-	AddWall(2.0f, 0.0f);
-	AddWall(3.0f, 1.0f);
+
+	// 3. 创建箱子
+	float x = 5.0f;
+	float z = 5.0f;
+
+	AddWall(x, z, 0.5f); // 第 1 层 (底层)
+	AddWall(x, z, 1.5f); // 第 2 层
+	AddWall(x, z, 2.5f); // 第 3 层
+
+	// 示例：悬空箱子
+	AddWall(-5.0f, 5.0f, 1.5f);
+
+	// 示例：普通墙壁 (使用默认参数 y=0.5f)
+	AddWall(10.0f, 10.0f);
+	AddWall(10.0f, 11.0f);
 }
 
 void Map_Finalize()

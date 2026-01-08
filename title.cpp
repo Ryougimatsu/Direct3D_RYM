@@ -7,6 +7,7 @@
 #include "Font.h"
 #include <string>
 #include "direct3d.h"
+#include "score.h"
 
 // 定义标题画面的子状态
 enum TitleMenuState {
@@ -34,6 +35,7 @@ namespace
 
 void Title_Initialize()
 {
+	Score_Reset();
 	g_TitleBG = Texture_LoadFromFile(L"resource/texture/Title.png");
 	g_TitleLogo = Texture_LoadFromFile(L"resource/texture/Title.png");
 	g_TexWhite = Texture_LoadFromFile(L"resource/texture/white.png");

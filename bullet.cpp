@@ -4,14 +4,16 @@ using namespace DirectX;
 #include "bullet_hit_effect.h"
 #include "collision.h"
 #include "enemy.h"
+#include "map.h" // 确保包含地图检测
+
 class Bullet
 {
 private:
 	XMFLOAT3 m_position{};
 	XMFLOAT3 m_velocity{};
 	double m_accumulatedTime{ 0.0 };
-	static constexpr double LIFE_TIME = 3.0; // 弾の寿命（秒）
-
+	static constexpr double LIFE_TIME = 3.0; // 子弹寿命（秒）
+	bool m_deleteFlag = false;
 
 public:
 	Bullet(const XMFLOAT3& pos, const XMFLOAT3& vel)
@@ -21,7 +23,26 @@ public:
 
 	void Update(double elapsed_time)
 	{
-		XMStoreFloat3(&m_position, XMLoadFloat3(&m_position) + XMLoadFloat3(&m_velocity) * elapsed_time);
+		// 1. 计算下一帧的预期位置
+		XMVECTOR vPos = XMLoadFloat3(&m_position);
+		XMVECTOR vVel = XMLoadFloat3(&m_velocity);
+		XMVECTOR vNextPos = vPos + vVel * (float)elapsed_time;
+
+		XMFLOAT3 nextPos;
+		XMStoreFloat3(&nextPos, vNextPos);
+
+		// 2. 射线检测：防止穿墙
+		if (Map_CheckLineOfSightBlocked(m_position, nextPos))
+		{
+			m_deleteFlag = true; // 标记销毁
+
+			// 【修改】这里不要调用 BulletHitEffect_Create，
+			// 因为 Bullet_Destroy 中已经统一调用了。
+			// BulletHitEffect_Create(m_position); 
+			return;
+		}
+
+		m_position = nextPos;
 		m_accumulatedTime += elapsed_time;
 	}
 
@@ -38,10 +59,8 @@ public:
 
 	bool isDestroy() const
 	{
-		return m_accumulatedTime >= LIFE_TIME;
+		return m_deleteFlag || (m_accumulatedTime >= LIFE_TIME);
 	}
-
-
 };
 
 namespace
@@ -78,25 +97,15 @@ void Bullet_Finalize()
 
 void Bullet_Update(double elapsed_time)
 {
-
-
 	for (int i = 0; i < g_BulletCount; i++)
 	{
-		// 先更新位置
 		g_Bullets[i]->Update(elapsed_time);
 
-		// 检查是否死亡（寿命到了）
+		// 检查子弹是否死亡（超时或撞墙）
 		if (g_Bullets[i]->isDestroy())
 		{
-		
-			BulletHitEffect_Create(g_Bullets[i]->GetPosition());
-
-			delete g_Bullets[i];
-
-			g_Bullets[i] = g_Bullets[g_BulletCount - 1];
-			g_Bullets[g_BulletCount - 1] = nullptr;
-			g_BulletCount--;
-			i--;
+			Bullet_Destroy(i);
+			i--; // 退格，保证不漏掉下一个
 		}
 	}
 }
@@ -116,12 +125,12 @@ void Bullet_CheckCollisionWithEnemies()
 			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
 			{
 				// 1. 敌人受伤/死亡逻辑
-				pEnemy->Damage(10.0f,false); // 假设每次命中造成 10 点伤害
+				pEnemy->Damage(10.0f, false); // 假设每次命中造成 10 点伤害
 
-				// 3. 销毁子弹
+				// 2. 销毁子弹
 				Bullet_Destroy(i);
 
-				// 因为子弹被销毁后数组会缩减，所以需要回退索引并跳出当前敌人的循环
+				// 3. 回退索引并跳出
 				i--;
 				break;
 			}
@@ -131,21 +140,19 @@ void Bullet_CheckCollisionWithEnemies()
 
 void Bullet_Draw()
 {
-
 	for (int i = 0; i < g_BulletCount; i++)
 	{
 		// 1. 获取位置
 		XMVECTOR pos = XMLoadFloat3(&g_Bullets[i]->GetPosition());
 
-		// 2. 获取前进方向（即速度方向）
+		// 2. 获取前进方向
 		XMFLOAT3 frontF3 = g_Bullets[i]->GetFront();
 		XMVECTOR forward = XMLoadFloat3(&frontF3);
 
-		// 3. 构建旋转矩阵 (让模型的 Z 轴指向 forward 方向)
-		// 我们需要一个辅助向量（通常是世界坐标的上方向）来计算右方向和上方向
+		// 3. 构建旋转矩阵
 		XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
 
-		// 防止子弹垂直上下飞行时与 worldUp 重合导致计算失败
+		// 防止万向节锁
 		if (fabs(XMVectorGetY(XMVector3Dot(forward, worldUp))) > 0.99f) {
 			worldUp = XMVectorSet(1, 0, 0, 0);
 		}
@@ -156,15 +163,13 @@ void Bullet_Draw()
 		XMMATRIX rotation;
 		rotation.r[0] = right;   // X轴
 		rotation.r[1] = up;      // Y轴
-		rotation.r[2] = forward; // Z轴 (前进方向)
+		rotation.r[2] = forward; // Z轴
 		rotation.r[3] = XMVectorSet(0, 0, 0, 1);
 
-		// 4. 【关键步骤】模型方向修正
+		// 4. 模型方向修正 (修正了空格)
+		XMMATRIX correction = XMMatrixRotationX(XM_PIDIV2);
 
-		XMMATRIX correction = XMMatrixRotationX(XM_PIDIV2); // 尝试旋转 90 度
-
-		// 5. 合成最终世界矩阵：缩放 * 修正 * 旋转 * 平移
-		// 假设缩放为 1.0，如果需要缩放可以加上 XMMatrixScaling
+		// 5. 合成最终世界矩阵
 		XMMATRIX world = correction * rotation * XMMatrixTranslationFromVector(pos);
 
 		ModelDraw(g_BulletModel, world);
@@ -174,9 +179,10 @@ void Bullet_Draw()
 void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& velocity)
 {
 	if (g_BulletCount >= MAX_BULLET) return;
+
 	XMVECTOR vDir = XMLoadFloat3(&velocity);
-	vDir = XMVector3Normalize(vDir); 
-	vDir = vDir * BULLET_SPEED;      
+	vDir = XMVector3Normalize(vDir);
+	vDir = vDir * BULLET_SPEED; // 修正了空格
 
 	XMFLOAT3 finalVelocity;
 	XMStoreFloat3(&finalVelocity, vDir);
@@ -187,7 +193,11 @@ void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& v
 void Bullet_Destroy(int index)
 {
 	if (index < 0 || index >= g_BulletCount) return;
+
+	// 这里统一生成击中特效 (无论是撞墙、撞人还是超时)
+	// 如果希望超时不生成特效，可以在这里加判断
 	BulletHitEffect_Create(g_Bullets[index]->GetPosition());
+
 	delete g_Bullets[index];
 	g_Bullets[index] = g_Bullets[g_BulletCount - 1];
 	g_BulletCount--;
@@ -200,8 +210,7 @@ int Bullet_GetCount()
 
 Sphere Bullet_GetSphere(int index)
 {
-	//return { g_Bullets[index]->GetPosition(),g_BulletModel->local_aabb.GetHalf().x };
-	return { g_Bullets[index]->GetPosition(),0.1f };
+	return { g_Bullets[index]->GetPosition(), 0.1f };
 }
 
 AABB Bullet_GetAABB(int index)

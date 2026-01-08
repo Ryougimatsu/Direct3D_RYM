@@ -201,6 +201,7 @@
     <ClCompile Include="PlayerCharacter.cpp" />
     <ClCompile Include="Player_Camera.cpp" />
     <ClCompile Include="polygon.cpp" />
+    <ClCompile Include="result.cpp" />
     <ClCompile Include="Sampler.cpp" />
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="score.cpp" />
@@ -241,6 +242,7 @@
     <ClInclude Include="Pad_Logger.h" />
     <ClInclude Include="Pathfinder.h" />
     <ClInclude Include="PlayerCharacter.h" />
+    <ClInclude Include="result.h" />
     <ClInclude Include="shader3d_unlit.h" />
     <ClInclude Include="Skeleton.h" />
     <ClInclude Include="SkeletonBuilder.h" />

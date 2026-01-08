@@ -12,6 +12,7 @@
 #include "Pathfinder.h"
 #include "DropItem.h"
 #include "game.h"
+#include "score.h"
 using namespace DirectX;
 
 
@@ -690,6 +691,8 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		if (dot < -0.2f)
 		{
 			// >>> 触发背刺：一击必杀 <<<
+			Score_AddScore(100);
+
 			m_HP = 0.0f;
 			m_bIsDead = true;
 			m_DeathTimer = 3.5f; // 尸体存在时间
@@ -737,6 +740,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 
 	if (m_HP <= 0.0f) {
 		// --- 普通死亡 ---
+		Score_AddScore(100);
 		m_HP = 0.0f;
 		m_bIsDead = true;
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.1f);

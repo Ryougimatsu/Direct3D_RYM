@@ -35,13 +35,17 @@
 #include "Pathfinder.h"
 #include "fade.h"
 #include "scene.h"
+#include "cube.h"
+#include "score.h"
 using namespace DirectX;
 
 namespace
 {
 	bool g_IsDebugCameraMode = false;
 	PlayerCharacter* g_Player = nullptr;
-
+	const DirectX::XMFLOAT3 g_GoalPos = { 15.0f, 0.0f, 10.0f };
+	int g_CubeTextureID = -1;
+	double g_CurrentGameTime = 0.0;
 }
 
 bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end)
@@ -60,18 +64,17 @@ bool Game_CheckCollisionWithWalls(const AABB& objAabb)
 void Game_LoadContent()
 {
 	// 这里放所有耗时的加载函数
+	g_CubeTextureID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
 	Bullet_Initialize();
 	Sky_Initialize();
 	Pathfinder::Initialize();
 	Map_Initialize();
-
 	Player_Camera_Initialize();
 	Inventory_Initialize();
 	DropItem_Initialize();
+	g_CurrentGameTime = 0.0;
 
-	// 注意：g_Player 的 new 操作也可以放在这里，但要小心全局变量竞争
-	// 如果 g_Player 是全局指针，在这里初始化是可以的
-	if (!g_Player) { // 防止重复创建
+	if (!g_Player) { 
 		g_Player = new PlayerCharacter();
 		if (!g_Player->Initialize()) {
 			OutputDebugStringA("[Game] PlayerCharacter Initialize Failed!\n");
@@ -94,6 +97,26 @@ void Game_Initialize()
 		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
 		// 重置血量等逻辑...
 	}
+
+	float screenW = (float)Direct3D_GetBackBufferWidth();
+
+	// 2. 设定参数
+	int digits = 6;                // 显示6位数 (例如 000100)
+	float fontSize = 32.0f;        // 分数数字的大小 (根据 score.cpp 里的定义)
+	float margin = 20.0f;          // 距离边框的间距
+
+	// 3. 计算右上角坐标
+	// X = 屏幕宽 - (数字个数 * 单个数字宽) - 右边距
+	float scoreX = screenW - (digits * fontSize) - margin;
+	float scoreY = margin;         // 顶边距
+
+
+
+
+	Score_Initialize(scoreX, scoreY, digits);
+
+	// 5. 重置分数为0 (新游戏开始)
+	Score_Reset();
 
 	// 【重要】开始淡入，让画面亮起来
 	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
@@ -132,6 +155,7 @@ void Game_Update(double elapsed_time)
 	Bullet_Update(elapsed_time);
 	Bullet_CheckCollisionWithEnemies();
 	Sky_SetPosition(Player_Camera_GetPosition());
+	Score_Update();
 	DropItem_Update(elapsed_time);
 	Inventory_Update(elapsed_time);
 	
@@ -148,6 +172,25 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
+	if (g_Player && !g_Player->IsDead())
+	{
+		g_CurrentGameTime += elapsed_time;
+	}
+
+	if (g_Player && !g_Player->IsDead())
+	{
+		// 获取玩家和终点的包围盒
+		AABB playerAABB = g_Player->GetAABB();
+		AABB goalAABB = Cube_CreateAABB(g_GoalPos);
+
+		// 检测碰撞
+		if (Collision_IsOverLapAABB(playerAABB, goalAABB))
+		{
+			Score_SetTime(g_CurrentGameTime);
+			// 跳转到结算界面
+			Scene_Change(SCENE_RESULT);
+		}
+	}
 }
 
 void Game_Draw()
@@ -186,11 +229,15 @@ void Game_Draw()
 	DropItem_Draw();
 	Map_Draw(); 
 
+	DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
+	Cube_Draw(g_CubeTextureID, goalWorld);
+
 
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);
 	Sprite_Begin();
 	GameUI_Draw();
+	Score_Draw();
 	Inventory_Draw();
 	UI_DrawHUD();
 	Direct3D_SetDepthEnable(true);

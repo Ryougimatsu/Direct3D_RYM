@@ -1,85 +1,106 @@
 #include "score.h"
-
 #include <algorithm>
-
 #include "sprite.h"
 #include "texture.h"
+#include "Font.h"
+#include <iomanip>
+#include <sstream>
+#include <string>
+// 确保这里的字体大小和你图片里单个数字的大小一致
+static constexpr float SCORE_FONT_SIZE = 32.0f;
 
-
-
-static constexpr int SCORE_FONT_SIZE = 32;// スコアのフォントサイズ
-
-namespace 
+namespace
 {
-	unsigned int g_Score = 0; // スコアを保持する変数
-	unsigned int g_ViewScore = 0; // 表示用のスコア
-	unsigned int g_CounterStop = 1; // スコアのカウンターを停止するための変数
-	int g_Digit = 1; // スコアの桁数
-	float g_X = 0.0f , g_Y = 0.0f; // スコアのY座標
-	int g_ScoreTexId = -1; // スコアのテクスチャID
-
-	
-
+	unsigned int g_Score = 0;       // 实际分数
+	unsigned int g_ViewScore = 0;   // 滚动显示的分数
+	unsigned int g_CounterStop = 1; // 上限
+	int g_Digit = 1;                // 位数
+	float g_X = 0.0f, g_Y = 0.0f;  // 坐标
+	double g_SurvivalTime = 0.0;
 }
-
-static void  drawNumber(float x, float y, int number);
 
 
 void Score_Initialize(float x, float y, int digit)
 {
-	g_ViewScore = 0; // 表示用のスコアを初期化
-	g_Digit = digit; // スコアの桁数を設定
-	g_Score = 0; // スコアを初期化
-	g_X = x; // スコアのX座標を初期化
-	g_Y = y; // スコアのY座標を初期化
+	g_ViewScore = 0;
+	g_Digit = digit;
+	g_Score = 0;
+	g_X = x;
+	g_Y = y;
 
+	// 计算最大显示值 (例如 6位 就是 999999)
+	g_CounterStop = 1;
 	for (int i = 0; i < digit; ++i)
 	{
-		g_CounterStop *= 10; // スコアのカウンターを桁数に応じて設定
+		g_CounterStop *= 10;
 	}
+	g_CounterStop--;
 
-	g_CounterStop--;//
-
-	g_ScoreTexId = Texture_LoadFromFile(L"resource/texture/game_num_font.png"); // スコアのテクスチャを読み込む
 }
 
 void Score_Finalize()
 {
+	// 可以在这里释放纹理，但通常建议在 main 或 Texture_AllRelease 中统一释放
 }
 
 void Score_Draw()
 {
-	unsigned int temp = std::min(g_ViewScore, g_CounterStop); // スコアがカウンターを超えないように制限
-	for (int i = 0; i < g_Digit; ++i)
-	{
-		int n = temp % 10; // 最下位の桁を取得
-		float x = g_X + (g_Digit - i - 1) * SCORE_FONT_SIZE; // X座標を計算
-		drawNumber(x, g_Y, n); // 数字を描画
-		temp /= 10; // 次の桁へ移動
-	}
+	unsigned int displayValue = std::min(g_ViewScore, g_CounterStop);
+
+	// 2. 格式化字符串 (例如: 100 -> "000100")
+	std::wstringstream wss;
+	wss << std::setw(g_Digit) << std::setfill(L'0') << displayValue;
+	std::wstring scoreText = wss.str();
+
+	// 3. 调用字体绘制
+	// 参数：文本, X坐标, Y坐标, 颜色(白色)
+	Font_Draw(scoreText.c_str(), g_X, g_Y, { 1.0f, 1.0f, 1.0f, 1.0f });
 }
 
 void Score_Update()
 {
-	g_ViewScore = std::min(g_ViewScore + 1, g_Score); // スコアの表示用カウンターを更新
+	if (g_ViewScore < g_Score) {
+		// 简单的追赶算法
+		long long diff = (long long)g_Score - g_ViewScore;
+
+		if (diff > 10000) g_ViewScore += 1000;
+		else if (diff > 1000) g_ViewScore += 100;
+		else if (diff > 100) g_ViewScore += 10;
+		else g_ViewScore++;
+	}
+	else {
+		g_ViewScore = g_Score;
+	}
 }
 
 unsigned int Score_GetScore()
 {
-	return g_Score; // 現在のスコアを返す
+	return g_Score;
 }
 
 void Score_AddScore(int score)
 {
-	g_ViewScore = g_Score;
-	g_Score += score; // スコアを加算
-}
-void Score_Reset()
-{
-	g_Score = 0; // スコアをリセット
+	g_Score += score;
 }
 
-static void drawNumber(float x, float y, int number)
+void Score_Reset()
 {
-	Sprite_Draw(g_ScoreTexId,x,y,SCORE_FONT_SIZE*number,0, SCORE_FONT_SIZE, SCORE_FONT_SIZE);
+	g_Score = 0;
+	g_ViewScore = 0;
+}
+
+void Score_SetPosition(float x, float y)
+{
+	g_X = x;
+	g_Y = y;
+}
+
+void Score_SetTime(double time)
+{
+	g_SurvivalTime = time;
+}
+
+double Score_GetTime()
+{
+	return g_SurvivalTime;
 }

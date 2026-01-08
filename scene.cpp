@@ -3,6 +3,7 @@
 #include "game.h"
 #include "title.h"
 #include "gameover.h"
+#include "result.h"
 namespace 
 {
 	scene g_CurrentScene = SCENE_TITLE;
@@ -23,7 +24,7 @@ void Scene_Initialize()
 		Game_Initialize();
 		break;
 	case SCENE_RESULT:
-
+		Result_Initialize();
 		break;
 	case SCENE_GAMEOVER: 
 		GameOver_Initialize(); 
@@ -47,7 +48,7 @@ void Scene_Finalize()
 		Game_Finalize();
 		break;
 	case SCENE_RESULT:
-
+		Result_Finalize();
 		break;
 	case SCENE_GAMEOVER: 
 		GameOver_Finalize();
@@ -71,7 +72,7 @@ void Scene_Update(double elapsed_time)
 		Game_Update(elapsed_time);
 		break;
 	case SCENE_RESULT:
-
+		Result_Update(elapsed_time);
 		break;
 	case SCENE_GAMEOVER:
 		GameOver_Update(elapsed_time);
@@ -96,7 +97,7 @@ void Scene_Draw()
 		Game_Draw();
 		break;
 	case SCENE_RESULT:
-
+		Result_Draw();
 		break;
 	case SCENE_GAMEOVER: 
 		GameOver_Draw(); 
