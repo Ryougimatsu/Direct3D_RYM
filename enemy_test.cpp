@@ -246,13 +246,35 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 		{
 			XMFLOAT3 basePos = m_pOwner->m_LastKnownPosition;
 
-			// 随机偏移 (1.0 ~ 2.0米)，防止所有敌人重叠在同一个点
-			float randomAngle = (rand() % 360) * XM_2PI / 360.0f;
-			float randomDist = 1.0f + (rand() % 100) / 100.0f;
+			// 尝试生成一个不在墙里的搜索点
+			bool foundValidSpot = false;
+			for (int i = 0; i < 5; ++i) // 尝试5次
+			{
+				float randomAngle = (rand() % 360) * XM_2PI / 360.0f;
+				float randomDist = 1.0f + (rand() % 100) / 100.0f;
 
-			m_pOwner->m_PersonalSearchTarget.x = basePos.x + sinf(randomAngle) * randomDist;
-			m_pOwner->m_PersonalSearchTarget.z = basePos.z + cosf(randomAngle) * randomDist;
-			m_pOwner->m_PersonalSearchTarget.y = basePos.y;
+				XMFLOAT3 testPos;
+				testPos.x = basePos.x + sinf(randomAngle) * randomDist;
+				testPos.z = basePos.z + cosf(randomAngle) * randomDist;
+				testPos.y = basePos.y;
+
+				// 构造一个小盒子检测这个点是不是墙
+				AABB testBox = {
+					{testPos.x - 0.2f, testPos.y, testPos.z - 0.2f},
+					{testPos.x + 0.2f, testPos.y + 1.0f, testPos.z + 0.2f}
+				};
+
+				if (!Game_CheckCollisionWithWalls(testBox)) {
+					m_pOwner->m_PersonalSearchTarget = testPos;
+					foundValidSpot = true;
+					break;
+				}
+			}
+
+			// 如果随机的点都在墙里，就老老实实去最后看到的那个确切位置
+			if (!foundValidSpot) {
+				m_pOwner->m_PersonalSearchTarget = basePos;
+			}
 		}
 
 		m_pOwner->m_HasLostSight = true;
@@ -273,7 +295,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 		bool hasArrived = false;
 
 		// 条件 A: 距离足够近
-		if (distToTarget < 1.0f) {
+		if (distToTarget < 0.6f) {
 			hasArrived = true;
 		}
 
@@ -423,6 +445,26 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			m_pOwner->m_CurrentPathIndex = 0;
 			// 撞墙时刷新快一点
 			m_RePathTimer = (m_pOwner->m_StuckTimer > 0.0f) ? 0.3f : 0.8f;
+			if (m_pOwner->m_Path.empty() && m_pOwner->m_HasLostSight)
+			{
+				// 计算物理距离
+				float dist = XMVectorGetX(XMVector3Length(XMVectorSetY(vTarget - vPos, 0.0f)));
+
+				// 只有当距离真的很近（< 0.5f）或者 真的很远但算不出路时，才放弃
+				if (dist < 0.5f) {
+					// 确实到了，切 Search
+					m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateSearch(m_pOwner));
+					return;
+				}
+				else {
+					useAStar = false;
+					XMVECTOR toTarget = vTarget - vEnemyPos;
+					toTarget = XMVectorSetY(toTarget, 0.0f);
+					if (XMVectorGetX(XMVector3LengthSq(toTarget)) > 0.001f) {
+						vSeekDir = XMVector3Normalize(toTarget);
+					}
+				}
+			}
 		}
 
 		if (!m_pOwner->m_Path.empty() && m_pOwner->m_CurrentPathIndex < m_pOwner->m_Path.size()) {
@@ -490,6 +532,9 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 
 			// 标记撞墙 (触发 A*)
 			m_pOwner->m_StuckTimer = 1.0f;
+			if (useAStar) {
+				m_pOwner->m_CurrentPathIndex++;
+			}
 		}
 
 		// --- 步骤 B: 尝试移动 Z 轴 ---
@@ -502,6 +547,9 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 
 			// 标记撞墙 (触发 A*)
 			m_pOwner->m_StuckTimer = 1.0f;
+			if (useAStar) {
+				m_pOwner->m_CurrentPathIndex++;
+			}
 		}
 
 		// --- 步骤 C: 紧急逃逸 (防止被排斥力挤进箱子出不来) ---
