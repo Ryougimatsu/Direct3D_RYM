@@ -603,6 +603,7 @@ EnemyTest::EnemyTest(const DirectX::XMFLOAT3& position)
 	ChangeState(new EnemyTest_StatePatrol(this));
 }
 
+
 EnemyTest::~EnemyTest()
 {
 	auto it = std::remove(g_AllEnemies.begin(), g_AllEnemies.end(), this);

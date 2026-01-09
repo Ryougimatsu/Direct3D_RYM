@@ -10,7 +10,8 @@
 #include "Player_Camera.h"
 #include "shader_3d.h"
 #include <vector>
-
+#include <cstdlib>
+#include <ctime>  
 using namespace DirectX;
 
 namespace {
@@ -38,39 +39,55 @@ static void AddWall(float x, float z, float y = 0.5f)
 }
 void Map_Initialize()
 {
-	// 1. 清空旧数据
+	// 1. 清理
 	g_MapObjects.clear();
 	g_WallTextureID = Texture_LoadFromFile(L"resource/texture/Stone.png");
 
-	// 2. 仅创建地面对象 (KindId: 0)
+	// 2. 地面
 	MapObject ground;
-	ground.KindId = MAP_KIND_GROUND; // 建议使用枚举 MAP_KIND_GROUND 代替 0，增加可读性
+	ground.KindId = MAP_KIND_GROUND;
 	ground.Position = { 0.0f, 0.0f, 0.0f };
-
-	// 确保 MeshField_GetWidth / GetDepth 函数存在且可用
-	// 如果报错找不到标识符，请确保 #include "Meshfield.h" 并且函数名拼写正确
 	float w = MeshField_GetWidth() / 2.0f;
 	float d = MeshField_GetDepth() / 2.0f;
-
-	// 地面的碰撞盒 (稍作下沉，防止Z-Fighting或误判)
 	ground.Aabb = { {-w, -1.0f, -d}, {w, 0.0f, d} };
-
 	g_MapObjects.push_back(ground);
 
-	// 3. 创建箱子
-	float x = 5.0f;
-	float z = 5.0f;
+	// 3. 随机生成障碍物
+	srand((unsigned int)time(NULL)); // 设置随机种子
 
-	AddWall(x, z, 0.5f); // 第 1 层 (底层)
-	AddWall(x, z, 1.5f); // 第 2 层
-	AddWall(x, z, 2.5f); // 第 3 层
+	int obstacleCount = 60;   // 障碍物数量
+	float range = 25.0f;      // 分布范围
+	float safeRadius = 3.0f;  // 出生点保护半径
 
-	// 示例：悬空箱子
-	AddWall(-5.0f, 5.0f, 1.5f);
+	for (int i = 0; i < obstacleCount; i++)
+	{
+		// 生成随机坐标并取整
+		float x = (float)((rand() % (int)(range * 2)) - range);
+		float z = (float)((rand() % (int)(range * 2)) - range);
 
-	// 示例：普通墙壁 (使用默认参数 y=0.5f)
-	AddWall(10.0f, 10.0f);
-	AddWall(10.0f, 11.0f);
+		// 避开玩家出生点
+		if (abs(x) < safeRadius && abs(z) < safeRadius) {
+			i--; continue;
+		}
+
+		// 避开终点位置 (假设终点在 10,10)
+		if (abs(x - 10.0f) < 2.0f && abs(z - 10.0f) < 2.0f) {
+			i--; continue;
+		}
+
+		// 生成底座
+		AddWall(x, z, 0.5f);
+
+		// 30% 概率叠加第二层
+		if ((rand() % 100) < 30) {
+			AddWall(x, z, 1.5f);
+
+			// 再 30% 概率叠加第三层
+			if ((rand() % 100) < 30) {
+				AddWall(x, z, 2.5f);
+			}
+		}
+	}
 }
 
 void Map_Finalize()
