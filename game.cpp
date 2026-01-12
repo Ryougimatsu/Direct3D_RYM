@@ -118,7 +118,7 @@ void Game_Initialize()
 	// 5. 重置分数为0 (新游戏开始)
 	Score_Reset();
 
-	// 【重要】开始淡入，让画面亮起来
+	// 开始淡入，让画面亮起来
 	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
 }
 

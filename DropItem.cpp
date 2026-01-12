@@ -36,7 +36,7 @@ void DropItem_Initialize()
 	}
 
 	// 加载一个贴图作为掉落物外观
-	g_DropTexID = Texture_LoadFromFile(L"resource/texture/ui_cursor.png");
+	g_DropTexID = Texture_LoadFromFile(L"resource/texture/AmmoBox.png");
 
 	// 如果没找到，就用白色
 	if (g_DropTexID == -1) g_DropTexID = Texture_LoadFromFile(L"resource/texture/white.png");

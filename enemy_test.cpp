@@ -110,20 +110,39 @@ void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 		float distSq = XMVectorGetX(XMVector3LengthSq(toSound));
 
 		if (distSq < (effectiveRadius * effectiveRadius)) {
+			// 始终更新目标点，以防声音移动
 			m_TargetPoint = soundPos;
-			m_WaitTimer = 0.0f;
 
-			if (!m_bAlerted && !m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
-				m_pOwner->m_Animator.PlayAnimation(g_pScreamAnim, false, 0.2f);
-				m_bAlerted = true;
-				m_pOwner->SetAlerted(true);
+			// 情况 A: 还没警觉 -> 吓一跳，开始尖叫
+			if (!m_bAlerted) {
+				if (!m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
+					m_pOwner->m_Animator.PlayAnimation(g_pScreamAnim, false, 0.2f);
+					m_bAlerted = true;
+					m_pOwner->SetAlerted(true);
+				}
+				return; // 正在尖叫中，直接返回，不切状态
 			}
+
+			// 情况 B: 已经警觉了 (m_bAlerted == true)
+
+			if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
+				return;
+			}
+
+			// 情况 C: 警觉了，且没在尖叫（比如之前的尖叫播完了，又听到了新声音）
+			// 这时候才允许直接切换去调查
+			m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner, soundPos));
+			return;
 		}
 	}
 
 	if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
 		// 如果尖叫进度没到 90%，直接返回，不执行下面的位移代码
 		if (m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.9f) {
+			return;
+		}
+		if (m_bAlerted) {
+			m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner, m_TargetPoint));
 			return;
 		}
 	}
@@ -185,6 +204,7 @@ void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
 }
 
+
 void EnemyTest::EnemyTest_StatePatrol::Draw() const
 {
 
@@ -199,6 +219,23 @@ EnemyTest::EnemyTest_StateChase::EnemyTest_StateChase(EnemyTest* pOwner)
 	if (g_pWalkAnim) {
 		m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.3f); // 0.3秒平滑过渡
 	}
+}
+EnemyTest::EnemyTest_StateChase::EnemyTest_StateChase(EnemyTest* pOwner, const DirectX::XMFLOAT3& targetPos)
+	: m_pOwner(pOwner), m_RePathTimer(0.0f)
+{
+	// 1. 播放移动动画
+	if (g_pWalkAnim) {
+		m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.3f);
+	}
+
+	// 2. 【核心逻辑】欺骗状态机，让它认为“刚刚丢失了玩家视野”
+	m_pOwner->m_HasLostSight = true;
+
+	// 3. 将声音位置设定为搜索目标
+	m_pOwner->m_PersonalSearchTarget = targetPos;
+
+	// 4. 更新最后已知位置（防止逻辑出错）
+	m_pOwner->m_LastKnownPosition = targetPos;
 }
 void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 {
@@ -291,7 +328,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 		XMVECTOR vTarget = XMLoadFloat3(&targetPos);
 		float distToTarget = XMVectorGetX(XMVector3Length(XMVectorSetY(vTarget - vEnemyPos, 0.0f)));
 
-		// 【修复核心】：定义“到达”的条件
+		//定义“到达”的条件
 		bool hasArrived = false;
 
 		// 条件 A: 距离足够近
@@ -393,9 +430,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	// 优先级 2: 丢失视野 (HasLostSight)
 	else if (m_pOwner->m_HasLostSight)
 	{
-		// 这里是修改的关键！
 		// 如果距离还很远 (> 6.0米)，不要立刻用 A*。
-		// 让敌人先傻乎乎地直线跑到箱子前面再说。
 		if (distToTarget > 6.0f)
 		{
 			useAStar = false; // 远距离 -> 走直线 (哪怕前面有墙)
@@ -506,58 +541,71 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	// =================================================================================
 	// 如果快到了搜索点，减小寻路力度，防止抖动
 	float seekWeight = 1.0f;
-
 	XMVECTOR vFinalDir = vSeekDir * seekWeight + vSeparation * 2.5f;
 
 	if (XMVectorGetX(XMVector3LengthSq(vFinalDir)) > 0.01f)
 	{
 		vFinalDir = XMVector3Normalize(vFinalDir);
-		float moveSpeed = 1.0f;
+		float moveSpeed = 1.0f; // 你可以把这个变成成员变量
 
-		// 计算这一帧的总位移量
+		// 计算这一帧的【期望】位移量
 		XMVECTOR vDelta = vFinalDir * moveSpeed * (float)elapsed_time;
 		XMFLOAT3 delta;
 		XMStoreFloat3(&delta, vDelta);
 
-		// 备份当前位置
+		// 备份当前位置 (用于回退)
 		XMFLOAT3 originalPos = m_pOwner->m_position;
+		// 备份起始位置 (用于计算实际移动了多少)
+		XMFLOAT3 startPosOfFrame = m_pOwner->m_position;
 
 		// --- 步骤 A: 尝试移动 X 轴 ---
 		m_pOwner->m_position.x += delta.x;
-
 		if (Game_CheckCollisionWithWalls(m_pOwner->GetAABB()))
 		{
-			// X 轴撞墙了！撤销 X 轴移动
+			// 撞墙了！仅回退，【不】立刻标记为 Stuck
 			m_pOwner->m_position.x = originalPos.x;
-
-			// 标记撞墙 (触发 A*)
-			m_pOwner->m_StuckTimer = 1.0f;
-			if (useAStar) {
-				m_pOwner->m_CurrentPathIndex++;
-			}
 		}
 
 		// --- 步骤 B: 尝试移动 Z 轴 ---
 		m_pOwner->m_position.z += delta.z;
-
 		if (Game_CheckCollisionWithWalls(m_pOwner->GetAABB()))
 		{
-			// Z 轴撞墙了！撤销 Z 轴移动
+			// 撞墙了！仅回退，【不】立刻标记为 Stuck
 			m_pOwner->m_position.z = originalPos.z;
+		}
 
-			// 标记撞墙 (触发 A*)
+		// --- 步骤 C: 智能卡死检测 (Smart Stuck Detection) ---
+
+		// 1. 计算这一帧【实际】移动了多远
+		float actualDx = m_pOwner->m_position.x - startPosOfFrame.x;
+		float actualDz = m_pOwner->m_position.z - startPosOfFrame.z;
+		float actualDistSq = actualDx * actualDx + actualDz * actualDz;
+
+		// 2. 计算【期望】移动距离的平方 (稍微打个折，比如 10%)
+		// 如果实际移动距离 < 期望距离的 10%，说明被死死卡住了（角落）
+		float expectedDistSq = (delta.x * delta.x + delta.z * delta.z);
+
+		// 如果应该移动但几乎没动 (注意：要排除本来就没想动的情况)
+		if (expectedDistSq > 0.00001f && actualDistSq < expectedDistSq * 0.1f)
+		{
+			// >>> 确实卡死了 (走进死胡同/角落) <<<
 			m_pOwner->m_StuckTimer = 1.0f;
+
+			// 只有真的卡死了，才去强制推进路径索引或触发重寻路
 			if (useAStar) {
 				m_pOwner->m_CurrentPathIndex++;
 			}
 		}
+		else
+		{
+			// >>> 只是在贴墙滑动 <<<
+			// 此时我们认为移动是成功的，不需要恐慌。
+			// 这会让敌人在墙角转弯时更丝滑，而不会鬼畜。
+		}
 
-		// --- 步骤 C: 紧急逃逸 (防止被排斥力挤进箱子出不来) ---
-		// 如果经过上述修正，还是处在碰撞状态 (说明上一帧就已经在箱子里了)
+		// --- 步骤 D: 紧急逃逸 (保持不变) ---
 		if (Game_CheckCollisionWithWalls(m_pOwner->GetAABB()))
 		{
-			// 强制把位置回退到上一帧的绝对安全位置 (虽然可能会看起来抖一下，但比卡死好)
-			// 或者：你可以在这里写一个向外推的逻辑，但简单的回退通常够用
 			m_pOwner->m_position = originalPos;
 		}
 
@@ -796,7 +844,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_DeathTimer = 3.5f;
 
 		int rate = rand() % 100;
-		if (rate < 30)
+		if (rate < 15)
 		{
 			DropItem_Spawn(m_position, 4);
 		}
@@ -921,7 +969,6 @@ void EnemyTest::EnemyTest_StateSearch::Update(double elapsed_time)
 	// 2. 计时器倒数
 	m_SearchTimer -= (float)elapsed_time;
 
-	// 3. 【关键】时间到了必须切回巡逻，否则就会永久卡在 Search 里的 Idle
 	if (m_SearchTimer <= 0.0f)
 	{
 		m_pOwner->SetAlerted(false); // 解除警觉

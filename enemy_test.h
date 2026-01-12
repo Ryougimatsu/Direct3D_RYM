@@ -102,6 +102,7 @@ private:
         float m_RePathTimer = 0.0f;
     public:
         EnemyTest_StateChase(EnemyTest* pOwner);
+        EnemyTest_StateChase(EnemyTest* pOwner, const DirectX::XMFLOAT3& targetPos);
         void Update(double elapsed_time) override;
         void Draw() const override;
     };
