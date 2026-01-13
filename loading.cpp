@@ -1,11 +1,12 @@
 #include "loading.h"
 #include "scene.h"
-#include "game.h"       // 为了调用 Game_LoadContent
-#include "Font.h"       // 为了画文字
-#include "direct3d.h"   // 为了获取屏幕宽高
-#include <thread>       // 多线程支持
-#include <atomic>       // 线程安全标志位
+#include "game.h"      
+#include "Font.h"      
+#include "direct3d.h"  
+#include <thread>      
+#include <atomic>      
 #include <string>
+#include "sprite.h"
 
 namespace
 {
@@ -49,7 +50,8 @@ void Loading_Update(double elapsed_time)
 
 void Loading_Draw()
 {
-	// 简单的“点点点”动画
+	Direct3D_ClearBackBuffer();
+	Sprite_Begin();
 	Direct3D_SetDepthEnable(false);
 	int dots = (int)(g_Timer * 3.0f) % 4; // 0, 1, 2, 3
 	std::wstring text = L"NOW LOADING";

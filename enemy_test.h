@@ -25,10 +25,6 @@ private:
     bool m_bAlertedStatus = false; //   状态标记
 	bool m_bIsDead = false;       // 逻辑死亡标记 (HP<=0 但尸体还在)
 	float m_DeathTimer = 0.0f;    // 尸体存在倒计时
-	std::vector<DirectX::XMFLOAT3> m_Path;
-	int m_CurrentPathIndex = 0; // 当前走到第几个点了
-
-
 
 	Animator m_Animator;            // 每个敌人私有的动画器
 	static const Animation* g_pIdleAnim;  // 全局共享的 Idle 动画资源
@@ -40,6 +36,7 @@ private:
     static const Animation* g_pScratchIdleAnim;
 
     bool CanSeePlayer();
+
 
 
 public:
@@ -58,7 +55,6 @@ public:
     void ChangeState(State* pNextState) override;
     void ApplyKnockback(const DirectX::XMVECTOR& direction, float force) override;
     void SetAlerted(bool alerted);
-
     void SetRotationY(float angle) { m_Rotation.y = angle; }
 
     void Update(double elapsed_time) override;
@@ -100,6 +96,7 @@ private:
         EnemyTest* m_pOwner = {};
         bool m_HasDealtDamageInThisCycle = false;
         float m_RePathTimer = 0.0f;
+        float m_GiveUpTimer;
     public:
         EnemyTest_StateChase(EnemyTest* pOwner);
         EnemyTest_StateChase(EnemyTest* pOwner, const DirectX::XMFLOAT3& targetPos);

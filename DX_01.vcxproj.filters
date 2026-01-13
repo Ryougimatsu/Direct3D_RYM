@@ -13,6 +13,9 @@
       <UniqueIdentifier>{ba958b34-6b71-4a0b-a175-cf2ecf2e33d8}</UniqueIdentifier>
       <Extensions>hlsl;</Extensions>
     </Filter>
+    <Filter Include="RecastDetour">
+      <UniqueIdentifier>{d980344b-9e17-4bc9-8d40-6aca49a0b34d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -199,6 +202,63 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="result.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRegion.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\Recast.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastAlloc.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastArea.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastAssert.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastContour.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastFilter.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastLayers.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastMesh.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastMeshDetail.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRasterization.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAlloc.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAssert.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourCommon.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMesh.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMeshBuilder.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMeshQuery.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNode.cpp">
+      <Filter>RecastDetour</Filter>
+    </ClCompile>
+    <ClCompile Include="NavigationSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -399,6 +459,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="result.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NavigationSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

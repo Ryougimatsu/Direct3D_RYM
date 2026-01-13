@@ -28,20 +28,26 @@ static void AddWall(float x, float z, float y = 0.5f)
 	// 使用传入的 y 坐标
 	wall.Position = { x, y, z };
 
+	float halfScale = 0.4f;
+	float heightHalf = 0.5f;
+
 	// 创建物理碰撞盒
 	wall.Aabb = Cube_CreateAABB(wall.Position);
+
+	wall.Aabb.min = { x - halfScale, y - heightHalf, z - halfScale };
+	wall.Aabb.max = { x + halfScale, y + heightHalf, z + halfScale };
 
 	// 添加到列表
 	g_MapObjects.push_back(wall);
 
-	// 【重要】Pathfinder 是 2D 网格寻路，无论堆多高，只要有箱子，这个 (x,z) 就是障碍
+	// Pathfinder
 	Pathfinder::SetObstacle(x, z, true);
 }
-void Map_Initialize()
+void Map_Initialize(const DirectX::XMFLOAT3& goalPos)
 {
 	// 1. 清理
 	g_MapObjects.clear();
-	g_WallTextureID = Texture_LoadFromFile(L"resource/texture/Stone.png");
+	g_WallTextureID = Texture_LoadFromFile(L"resource/texture/StoneWall.png");
 
 	// 2. 地面
 	MapObject ground;
@@ -58,7 +64,7 @@ void Map_Initialize()
 	int obstacleCount = 60;   // 障碍物数量
 	float range = 25.0f;      // 分布范围
 	float safeRadius = 3.0f;  // 出生点保护半径
-
+	float goalRadius = 4.0f;
 	for (int i = 0; i < obstacleCount; i++)
 	{
 		// 生成随机坐标并取整
@@ -71,8 +77,8 @@ void Map_Initialize()
 		}
 
 		// 避开终点位置 (假设终点在 10,10)
-		if (abs(x - 10.0f) < 2.0f && abs(z - 10.0f) < 2.0f) {
-			i--; continue;
+		if (abs(x - goalPos.x) < goalRadius && abs(z - goalPos.z) < goalRadius) {
+			i--; continue; // 如果太靠近终点，重新生成
 		}
 
 		// 生成底座

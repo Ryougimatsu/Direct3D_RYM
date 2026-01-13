@@ -430,15 +430,18 @@ void ModelRelease(MODEL* model)
 	delete[] model->VertexBuffer;
 	delete[] model->IndexBuffer;
 
-
+	// --- 修改开始 ---
 	for (std::pair<const std::string, ID3D11ShaderResourceView*> pair : model->Texture)
 	{
-		pair.second->Release();
+		// 必须检查指针是否为空！
+		if (pair.second != nullptr)
+		{
+			pair.second->Release();
+		}
 	}
-
+	// --- 修改结束 ---
 
 	aiReleaseImport(model->AiScene);
-
 
 	delete model;
 }

@@ -7,6 +7,7 @@
 #include "SkinningShader.h"
 #include "Meshfield.h"
 #include "map.h"
+#include "NavigationSystem.h"
 using namespace DirectX;
 
 
@@ -114,13 +115,40 @@ void Enemy_ResolveCollisions() {
 
 void Enemy_Initialize()
 {
+	for (auto* e : g_Enemies) delete e;
 	g_Enemies.clear();
 	srand(static_cast<unsigned int>(time(nullptr)));
 	EnemyTest::LoadAssets();
-	for (auto* e : g_Enemies) delete e;
+	bool spawned = false;
+	int attempts = 0;
+	while (!spawned && attempts < 20)
+	{
+		float x = RandomFloat(-15.0f, 15.0f);
+		float z = RandomFloat(-15.0f, 15.0f);
 
-	Enemy_Create({ 5.0f, 0.0f, 5.0f });
+
+		if (x * x + z * z < 5.0f * 5.0f) {
+			attempts++;
+			continue;
+		}
+
+
+		AABB enemyAABB;
+		enemyAABB.min = { x - 1.0f, 0.0f, z - 1.0f };
+		enemyAABB.max = { x + 1.0f, 2.0f, z + 1.0f };
+
+		if (!Map_CheckCollision(enemyAABB))
+		{
+			// 如果没撞墙，就在这里生成
+			Enemy_Create({ x, 0.0f, z });
+			spawned = true;
+		}
+
+		attempts++;
+	}
+
 	g_EnemyCount = 0;
+	g_SpawnTimer = 0.0f;
 }
 
 void Enemy_Update(double elapsed_time)
@@ -219,6 +247,59 @@ Enemy* Enemy_GetEnemy(int index)
 {
 	if (index < 0 || index >= g_Enemies.size()) return nullptr;
 	return g_Enemies[index];
+}
+
+void Enemy::MoveToTarget(const DirectX::XMFLOAT3& targetPos, double dt)
+{
+	// 这里使用基类的 m_PathTimer，完全合法
+	m_PathTimer -= (float)dt;
+
+	if (m_PathTimer <= 0.0f || m_Path.empty())
+	{
+		// 调用单例系统
+		// 确保 NavigationSystem.h 已经 include 进来了
+		m_Path = NavigationSystem::GetInstance()->FindPath(GetPosition(), targetPos);
+
+		m_CurrentPathIndex = 1;
+		m_PathTimer = 0.5f + ((rand() % 100) / 100.0f) * 0.2f;
+	}
+
+	// ... 你的移动逻辑 ...
+	XMVECTOR vMyPos = XMLoadFloat3(&GetPosition()); // 使用虚函数 GetPosition
+	XMVECTOR vVelocity = XMVectorZero();
+
+	if (!m_Path.empty() && m_CurrentPathIndex < m_Path.size())
+	{
+		XMFLOAT3 nextWayPoint = m_Path[m_CurrentPathIndex];
+		XMVECTOR vTarget = XMLoadFloat3(&nextWayPoint);
+		XMVECTOR vDir = vTarget - vMyPos;
+		vDir = XMVectorSetY(vDir, 0.0f);
+
+		float distSq = XMVectorGetX(XMVector3LengthSq(vDir));
+
+		if (distSq < 0.25f) // 0.1*0.1 有点太小了，建议改大一点比如 0.5*0.5=0.25
+		{
+			m_CurrentPathIndex++;
+		}
+		else
+		{
+			// 修正：m_MoveSpeed 已经在基类定义了
+			vVelocity = XMVector3Normalize(vDir) * m_MoveSpeed;
+
+			// 如果需要旋转，这里需要特殊处理，因为 Enemy 基类没有 SetRotationY 虚接口
+			// 你可能需要把它转成 EnemyTest* 强转，或者给 Enemy 加一个纯虚函数 SetRotationY
+			// 简单做法：暂时在子类的 Update 里处理旋转，这里只处理位移
+		}
+	}
+
+	// 应用移动
+	XMVECTOR vNewPos = vMyPos + vVelocity * (float)dt;
+	XMFLOAT3 newPos;
+	XMStoreFloat3(&newPos, vNewPos);
+	SetPosition(newPos); // 使用虚函数 SetPosition
+
+	// 局部避障
+	Enemy_ResolveCollisions();
 }
 
 void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, float range, float angle) {

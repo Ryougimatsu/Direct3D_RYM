@@ -14,7 +14,7 @@ public:
 	DirectX ::XMFLOAT3 Position;
 	AABB Aabb;
 };
-void Map_Initialize();
+void Map_Initialize(const DirectX::XMFLOAT3& goalPos);
 
 void Map_Finalize();
 //void Map_Update(double elapsed_time);

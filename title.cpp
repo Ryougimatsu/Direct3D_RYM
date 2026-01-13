@@ -13,7 +13,7 @@
 enum TitleMenuState {
 	MENU_MAIN,          // 主菜单 (开始游戏 / 设置)
 	MENU_SETTINGS,      // 设置菜单
-	MENU_INSTRUCTIONS   // 【新增】操作说明界面
+	MENU_INSTRUCTIONS   // 操作说明界面
 };
 
 namespace
@@ -117,7 +117,7 @@ void Title_Update(double elapsed_time)
 		if (GameSettings::VolumeSE < 0.0f)  GameSettings::VolumeSE = 0.0f;  if (GameSettings::VolumeSE > 1.0f)  GameSettings::VolumeSE = 1.0f;
 		*/
 
-		// 【新增】只检测退出键 (因为没有选项可选了)
+		//只检测退出键 (因为没有选项可选了)
 		if (KeyLogger_IsTrigger(KK_ENTER) || KeyLogger_IsTrigger(KK_ESCAPE)) {
 			g_CurrentState = MENU_MAIN;
 		}
@@ -254,6 +254,8 @@ void Title_Draw()
 		Font_Draw(L"LEFT CLICK    :   SHOOT", textX, textY, colNormal); textY += spacing;
 		Font_Draw(L"R KEY         :   RELOAD WEAPON", textX, textY, colNormal); textY += spacing;
 		Font_Draw(L"F KEY         :   MELEE ATTACK", textX, textY, colNormal); textY += spacing;
+		Font_Draw(L"I KEY         :   OPEN BAG", textX, textY, colNormal); textY += spacing;
+		Font_Draw(L"ENTER KEY     :   USE ITEM", textX, textY, colNormal); textY += spacing;
 
 		textY += 40.0f;
 		Font_Draw(L"OBJECTIVE     :   SURVIVE AND DEFEAT ENEMIES", textX, textY, colRed);

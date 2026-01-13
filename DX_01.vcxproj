@@ -79,6 +79,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Vendor\RecastDetour\Detour\Include;$(ProjectDir)Vendor\RecastDetour\Recast\Include;$(ProjectDir)Vendor\RecastDetour\DebugUtils\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -96,6 +97,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Vendor\RecastDetour\Detour\Include;$(ProjectDir)Vendor\RecastDetour\Recast\Include;$(ProjectDir)Vendor\RecastDetour\DebugUtils\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -114,6 +116,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Vendor\RecastDetour\Detour\Include;$(ProjectDir)Vendor\RecastDetour\Recast\Include;$(ProjectDir)Vendor\RecastDetour\DebugUtils\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,6 +144,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Vendor\RecastDetour\Detour\Include;$(ProjectDir)Vendor\RecastDetour\Recast\Include;$(ProjectDir)Vendor\RecastDetour\DebugUtils\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -196,6 +200,7 @@
     <ClCompile Include="Meshfield.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="mouse.cpp" />
+    <ClCompile Include="NavigationSystem.cpp" />
     <ClCompile Include="Pad_Logger.cpp" />
     <ClCompile Include="Pathfinder.cpp" />
     <ClCompile Include="PlayerCharacter.cpp" />
@@ -220,6 +225,24 @@
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="title.cpp" />
     <ClCompile Include="Trajectory.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAlloc.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAssert.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourCommon.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMesh.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMeshBuilder.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNavMeshQuery.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourNode.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\Recast.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastAlloc.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastArea.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastAssert.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastContour.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastFilter.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastLayers.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastMesh.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastMeshDetail.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRasterization.cpp" />
+    <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRegion.cpp" />
     <ClCompile Include="WICTextureLoader11.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -239,6 +262,7 @@
     <ClInclude Include="LightCamera.h" />
     <ClInclude Include="loading.h" />
     <ClInclude Include="MapCamera.h" />
+    <ClInclude Include="NavigationSystem.h" />
     <ClInclude Include="Pad_Logger.h" />
     <ClInclude Include="Pathfinder.h" />
     <ClInclude Include="PlayerCharacter.h" />

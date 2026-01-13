@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 #include "collision.h"
+#include <vector>
 class Enemy {
 
 protected:
@@ -12,11 +13,18 @@ protected:
 		virtual void Update(double elapsed_time) = 0;
 		virtual void Draw() const = 0;
 	};
+	// navmesh 算出来的路径点
+	std::vector<DirectX::XMFLOAT3> m_Path;
+	int m_CurrentPathIndex = 0;
+	float m_PathTimer = 0.0f;
+	float m_MoveSpeed = 1.0f; 
 
 private:
 	State* m_pState = {};
 	State* m_pNextState = {};
 public:
+	void MoveToTarget(const DirectX::XMFLOAT3& targetPos, double dt);
+
 	virtual ~Enemy() = default;
 	virtual void Update(double elapsed_time);
 	virtual void Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const = 0;
@@ -27,7 +35,6 @@ public:
 	virtual void SetPosition(const DirectX::XMFLOAT3& pos) = 0;
 	virtual void ApplyKnockback(const DirectX::XMVECTOR& direction, float force) = 0;
 	virtual DirectX::XMFLOAT3 GetRotation() const = 0;
-
 	virtual AABB GetAABB() {
 		DirectX::XMFLOAT3 pos = GetPosition(); return {
 		{pos.x - 0.5f, pos.y, pos.z - 0.5f},
@@ -37,7 +44,7 @@ public:
 	virtual bool IsDestroyed() const = 0;
 	virtual Sphere GetCollisionSphere() const { return {}; }
 };
-
+void Enemy_ResolveCollisions();
 void Enemy_Initialize();
 void Enemy_Finalize();
 void Enemy_Update(double elapsed_time);

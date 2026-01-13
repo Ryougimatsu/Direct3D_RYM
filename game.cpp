@@ -28,8 +28,6 @@
 #include <memory>
 #include <string>
 #include "shader_3d.h"
-#include "Skeleton.h"
-#include "Animator.h"
 #include"PlayerCharacter.h"
 #include "enemy_test.h"
 #include "Pathfinder.h"
@@ -37,14 +35,15 @@
 #include "scene.h"
 #include "cube.h"
 #include "score.h"
+#include "NavigationSystem.h"
 using namespace DirectX;
 
 namespace
 {
 	bool g_IsDebugCameraMode = false;
 	PlayerCharacter* g_Player = nullptr;
-	const DirectX::XMFLOAT3 g_GoalPos = { 15.0f, 0.0f, 10.0f };
-	int g_CubeTextureID = -1;
+	const DirectX::XMFLOAT3 g_GoalPos = { 20.0f, 1.0f, 10.0f };
+	MODEL* g_DoorModel = nullptr;
 	double g_CurrentGameTime = 0.0;
 }
 
@@ -64,11 +63,19 @@ bool Game_CheckCollisionWithWalls(const AABB& objAabb)
 void Game_LoadContent()
 {
 	// 这里放所有耗时的加载函数
-	g_CubeTextureID = Texture_LoadFromFile(L"resource/texture/Cube_Draw.png");
+	g_DoorModel = ModelLoad("resource/Model/Door.fbx", 0.05f);
+	Map_Initialize(g_GoalPos);
 	Bullet_Initialize();
 	Sky_Initialize();
 	Pathfinder::Initialize();
-	Map_Initialize();
+	NavigationSystem::Initialize();
+	bool success = NavigationSystem::GetInstance()->Build();
+	if (success) {
+		OutputDebugStringA("=== NavMesh Build Success! ===\n");
+	}
+	else {
+		OutputDebugStringA("=== NavMesh Build FAILED! ===\n");
+	}
 	Player_Camera_Initialize();
 	Inventory_Initialize();
 	DropItem_Initialize();
@@ -181,13 +188,17 @@ void Game_Update(double elapsed_time)
 	{
 		// 获取玩家和终点的包围盒
 		AABB playerAABB = g_Player->GetAABB();
-		AABB goalAABB = Cube_CreateAABB(g_GoalPos);
+		AABB goalAABB;
+		if (g_DoorModel) {
+			goalAABB = ModelGetAABB(g_DoorModel, g_GoalPos);
+		}
+		else {
+			goalAABB = Cube_CreateAABB(g_GoalPos);
+		}
 
-		// 检测碰撞
 		if (Collision_IsOverLapAABB(playerAABB, goalAABB))
 		{
 			Score_SetTime(g_CurrentGameTime);
-			// 跳转到结算界面
 			Scene_Change(SCENE_RESULT);
 		}
 	}
@@ -227,10 +238,10 @@ void Game_Draw()
 	Sky_Draw();
 	Bullet_Draw();
 	DropItem_Draw();
-	Map_Draw(); 
+	Map_Draw();
 
 	DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
-	Cube_Draw(g_CubeTextureID, goalWorld);
+	ModelDraw(g_DoorModel, goalWorld);
 
 
 	Direct3D_SetOffscreenTexture(0);
@@ -249,10 +260,13 @@ void Game_Finalize()
 		delete g_Player;
 		g_Player = nullptr;
 	}
+	ModelRelease(g_DoorModel);
+	g_DoorModel = nullptr;
 	Inventory_Finalize();
 	DropItem_Finalize();
 	Enemy_Finalize();
 	Sky_Finalize();
+	NavigationSystem::Finalize();
 	Map_Finalize();
 	Bullet_Finalize();
 	Player_Camera_Finalize();

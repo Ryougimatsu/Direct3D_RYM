@@ -219,15 +219,18 @@ void PlayerCharacter::Update(double dt) {
 	XMMATRIX proj = XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
 
 	// --- 1. 旋转逻辑：始终指向鼠标 ---
-	XMVECTOR mousePos = GetMouseWorldPos(view, proj);
-	XMVECTOR playerPos = XMLoadFloat3(&m_Position);
-	XMVECTOR lookDir = XMVectorSubtract(mousePos, playerPos);
+	if (m_MeleeTimer <= 0.2f)
+	{
+		XMVECTOR mousePos = GetMouseWorldPos(view, proj);
+		XMVECTOR playerPos = XMLoadFloat3(&m_Position);
+		XMVECTOR lookDir = XMVectorSubtract(mousePos, playerPos);
 
-	float targetAngle = atan2f(XMVectorGetX(lookDir), XMVectorGetZ(lookDir));
-	float angleDiff = targetAngle - m_RotationY;
-	while (angleDiff < -XM_PI) angleDiff += XM_2PI;
-	while (angleDiff > XM_PI) angleDiff -= XM_2PI;
-	m_RotationY += angleDiff * 0.15f;
+		float targetAngle = atan2f(XMVectorGetX(lookDir), XMVectorGetZ(lookDir));
+		float angleDiff = targetAngle - m_RotationY;
+		while (angleDiff < -XM_PI) angleDiff += XM_2PI;
+		while (angleDiff > XM_PI) angleDiff -= XM_2PI;
+		m_RotationY += angleDiff * 0.15f;
+	}
 
 	// --- 2. 输入平滑处理 ---
 	XMVECTOR inputVec = GetInputVector();
@@ -299,8 +302,6 @@ void PlayerCharacter::Update(double dt) {
 
 	if (!isInMeleeAnimation)
 	{
-		// >>> 只要不是在攻击硬直中，就会进入这里 <<<
-
 		std::string animToPlay = "Rifle Aiming Idle"; // 默认目标：持枪站立
 		float crossfadeTime = 0.2f;
 
@@ -320,18 +321,12 @@ void PlayerCharacter::Update(double dt) {
 			m_Animator.SetSpeedScale(moveLen);
 		}
 		else {
-			// [移动结束 / 站立不动]
-			// 这里的逻辑保证了：
-			// 1. 刚打完架(硬直结束) -> 进到这里 -> 设为 Idle
-			// 2. 刚跑完步(松开键盘) -> 进到这里 -> 设为 Idle
 			if (isFiring) animToPlay = "Firing Rifle Idle";
 			else animToPlay = "Rifle Aiming Idle";
 
 			m_Animator.SetSpeedScale(1.0f);
 		}
 
-		// [应用动画] (true = 循环播放)
-		// 这行代码会平滑过渡到上面选定的动作 (比如从 Slash 过渡回 Idle)
 		m_Animator.PlayAnimation(m_pModel->GetAnimation(animToPlay), true, crossfadeTime);
 
 		// --- B. 物理位移 ---
@@ -408,38 +403,36 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	// 4. 执行渲染
 	SkinningShader_3D_Begin();
 	m_pModel->Draw();
-	const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
-	if (nameMap.count("mixamorig:RightHand")) {
-		int handIdx = nameMap.at("mixamorig:RightHand");
+	if (m_MeleeTimer <= 0.2f)
+	{
+		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
+		if (nameMap.count("mixamorig:RightHand")) {
+			int handIdx = nameMap.at("mixamorig:RightHand");
 
-		XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
 
-		// 只做缩放 + 旋转
-		XMMATRIX gunLocal =
-			XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
-			XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
-			XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+			// 只做缩放 + 旋转
+			XMMATRIX gunLocal =
+				XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
+				XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
+				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 
-		XMMATRIX gunWorld = gunLocal * handMat * world;
+			// 计算世界矩阵 (这里缩小了模型并设置位置)
+			DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 
-		ModelDraw(m_pGunModel, gunWorld);
+			XMMATRIX gunWorld = gunLocal * handMat * world;
 
+			ModelDraw(m_pGunModel, gunWorld); // 画枪
 
-		// 绘制激光瞄准线
-		XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-		XMVECTOR laserStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+			// 绘制激光瞄准线 
+			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
+			XMVECTOR laserStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+			XMVECTOR gunForwardDir = gunWorld.r[0];
+			gunForwardDir = XMVector3Normalize(gunForwardDir);
+			XMVECTOR laserEndPos = laserStartPos + (gunForwardDir * m_LaserLength);
 
-		// B. 提取世界空间中的枪口前方方向 (Forward Direction)
-		XMVECTOR gunForwardDir = gunWorld.r[0];
-
-		gunForwardDir = XMVector3Normalize(gunForwardDir);
-
-		// C. 计算红线终点位置 (End Pos)
-		// 终点 = 起点 + (方向向量 * 长度)
-		XMVECTOR laserEndPos = laserStartPos + (gunForwardDir * m_LaserLength);
-
-		// D. 执行绘制
-		Laser_Billboard_Draw(m_LaserTexID, laserStartPos, laserEndPos, 0.02f); // 红色，带一点透明
+			Laser_Billboard_Draw(m_LaserTexID, laserStartPos, laserEndPos, 0.02f);
+		}
 	}
 }
 
