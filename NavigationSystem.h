@@ -2,7 +2,7 @@
 #include <vector>
 #include <DirectXMath.h>
 
-// Recast & Detour 的头文件 (请确保你下载并配置好了库路径)
+// Recast & Detour 锟斤拷头锟侥硷拷 (锟斤拷确锟斤拷锟斤拷锟斤拷锟截诧拷锟斤拷锟矫猴拷锟剿匡拷路锟斤拷)
 #include "Recast.h"
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"

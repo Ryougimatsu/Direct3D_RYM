@@ -132,7 +132,7 @@ bool PlayerCharacter::Initialize() {
 	// 确保资源已加载
 	LoadAssets();
 
-	// 【修改】直接指向共享资源
+	// 直接指向共享资源
 	m_pModel = g_pSharedPlayerModel;
 	m_pGunModel = g_pSharedGunModel;
 
@@ -286,11 +286,13 @@ void PlayerCharacter::Update(double dt) {
 
 		// 2. 播放攻击动画 (关键：false 表示不循环，只播一次)
 		// 确保你在 Initialize() 里 LoadAnimation 加载了 "Slash Advance"
-		m_Animator.PlayAnimation(m_pModel->GetAnimation("Slash Advance"), false, 0.02f);
+		m_Animator.PlayAnimation(m_pModel->GetAnimation("Slash Advance"), false, 0.05f);
+
+		m_Animator.SetSpeedScale(2.5f);
 
 		// 3. 设置硬直时间
 		// 假设动作长 1.2 秒，设置 1.5 秒冷却，留 0.3 秒后摇
-		m_MeleeTimer = 2.0f;
+		m_MeleeTimer = 0.8f;
 	}
 
 	// =========================================================

@@ -8,7 +8,7 @@ using namespace DirectX;
 Node Pathfinder::m_Grid[GRID_WIDTH][GRID_HEIGHT];
 
 void Pathfinder::Initialize() {
-	// ³õÊ¼»¯Íø¸ñ£¬Ä¬ÈÏÎª¿ÕµØ
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½Îªï¿½Õµï¿½
 	for (int x = 0; x < GRID_WIDTH; x++) {
 		for (int y = 0; y < GRID_HEIGHT; y++) {
 			m_Grid[x][y].x = x;
@@ -19,7 +19,7 @@ void Pathfinder::Initialize() {
 }
 
 void Pathfinder::Finalize() {
-	// ¾²Ì¬Êý×é²»ÐèÒªÌØÊâÊÍ·Å
+	// ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½é²»ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½
 }
 
 void Pathfinder::SetObstacle(float worldX, float worldZ, bool isBlocked) {
@@ -37,7 +37,7 @@ void Pathfinder::WorldToGrid(float wx, float wz, int& gx, int& gy) {
 
 XMFLOAT3 Pathfinder::GridToWorld(int gx, int gy) {
 	return {
-		gx * GRID_SIZE + MAP_OFFSET_X + GRID_SIZE * 0.5f, // ¼Ó0.5ÈÃµãÔÚ¸ñ×ÓÖÐÐÄ
+		gx * GRID_SIZE + MAP_OFFSET_X + GRID_SIZE * 0.5f, // ï¿½ï¿½0.5ï¿½Ãµï¿½ï¿½Ú¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		0.0f,
 		gy * GRID_SIZE + MAP_OFFSET_Z + GRID_SIZE * 0.5f
 	};
@@ -46,23 +46,23 @@ XMFLOAT3 Pathfinder::GridToWorld(int gx, int gy) {
 std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos) {
 	std::vector<XMFLOAT3> path;
 
-	// 1. ×ª»»×ø±ê
+	// 1. ×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	int startX, startY, targetX, targetY;
 	WorldToGrid(startPos.x, startPos.z, startX, startY);
 	WorldToGrid(targetPos.x, targetPos.z, targetX, targetY);
 
-	// ±ß½ç¼ì²é
+	// ï¿½ß½ï¿½ï¿½ï¿½
 	if (startX < 0 || startX >= GRID_WIDTH || startY < 0 || startY >= GRID_HEIGHT ||
 		targetX < 0 || targetX >= GRID_WIDTH || targetY < 0 || targetY >= GRID_HEIGHT) {
-		return path; // ³¬³öµØÍ¼£¬ÎÞ·¨Ñ°Â·
+		return path; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Þ·ï¿½Ñ°Â·
 	}
 
-	// Èç¹ûÖÕµã±¾ÉíÊÇÕÏ°­Îï£¬»òÕßÆðµã¾ÍÊÇÖÕµã£¬Ö±½Ó·µ»Ø
+	// ï¿½ï¿½ï¿½ï¿½Õµã±¾ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ï¿½ï£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµã£¬Ö±ï¿½Ó·ï¿½ï¿½ï¿½
 	if (m_Grid[targetX][targetY].isObstacle || (startX == targetX && startY == targetY)) {
 		return path;
 	}
 
-	// 2. ÖØÖÃÑ°Â·Êý¾Ý
+	// 2. ï¿½ï¿½ï¿½ï¿½Ñ°Â·ï¿½ï¿½ï¿½ï¿½
 	for (int x = 0; x < GRID_WIDTH; x++) {
 		for (int y = 0; y < GRID_HEIGHT; y++) {
 			m_Grid[x][y].gCost = 99999.0f;
@@ -72,17 +72,17 @@ std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos
 		}
 	}
 
-	// 3. ¿ªÆôÁÐ±í (ÕâÀïÓÃ¼òµ¥µÄ list£¬ÐÔÄÜÒªÇó¸ß¿ÉÒÔÓÃ priority_queue)
+	// 3. ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½Ã¼òµ¥µï¿½ listï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ß¿ï¿½ï¿½ï¿½ï¿½ï¿½ priority_queue)
 	std::vector<Node*> openList;
 
 	Node* startNode = &m_Grid[startX][startY];
 	startNode->gCost = 0;
-	// HÖµ¼ÆËã (Âü¹þ¶Ù¾àÀë£º¾ø¶ÔÖµÖ®ºÍ£¬¼ÆËã¿ì)
+	// HÖµï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½Ù¾ï¿½ï¿½ë£ºï¿½ï¿½ï¿½ï¿½ÖµÖ®ï¿½Í£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 	startNode->hCost = (float)(abs(targetX - startX) + abs(targetY - startY));
 	openList.push_back(startNode);
 
 	while (!openList.empty()) {
-		// --- 3.1 ÕÒ³ö F Öµ×îÐ¡µÄ½Úµã ---
+		// --- 3.1 ï¿½Ò³ï¿½ F Öµï¿½ï¿½Ð¡ï¿½Ä½Úµï¿½ ---
 		Node* current = openList[0];
 		int currentIndex = 0;
 		for (size_t i = 1; i < openList.size(); i++) {
@@ -93,25 +93,25 @@ std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos
 			}
 		}
 
-		// ÒÆ³ö OpenList£¬¼ÓÈë ClosedList
+		// ï¿½Æ³ï¿½ OpenListï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ClosedList
 		openList.erase(openList.begin() + currentIndex);
 		current->closed = true;
 
-		// --- 3.2 µ½´ïÖÕµã£¿ ---
+		// --- 3.2 ï¿½ï¿½ï¿½ï¿½ï¿½Õµã£¿ ---
 		if (current->x == targetX && current->y == targetY) {
-			// »ØËÝÂ·¾¶
+			// ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 			Node* curr = current;
 			while (curr != nullptr) {
 				path.push_back(GridToWorld(curr->x, curr->y));
 				curr = curr->parent;
 			}
-			// Â·¾¶ÊÇ·´µÄ (ÖÕµã->Æðµã)£¬ÐèÒª·­×ª
+			// Â·ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ (ï¿½Õµï¿½->ï¿½ï¿½ï¿½)ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½×ª
 			std::reverse(path.begin(), path.end());
 			return path;
 		}
 
-		// --- 3.3 ¼ì²éÁÚ¾Ó (ÉÏÏÂ×óÓÒ 4¸ö·½Ïò) ---
-		// Èç¹ûÏëÐ±×Å×ß£¬ÐèÒª¼ì²é 8 ¸ö·½Ïò
+		// --- 3.3 ï¿½ï¿½ï¿½ï¿½Ú¾ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 4ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½) ---
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½ß£ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ 8 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		int dx[4] = { 0, 0, 1, -1 };
 		int dy[4] = { 1, -1, 0, 0 };
 
@@ -119,18 +119,18 @@ std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos
 			int checkX = current->x + dx[i];
 			int checkY = current->y + dy[i];
 
-			// Ô½½ç¼ì²é
+			// Ô½ï¿½ï¿½ï¿½ï¿½
 			if (checkX < 0 || checkX >= GRID_WIDTH || checkY < 0 || checkY >= GRID_HEIGHT) continue;
 
 			Node* neighbor = &m_Grid[checkX][checkY];
 
-			// ÕÏ°­Îï»òÒÑ¹Ø±Õ¼ì²é
+			// ï¿½Ï°ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹Ø±Õ¼ï¿½ï¿½
 			if (neighbor->isObstacle || neighbor->closed) continue;
 
-			// ¼ÆËãÐÂµÄ G Öµ (ÁÚ¾Ó¾àÀëÎª1)
+			// ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½ G Öµ (ï¿½Ú¾Ó¾ï¿½ï¿½ï¿½Îª1)
 			float newMovementCostToNeighbor = current->gCost + 1.0f;
 
-			// Èç¹ûÕâÌõÂ·¸ü¶Ì£¬»òÕßÁÚ¾Ó²»ÔÚ OpenList ÖÐ
+			// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½Ì£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¾Ó²ï¿½ï¿½ï¿½ OpenList ï¿½ï¿½
 			bool inOpenList = false;
 			for (auto* n : openList) if (n == neighbor) inOpenList = true;
 
@@ -146,27 +146,27 @@ std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos
 		}
 	}
 
-	return path; // Ã»ÕÒµ½Â·¾¶£¬·µ»Ø¿Õ
+	return path; // Ã»ï¿½Òµï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¿ï¿½
 }
 
 bool Pathfinder::RaycastHit(DirectX::XMFLOAT3 start, DirectX::XMFLOAT3 end)
 {
-	// 1. ¼ÆËã·½ÏòºÍ¾àÀë
+	// 1. ï¿½ï¿½ï¿½ã·½ï¿½ï¿½Í¾ï¿½ï¿½ï¿½
 	float dx = end.x - start.x;
 	float dz = end.z - start.z;
 	float dist = sqrtf(dx * dx + dz * dz);
 
-	if (dist < 0.1f) return false; // ¾ÍÔÚÁ³ÉÏÁË£¬¿Ï¶¨Ã»Ç½
+	if (dist < 0.1f) return false; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë£ï¿½ï¿½Ï¶ï¿½Ã»Ç½
 
-	// 2. ²½³¤ÉèÖÃ (ÀýÈçÃ¿ 0.5 Ã×¼ì²éÒ»´Î)
-	// ²½³¤Ô½Ð¡Ô½¾«È·£¬µ«ÏûºÄÔ½´ó¡£0.5f Í¨³£¸ÕºÃ£¨Ð¡ÓÚÒ»¸ö¸ñ×Ó´óÐ¡£©
+	// 2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½Ã¿ 0.5 ï¿½×¼ï¿½ï¿½Ò»ï¿½ï¿½)
+	// ï¿½ï¿½ï¿½ï¿½Ô½Ð¡Ô½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½ï¿½0.5f Í¨ï¿½ï¿½ï¿½ÕºÃ£ï¿½Ð¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ó´ï¿½Ð¡ï¿½ï¿½
 	float stepSize = 0.5f;
 	int steps = (int)(dist / stepSize);
 
 	float stepX = (dx / dist) * stepSize;
 	float stepZ = (dz / dist) * stepSize;
 
-	// 3. Öð²½¼ì²é
+	// 3. ï¿½ð²½¼ï¿½ï¿½
 	float curX = start.x;
 	float curZ = start.z;
 
@@ -178,17 +178,17 @@ bool Pathfinder::RaycastHit(DirectX::XMFLOAT3 start, DirectX::XMFLOAT3 end)
 		int gx, gy;
 		WorldToGrid(curX, curZ, gx, gy);
 
-		// Ô½½ç¼ì²é
+		// Ô½ï¿½ï¿½ï¿½ï¿½
 		if (gx < 0 || gx >= GRID_WIDTH || gy < 0 || gy >= GRID_HEIGHT) {
-			continue; // »òÕß return true (ÊÓÎªÇ½)
+			continue; // ï¿½ï¿½ï¿½ï¿½ return true (ï¿½ï¿½ÎªÇ½)
 		}
 
-		// ×²Ç½ÁË£¡
+		// ×²Ç½ï¿½Ë£ï¿½
 		if (m_Grid[gx][gy].isObstacle) {
 			return true;
 		}
 	}
 
-	// Ò»Â·Í¨³©
+	// Ò»Â·Í¨ï¿½ï¿½
 	return false;
 }

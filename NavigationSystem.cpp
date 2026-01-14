@@ -8,11 +8,11 @@
 
 using namespace DirectX;
 
-// µ¥Àý¾²Ì¬ÊµÀý
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¬Êµï¿½ï¿½
 static NavigationSystem* g_Instance = nullptr;
 
 // ==========================================
-// ¸¨Öú½á¹¹£ºÓÃÓÚ´æ´¢¼¸ºÎÌåÊý¾Ý
+// ï¿½ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½ï¿½ï¿½ï¿½Ú´æ´¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 // ==========================================
 struct InputGeom {
 	std::vector<float> verts;
@@ -51,7 +51,7 @@ struct InputGeom {
 };
 
 // ==========================================
-// µ¥ÀýÊµÏÖ
+// ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½
 // ==========================================
 NavigationSystem* NavigationSystem::GetInstance() { return g_Instance; }
 
@@ -75,12 +75,12 @@ void NavigationSystem::Cleanup() {
 }
 
 // ==========================================
-// ¹¹½¨ NavMesh
+// ï¿½ï¿½ï¿½ï¿½ NavMesh
 // ==========================================
 bool NavigationSystem::Build() {
 	Cleanup();
 
-	// --- 1. ×¼±¸¼¸ºÎÌåÊý¾Ý ---
+	// --- 1. ×¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---
 	InputGeom geom;
 	const std::vector<MapObject>& objects = Map_GetObjects();
 
@@ -98,14 +98,14 @@ bool NavigationSystem::Build() {
 		return false;
 	}
 
-	// --- 2. ÅäÖÃ Recast ---
+	// --- 2. ï¿½ï¿½ï¿½ï¿½ Recast ---
 	rcConfig cfg;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.cs = 0.3f;
 	cfg.ch = 0.2f;
 	rcCalcBounds(&geom.verts[0], geom.verts.size() / 3, cfg.bmin, cfg.bmax);
 
-	// À©´ó°üÎ§ºÐ·ÀÖ¹±ßÔµ²Ã¼ô
+	// ï¿½ï¿½ï¿½ï¿½ï¿½Î§ï¿½Ð·ï¿½Ö¹ï¿½ï¿½Ôµï¿½Ã¼ï¿½
 	cfg.bmin[0] -= 2.0f; cfg.bmin[1] -= 2.0f; cfg.bmin[2] -= 2.0f;
 	cfg.bmax[0] += 2.0f; cfg.bmax[1] += 2.0f; cfg.bmax[2] += 2.0f;
 
@@ -125,7 +125,7 @@ bool NavigationSystem::Build() {
 		return false;
 	}
 
-	// --- 3. Recast ºËÐÄÁ÷³Ì ---
+	// --- 3. Recast ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---
 	rcContext ctx;
 	rcHeightfield* hf = rcAllocHeightfield();
 	if (!hf || !rcCreateHeightfield(&ctx, *hf, cfg.width, cfg.height, cfg.bmin, cfg.bmax, cfg.cs, cfg.ch)) {
@@ -184,7 +184,7 @@ bool NavigationSystem::Build() {
 		return false;
 	}
 
-	// Ç¿ÖÆÉèÖÃ Flags Îª 1
+	// Ç¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Flags Îª 1
 	for (int i = 0; i < pmesh->npolys; ++i) {
 		pmesh->flags[i] = 0x01;
 	}
@@ -239,13 +239,13 @@ bool NavigationSystem::Build() {
 }
 
 // ==========================================
-// Ñ°ÕÒÂ·¾¶
+// Ñ°ï¿½ï¿½Â·ï¿½ï¿½
 // ==========================================
 std::vector<XMFLOAT3> NavigationSystem::FindPath(XMFLOAT3 start, XMFLOAT3 end) {
 	std::vector<XMFLOAT3> result;
 	if (!m_navQuery) return result;
 
-	// Îü¸½·¶Î§ X=10, Y=20, Z=10
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î§ X=10, Y=20, Z=10
 	float extents[3] = { 10.0f, 20.0f, 10.0f };
 
 	dtPolyRef startRef = 0;
@@ -256,19 +256,19 @@ std::vector<XMFLOAT3> NavigationSystem::FindPath(XMFLOAT3 start, XMFLOAT3 end) {
 
 	dtStatus status;
 
-	// Ñ°ÕÒ×î½üµÄ¶à±ßÐÎ (Start)
+	// Ñ°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ (Start)
 	status = m_navQuery->findNearestPoly(startPos, extents, &m_filter, &startRef, startPt);
 	if (dtStatusFailed(status) || startRef == 0) {
 		return result;
 	}
 
-	// Ñ°ÕÒ×î½üµÄ¶à±ßÐÎ (End)
+	// Ñ°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ (End)
 	status = m_navQuery->findNearestPoly(endPos, extents, &m_filter, &endRef, endPt);
 	if (dtStatusFailed(status) || endRef == 0) {
 		return result;
 	}
 
-	// ¼ÆËãÂ·¾¶
+	// ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 	dtPolyRef polys[256];
 	int polyCount = 0;
 	status = m_navQuery->findPath(startRef, endRef, startPt, endPt, &m_filter, polys, &polyCount, 256);
@@ -277,7 +277,7 @@ std::vector<XMFLOAT3> NavigationSystem::FindPath(XMFLOAT3 start, XMFLOAT3 end) {
 		return result;
 	}
 
-	// Â©¶·Ëã·¨ (String Pulling)
+	// Â©ï¿½ï¿½ï¿½ã·¨ (String Pulling)
 	float straightPath[256 * 3];
 	unsigned char straightPathFlags[256];
 	dtPolyRef straightPathRefs[256];

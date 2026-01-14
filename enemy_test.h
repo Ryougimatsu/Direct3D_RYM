@@ -12,10 +12,10 @@ extern bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const Dire
 class EnemyTest : public Enemy {
 private:
     // 子类独有的数据
-    DirectX::XMFLOAT3 m_position{};
-    DirectX::XMFLOAT3 m_Rotation = { 0.0f, 0.0f, 0.0f }; // [必须有]
-
-    float m_DetectionAngle = 5.0f;
+	DirectX::XMFLOAT3 m_position{};// 位置
+	DirectX::XMFLOAT3 m_Rotation = { 0.0f, 0.0f, 0.0f };// 旋转角度（弧度）
+	DirectX::XMFLOAT3 m_KnockbackVelocity = { 0.0f, 0.0f, 0.0f };// 击退速度
+	float m_DetectionAngle = 5.0f;// 探测角度（度）
     float m_HP = 100.0f;
 	float m_DetectionRadius = 8.0f;  // 探测半径
 	float m_AttackRadius = 1.2f;     // 攻击半径
@@ -25,6 +25,9 @@ private:
     bool m_bAlertedStatus = false; //   状态标记
 	bool m_bIsDead = false;       // 逻辑死亡标记 (HP<=0 但尸体还在)
 	float m_DeathTimer = 0.0f;    // 尸体存在倒计时
+	float m_HitAnimCooldown = 0.0f;// 受击动画冷却时间，防止频繁切换动画
+	float m_KnockbackDelayTimer = 0.0f;
+	DirectX::XMFLOAT3 m_PendingKnockback = { 0,0,0 };
 
 	Animator m_Animator;            // 每个敌人私有的动画器
 	static const Animation* g_pIdleAnim;  // 全局共享的 Idle 动画资源
@@ -34,6 +37,8 @@ private:
     static const Animation* g_pDyingAnim;
     static const Animation* g_pReaction_HitAnim;
     static const Animation* g_pScratchIdleAnim;
+    static const Animation* g_pHitMeleeAnim;
+    static const Animation* g_pHitBulletAnim;
 
     bool CanSeePlayer();
 
@@ -113,6 +118,17 @@ private:
 	private:
 		EnemyTest* m_pOwner;
 		float m_SearchTimer; // 搜索动作持续时间
+	};
+	class EnemyTest_StateHit : public State
+	{
+	public:
+		EnemyTest_StateHit(EnemyTest* pOwner);
+		void Update(double elapsed_time) override;
+		void Draw() const override {} // 受击时通常不需要额外的 UI 或调试绘制
+
+	private:
+		EnemyTest* m_pOwner;
+		float m_StunTimer; // 硬直计时器
 	};
 
 };

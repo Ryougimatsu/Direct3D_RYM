@@ -23,6 +23,8 @@ const Animation* EnemyTest::g_pScreamAnim = nullptr;
 const Animation* EnemyTest::g_pDyingAnim = nullptr;
 const Animation* EnemyTest::g_pReaction_HitAnim = nullptr;
 const Animation* EnemyTest::g_pScratchIdleAnim = nullptr;
+const Animation* EnemyTest::g_pHitMeleeAnim = nullptr;
+const Animation* EnemyTest::g_pHitBulletAnim = nullptr;
 std::vector<EnemyTest*> EnemyTest::g_AllEnemies;
 namespace 
 {
@@ -174,14 +176,14 @@ void EnemyTest::EnemyTest_StatePatrol::Update(double elapsed_time)
 		XMVECTOR vNewPos = vPos + dir * patrolSpeed * (float)elapsed_time;
 		XMStoreFloat3(&m_pOwner->m_position, vNewPos);
 
-		// 3. 【新增】碰撞检测
+		// 3. 碰撞检测
 		if (Game_CheckCollisionWithWalls(m_pOwner->GetAABB()))
 		{
 			// 撞墙了！
-			// A. 回退到撞墙前的位置
+			// 回退到撞墙前的位置
 			m_pOwner->m_position = oldPos;
 
-			// B. 此路不通，立刻重新选一个随机目标点 (这样敌人就会转身走开)
+			// 此路不通，立刻重新选一个随机目标点 (这样敌人就会转身走开)
 			PickRandomTarget();
 		}
 
@@ -239,6 +241,20 @@ EnemyTest::EnemyTest_StateChase::EnemyTest_StateChase(EnemyTest* pOwner, const D
 }
 void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 {
+	bool isHitMelee = (g_pHitMeleeAnim && m_pOwner->m_Animator.IsPlaying(g_pHitMeleeAnim));
+	bool isHitBullet = (g_pHitBulletAnim && m_pOwner->m_Animator.IsPlaying(g_pHitBulletAnim));
+	if (isHitMelee || isHitBullet)
+	{
+		float progress = m_pOwner->m_Animator.GetCurrentAnimationProgress();
+
+		if (progress < 0.9f)
+		{
+			m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+
+
+			return;
+		}
+	}
 	// =================================================================================
 	// 0. 预处理
 	// =================================================================================
@@ -249,6 +265,8 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	XMFLOAT3 playerPos = Player_GetPosition();
 	XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
 	XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
+
+
 
 	// 尖叫硬直
 	if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
@@ -286,7 +304,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			// 尝试生成一个不在墙里的搜索点
 			bool foundValidSpot = false;
 
-			// 【优化 1】增加尝试次数，确保能找到合适的位置
+			// 增加尝试次数，确保能找到合适的位置
 			for (int i = 0; i < 10; ++i)
 			{
 				float randomAngle = (rand() % 360) * XM_2PI / 360.0f;
@@ -355,6 +373,25 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateSearch(m_pOwner));
 			return;
 		}
+	}
+
+	XMVECTOR vKnockVel = XMLoadFloat3(&m_pOwner->m_KnockbackVelocity);
+	// 如果击退速度大于 0.1，说明还在滑动，禁止 AI 寻路移动
+	if (XMVectorGetX(XMVector3LengthSq(vKnockVel)) > 0.01f)
+	{
+		// 依然保持贴地，防止飞天
+		m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+
+		// 更新旋转朝向玩家（可选，如果你想让他在滑行时盯着玩家）
+		XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
+		XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
+		if (distToPlayer > 0.1f) {
+			XMVECTOR dir = XMVector3Normalize(XMVectorSetY(vPlayerPos - vEnemyPos, 0.0f));
+			float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
+			m_pOwner->SetRotationY(angle);
+		}
+
+		return; // 直接返回，不执行下面的 MoveToTarget
 	}
 
 	// =================================================================================
@@ -543,13 +580,14 @@ void EnemyTest::LoadAssets()
 	
 
 		// 2. 如果有其它动作，也可以在这里加载：
-		// g_pSkinningModel->LoadAnimation("Run",   "resource/Model/Zombie/Zombie Run.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Walk",  "resource/Model/Zombie/Zombie Walk.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Attack","resource/Model/Zombie/Zombie Attack.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Scream","resource/Model/Zombie/Zombie Scream.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Dying","resource/Model/Zombie/Zombie Dying.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Reaction Hit","resource/Model/Zombie/Zombie Reaction Hit.fbx", 1.0f);
 		g_pSkinningModel->LoadAnimation("Scratch Idle","resource/Model/Zombie/Zombie Scratch Idle.fbx", 1.0f);
+		g_pSkinningModel->LoadAnimation("Hit_Melee", "resource/Model/Zombie/Zombie Reaction Hit by attacking.fbx", 1.0f);
+		g_pSkinningModel->LoadAnimation("Hit_Bullet", "resource/Model/Zombie/Zombie Reaction Hit by bullet.fbx", 1.0f);
 
 
 
@@ -561,6 +599,8 @@ void EnemyTest::LoadAssets()
 		if (g_pDyingAnim == nullptr)  g_pDyingAnim = g_pSkinningModel->GetAnimation("Dying");
 		if (g_pReaction_HitAnim == nullptr) g_pReaction_HitAnim = g_pSkinningModel->GetAnimation("Reaction Hit");
 		if (g_pScratchIdleAnim == nullptr) g_pScratchIdleAnim = g_pSkinningModel->GetAnimation("Scratch Idle");
+		if (g_pHitMeleeAnim == nullptr)  g_pHitMeleeAnim = g_pSkinningModel->GetAnimation("Hit_Melee");
+		if (g_pHitBulletAnim == nullptr) g_pHitBulletAnim = g_pSkinningModel->GetAnimation("Hit_Bullet");
 	}
 }
 
@@ -589,86 +629,71 @@ void EnemyTest::Damage(float damage, bool isMelee)
 {
 	if (m_bIsDead) return;
 
-	// ============================================================
-	// 背刺判定 (Backstab)
-	// ============================================================
-	// 只有近战才能触发背刺
+	m_bAlertedStatus = true; // 依然标记为警觉
+	ChangeState(new EnemyTest_StateHit(this));
+	m_Path.clear();
+	m_CurrentPathIndex = 0;
+	const Animation* animToPlay = nullptr;
+	float targetSpeed = 1.0f;
+	bool shouldPlay = false;
+	float knockbackForce = 0.3f; // 默认子弹力度
+
 	if (isMelee)
 	{
-		// 1. 计算 [敌人 -> 玩家] 的方向向量
-		XMFLOAT3 playerPos = Player_GetPosition();
-		XMVECTOR vToPlayer = XMLoadFloat3(&playerPos) - XMLoadFloat3(&m_position);
-		vToPlayer = XMVectorSetY(vToPlayer, 0.0f); // 忽略高度差
-		vToPlayer = XMVector3Normalize(vToPlayer);
-
-		// 2. 获取敌人的正前方向量
-		XMVECTOR vForward = XMVectorSet(sinf(m_Rotation.y), 0.0f, cosf(m_Rotation.y), 0.0f);
-		float dot = XMVectorGetX(XMVector3Dot(vForward, vToPlayer));
-
-		if (dot < -0.2f)
-		{
-			// >>> 触发背刺：一击必杀 <<<
-			Score_AddScore(100);
-
-			m_HP = 0.0f;
-			m_bIsDead = true;
-			m_DeathTimer = 3.5f; // 尸体存在时间
-
-			// 直接播放死亡动画
-			if (g_pDyingAnim) {
-				m_Animator.PlayAnimation(g_pDyingAnim, false, 0.1f);
+		// 近战逻辑
+		shouldPlay = true;
+		animToPlay = g_pHitMeleeAnim;
+		targetSpeed = 0.8f;      // 慢速体现沉重
+		m_HitAnimCooldown = 1.0f;
+		knockbackForce = 4.0f;   // 【建议】近战力度给大点，不然看不出滑行
+	}
+	else
+	{
+		// 子弹逻辑
+		if (m_HitAnimCooldown <= 0.0f) {
+			if (damage > 10.0f || (rand() % 100 < 40)) {
+				shouldPlay = true;
 			}
-
-			// 掉落逻辑 (30% 几率掉子弹)
-			int rate = rand() % 100;
-			if (rate < 30) {
-				DropItem_Spawn(m_position, 4);
-			}
-
-			// 【关键】直接返回，不再执行后续的“警觉”或“普通受击”逻辑
-			return;
 		}
+		if (shouldPlay) {
+			animToPlay = g_pHitBulletAnim;
+			targetSpeed = 1.0f;
+			m_HitAnimCooldown = 0.5f;
+		}
+		knockbackForce = 0.5f; // 子弹力度小
 	}
 
-	// ============================================================
-	// 下面是原有的普通受击逻辑
-	// ============================================================
-
-	// 1. 如果之前没发现玩家，现在发现了 (且没被背刺死)
-	if (!m_bAlertedStatus) {
-		m_bAlertedStatus = true;
-		ChangeState(new EnemyTest_StateChase(this));
-
-		if (g_pScreamAnim) {
-			m_Animator.PlayAnimation(g_pScreamAnim, false, 0.1f);
-		}
-
-		m_HP -= damage;
-		return;
+	// ==========================================================
+	// 4. 【最后一步】播放受击动画 & 物理击退
+	// ==========================================================
+	// 放在最后执行，确保它覆盖掉 ChangeState 里的走路动画
+	if (shouldPlay && animToPlay) {
+		float blendTime = isMelee ? 0.02f : 0.05f;
+		m_Animator.PlayAnimation(animToPlay, false, blendTime);
+		m_Animator.SetSpeedScale(targetSpeed);
 	}
 
-	// 2. 正常战斗中的扣血
+	// 执行物理击退
+	XMFLOAT3 pPos = Player_GetPosition();
+	XMVECTOR vToEnemy = XMLoadFloat3(&m_position) - XMLoadFloat3(&pPos);
+	ApplyKnockback(vToEnemy, knockbackForce);
+
+	// ==========================================================
+	// 5. 扣血与死亡
+	// ==========================================================
 	m_HP -= damage;
 
 	if (m_HP <= 0.0f) {
-		// --- 普通死亡 ---
 		Score_AddScore(100);
 		m_HP = 0.0f;
 		m_bIsDead = true;
-		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.1f);
+		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.2f);
 		m_DeathTimer = 3.5f;
+		m_KnockbackVelocity = { 0,0,0 }; // 死亡消除滑行
 
 		int rate = rand() % 100;
-		if (rate < 15)
-		{
+		if (rate < 15) {
 			DropItem_Spawn(m_position, 4);
-		}
-	}
-	else {
-		// --- 存活时的受击反馈 ---
-		if (isMelee) {
-			// 近战攻击：播放硬直动画
-			m_Animator.PlayAnimation(g_pReaction_HitAnim, false, 0.1f);
 		}
 	}
 }
@@ -689,22 +714,18 @@ void EnemyTest::ChangeState(State* pNextState)
 }
 void EnemyTest::ApplyKnockback(const DirectX::XMVECTOR& direction, float force)
 {
-	// 如果已经死亡，不处理物理效果
 	if (m_bIsDead) return;
 
-	// 1. 计算击退向量 (忽略 Y 轴，防止被打飞上天)
 	XMVECTOR knockDir = XMVectorSetY(direction, 0.0f);
 	knockDir = XMVector3Normalize(knockDir);
 
-	// 2. 获取当前位置并施加位移
-	XMVECTOR currentPos = XMLoadFloat3(&m_position);
-	XMVECTOR newPos = currentPos + knockDir * force;
+	float speedMultiplier = 3.0f;
 
-	// 3. 更新位置
-	XMStoreFloat3(&m_position, newPos);
+	// 直接设置速度，不要延迟
+	XMStoreFloat3(&m_KnockbackVelocity, knockDir * force * speedMultiplier);
 
-	// 4. 确保贴地 (非常重要，否则击退后可能悬空或穿地)
-	m_position.y = MeshField_GetHeight(m_position.x, m_position.z);
+	// 将延迟设为 0，让物理在下一帧立刻生效
+	m_KnockbackDelayTimer = 0.0f;
 }
 void EnemyTest::SetAlerted(bool alerted) { m_bAlertedStatus = alerted; }
 
@@ -716,6 +737,54 @@ bool EnemyTest::IsDestroyed() const
 
 void EnemyTest::Update(double elapsed_time)
 {
+	float dt = (float)elapsed_time;
+	if (m_KnockbackDelayTimer > 0.0f) {
+		m_KnockbackDelayTimer -= dt;
+		m_Animator.Update(elapsed_time);
+		if (m_KnockbackDelayTimer <= 0.0f) {
+			m_KnockbackVelocity = m_PendingKnockback;
+			m_PendingKnockback = { 0,0,0 };
+		}
+		else {
+			return;
+		}
+	}
+	XMVECTOR vKnock = XMLoadFloat3(&m_KnockbackVelocity);
+	float currentSpeed = XMVectorGetX(XMVector3Length(vKnock));
+
+	if (currentSpeed > 0.01f)
+	{
+		XMVECTOR vCurrentPos = XMLoadFloat3(&m_position);
+		XMVECTOR vNextPos = vCurrentPos + vKnock * dt;
+		XMFLOAT3 nextPosF3;
+		XMStoreFloat3(&nextPosF3, vNextPos);
+		AABB testBox = {
+			 { nextPosF3.x - 0.5f, 0.0f, nextPosF3.z - 0.5f },
+			 { nextPosF3.x + 0.5f, 2.0f, nextPosF3.z + 0.5f }
+		};
+
+		if (!Game_CheckCollisionWithWalls(testBox)) {
+			m_position = nextPosF3;
+		}
+		else {
+			m_KnockbackVelocity = { 0,0,0 };
+			vKnock = XMVectorZero();
+		}
+
+
+		float friction = 10.0f;
+		XMVECTOR vNewVel = XMVectorLerp(vKnock, XMVectorZero(), friction * dt);
+		if (XMVectorGetX(XMVector3Length(vNewVel)) < 0.1f) {
+			vNewVel = XMVectorZero();
+		}
+
+		XMStoreFloat3(&m_KnockbackVelocity, vNewVel);
+		m_position.y = MeshField_GetHeight(m_position.x, m_position.z);
+	}
+	if (m_HitAnimCooldown > 0.0f) {
+		m_HitAnimCooldown -= (float)elapsed_time;
+	}
+
 	if (m_bIsDead) {
 		m_DeathTimer -= (float)elapsed_time;
 		m_Animator.Update(elapsed_time);
@@ -789,4 +858,36 @@ void EnemyTest::EnemyTest_StateSearch::Update(double elapsed_time)
 
 	// ... 维持高度等 ...
 	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+}
+
+// ========================================================
+// 状态机 - 受击 (新增)
+// ========================================================
+EnemyTest::EnemyTest_StateHit::EnemyTest_StateHit(EnemyTest* pOwner)
+	: m_pOwner(pOwner), m_StunTimer(0.0f)
+{
+	m_StunTimer = m_pOwner->m_HitAnimCooldown;
+	if (m_StunTimer <= 0.0f) m_StunTimer = 0.5f;
+}
+
+void EnemyTest::EnemyTest_StateHit::Update(double elapsed_time)
+{
+	m_StunTimer -= (float)elapsed_time;
+
+	// 1. 物理贴地 (受击时也要贴地)
+	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
+
+	// 2. 检查退出条件：
+	// 条件 A: 硬直时间结束
+	// 条件 B: 且 击退速度已经很小了 (防止还在滑行时就开始走路)
+	XMVECTOR vKnock = XMLoadFloat3(&m_pOwner->m_KnockbackVelocity);
+	float currentSpeed = XMVectorGetX(XMVector3LengthSq(vKnock));
+
+	if (m_StunTimer <= 0.0f && currentSpeed < 0.01f)
+	{
+		// 受击结束，切换回追逐状态
+		// 只有等到完全停稳了，才把控制权交给 AI，这样就不会被导航网格拽回去了
+		m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner));
+		return;
+	}
 }

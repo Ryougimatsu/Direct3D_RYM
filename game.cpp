@@ -57,9 +57,6 @@ bool Game_CheckCollisionWithWalls(const AABB& objAabb)
 	return Map_CheckCollision(objAabb);
 }
 
-// ------------------------------------------------------------------
-// 初始化：仅保留核心环境和你的测试主角
-// ------------------------------------------------------------------
 void Game_LoadContent()
 {
 	// 这里放所有耗时的加载函数
@@ -70,12 +67,6 @@ void Game_LoadContent()
 	Pathfinder::Initialize();
 	NavigationSystem::Initialize();
 	bool success = NavigationSystem::GetInstance()->Build();
-	if (success) {
-		OutputDebugStringA("=== NavMesh Build Success! ===\n");
-	}
-	else {
-		OutputDebugStringA("=== NavMesh Build FAILED! ===\n");
-	}
 	Player_Camera_Initialize();
 	Inventory_Initialize();
 	DropItem_Initialize();
@@ -94,26 +85,23 @@ void Game_LoadContent()
 }
 void Game_Initialize()
 {
-	// 此时资源已经由 Loading 线程加载完毕了！
 
 	Camera_Initialize();
 	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
 
-	// 可以在这里重置玩家位置
+
 	if (g_Player) {
 		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
-		// 重置血量等逻辑...
 	}
 
 	float screenW = (float)Direct3D_GetBackBufferWidth();
 
 	// 2. 设定参数
-	int digits = 6;                // 显示6位数 (例如 000100)
-	float fontSize = 32.0f;        // 分数数字的大小 (根据 score.cpp 里的定义)
-	float margin = 20.0f;          // 距离边框的间距
+	int digits = 6;               
+	float fontSize = 32.0f;       
+	float margin = 20.0f;         
 
 	// 3. 计算右上角坐标
-	// X = 屏幕宽 - (数字个数 * 单个数字宽) - 右边距
 	float scoreX = screenW - (digits * fontSize) - margin;
 	float scoreY = margin;         // 顶边距
 
