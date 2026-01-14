@@ -629,44 +629,60 @@ void EnemyTest::Damage(float damage, bool isMelee)
 {
 	if (m_bIsDead) return;
 
-	m_bAlertedStatus = true; // 依然标记为警觉
-	ChangeState(new EnemyTest_StateHit(this));
-	m_Path.clear();
-	m_CurrentPathIndex = 0;
+	// ==========================================================
+	// 1. 【先】准备动画参数和冷却时间
+	// ==========================================================
+	// 必须先计算好这些，StateHit 构造函数才能读到正确的值
 	const Animation* animToPlay = nullptr;
 	float targetSpeed = 1.0f;
 	bool shouldPlay = false;
-	float knockbackForce = 0.3f; // 默认子弹力度
+	float knockbackForce = 0.3f;
 
 	if (isMelee)
 	{
-		// 近战逻辑
 		shouldPlay = true;
 		animToPlay = g_pHitMeleeAnim;
-		targetSpeed = 0.8f;      // 慢速体现沉重
-		m_HitAnimCooldown = 1.0f;
-		knockbackForce = 4.0f;   // 【建议】近战力度给大点，不然看不出滑行
+		targetSpeed = 0.8f;
+		m_HitAnimCooldown = 1.0f; // 设置 1.0 秒硬直
+		knockbackForce = 4.0f;
 	}
 	else
 	{
-		// 子弹逻辑
+		// 子弹逻辑：
+		// 如果你希望每次击退都有动作，建议去掉 rand() 或者在切换状态时强制播放
+		// 这里保留你的逻辑，但要注意：如果 shouldPlay 为 false，敌人会滑步
 		if (m_HitAnimCooldown <= 0.0f) {
-			if (damage > 10.0f || (rand() % 100 < 40)) {
+			// 只要产生击退，最好就播放动画，否则看着很怪。
+			// 建议：移除 rand 限制，或者降低限制
+			if (damage > 10.0f || (rand() % 100 < 100)) { // 建议改成 100% 或高概率
 				shouldPlay = true;
 			}
 		}
+
+		// 强制修正：既然切换了 StateHit 状态，就必须播放动画，否则会滑步
+		// 如果上面没随机中，依然强制播放一个轻微受击，或者至少更新冷却
+		if (!shouldPlay && m_HitAnimCooldown <= 0.0f) shouldPlay = true;
+
 		if (shouldPlay) {
 			animToPlay = g_pHitBulletAnim;
 			targetSpeed = 1.0f;
-			m_HitAnimCooldown = 0.5f;
+			m_HitAnimCooldown = 0.5f; // 设置 0.5 秒硬直
 		}
-		knockbackForce = 0.5f; // 子弹力度小
+		knockbackForce = 0.5f;
 	}
 
 	// ==========================================================
-	// 4. 【最后一步】播放受击动画 & 物理击退
+	// 2. 【中】切换状态 & 清理路径
 	// ==========================================================
-	// 放在最后执行，确保它覆盖掉 ChangeState 里的走路动画
+	// 此时 m_HitAnimCooldown 已经是最新值了，StateHit 会读取到正确的时间
+	m_bAlertedStatus = true;
+	ChangeState(new EnemyTest_StateHit(this));
+	m_Path.clear();
+	m_CurrentPathIndex = 0;
+
+	// ==========================================================
+	// 3. 【后】播放动画 & 物理击退
+	// ==========================================================
 	if (shouldPlay && animToPlay) {
 		float blendTime = isMelee ? 0.02f : 0.05f;
 		m_Animator.PlayAnimation(animToPlay, false, blendTime);
@@ -679,7 +695,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 	ApplyKnockback(vToEnemy, knockbackForce);
 
 	// ==========================================================
-	// 5. 扣血与死亡
+	// 4. 扣血与死亡
 	// ==========================================================
 	m_HP -= damage;
 
@@ -689,7 +705,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_bIsDead = true;
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.2f);
 		m_DeathTimer = 3.5f;
-		m_KnockbackVelocity = { 0,0,0 }; // 死亡消除滑行
+		m_KnockbackVelocity = { 0,0,0 };
 
 		int rate = rand() % 100;
 		if (rate < 15) {
@@ -725,7 +741,7 @@ void EnemyTest::ApplyKnockback(const DirectX::XMVECTOR& direction, float force)
 	XMStoreFloat3(&m_KnockbackVelocity, knockDir * force * speedMultiplier);
 
 	// 将延迟设为 0，让物理在下一帧立刻生效
-	m_KnockbackDelayTimer = 0.0f;
+	m_KnockbackDelayTimer = 0.9f;
 }
 void EnemyTest::SetAlerted(bool alerted) { m_bAlertedStatus = alerted; }
 
@@ -873,20 +889,20 @@ EnemyTest::EnemyTest_StateHit::EnemyTest_StateHit(EnemyTest* pOwner)
 void EnemyTest::EnemyTest_StateHit::Update(double elapsed_time)
 {
 	m_StunTimer -= (float)elapsed_time;
-
-	// 1. 物理贴地 (受击时也要贴地)
 	m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
 
-	// 2. 检查退出条件：
-	// 条件 A: 硬直时间结束
-	// 条件 B: 且 击退速度已经很小了 (防止还在滑行时就开始走路)
 	XMVECTOR vKnock = XMLoadFloat3(&m_pOwner->m_KnockbackVelocity);
 	float currentSpeed = XMVectorGetX(XMVector3LengthSq(vKnock));
+	bool isStopped = (currentSpeed < 0.01f);
 
-	if (m_StunTimer <= 0.0f && currentSpeed < 0.01f)
+	float animProgress = m_pOwner->m_Animator.GetCurrentAnimationProgress();
+	bool isAnimFinished = (animProgress >= 0.95f);
+
+	bool isStunTimerOver = (m_StunTimer <= 0.0f);
+
+	if (isStopped && isAnimFinished && isStunTimerOver)
 	{
-		// 受击结束，切换回追逐状态
-		// 只有等到完全停稳了，才把控制权交给 AI，这样就不会被导航网格拽回去了
+		// 只有所有条件满足，才交回控制权给 AI
 		m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner));
 		return;
 	}
