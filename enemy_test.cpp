@@ -241,20 +241,6 @@ EnemyTest::EnemyTest_StateChase::EnemyTest_StateChase(EnemyTest* pOwner, const D
 }
 void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 {
-	bool isHitMelee = (g_pHitMeleeAnim && m_pOwner->m_Animator.IsPlaying(g_pHitMeleeAnim));
-	bool isHitBullet = (g_pHitBulletAnim && m_pOwner->m_Animator.IsPlaying(g_pHitBulletAnim));
-	if (isHitMelee || isHitBullet)
-	{
-		float progress = m_pOwner->m_Animator.GetCurrentAnimationProgress();
-
-		if (progress < 0.9f)
-		{
-			m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
-
-
-			return;
-		}
-	}
 	// =================================================================================
 	// 0. 预处理
 	// =================================================================================
@@ -265,8 +251,6 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	XMFLOAT3 playerPos = Player_GetPosition();
 	XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
 	XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
-
-
 
 	// 尖叫硬直
 	if (m_pOwner->m_Animator.IsPlaying(g_pScreamAnim)) {
@@ -296,20 +280,29 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 		targetPos = playerPos;
 	}
 	else {
-		// 丢失视野逻辑 (保持不变)
+		// 如果没看见玩家，时刻监听有没有新的声音
+		XMFLOAT3 soundPos;
+		float soundRadius;
+		if (Sound_GetLatest(soundPos, soundRadius)) {
+			XMVECTOR vSound = XMLoadFloat3(&soundPos);
+			XMVECTOR vCurrentTarget = XMLoadFloat3(&m_pOwner->m_PersonalSearchTarget);
+			// 如果新声音距离当前目标超过 4 米(2*2)，就改变目标去追新声音
+			if (XMVectorGetX(XMVector3LengthSq(vSound - vCurrentTarget)) > 4.0f) {
+				m_pOwner->m_PersonalSearchTarget = soundPos;
+				m_pOwner->m_CurrentPathIndex = 0;
+				m_pOwner->m_Path.clear();
+			}
+		}
+
+		// 丢失视野逻辑
 		if (!m_pOwner->m_HasLostSight)
 		{
 			XMFLOAT3 basePos = m_pOwner->m_LastKnownPosition;
-
-			// 尝试生成一个不在墙里的搜索点
 			bool foundValidSpot = false;
 
-			// 增加尝试次数，确保能找到合适的位置
 			for (int i = 0; i < 10; ++i)
 			{
 				float randomAngle = (rand() % 360) * XM_2PI / 360.0f;
-
-				// 搜索半径
 				float randomDist = 1.25f + (rand() % 200) / 100.0f;
 
 				XMFLOAT3 testPos;
@@ -317,24 +310,19 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 				testPos.z = basePos.z + cosf(randomAngle) * randomDist;
 				testPos.y = basePos.y;
 
-				// 构造一个小盒子检测这个点是不是墙
 				AABB testBox = {
 					{testPos.x - 0.4f, testPos.y, testPos.z - 0.4f},
 					{testPos.x + 0.4f, testPos.y + 1.0f, testPos.z + 0.4f}
 				};
 
-				// 确保这个点不在墙里
 				if (!Game_CheckCollisionWithWalls(testBox)) {
-
-					// 检查这个点是否和其他敌人的目标点太近，避免“撞车”
 					bool tooCloseToOthers = false;
 					for (auto* other : EnemyTest::g_AllEnemies) {
 						if (other == m_pOwner) continue;
-						// 如果其他敌人也在搜索，且它的目标点和我的很像
 						if (other->m_HasLostSight) {
 							XMVECTOR v1 = XMLoadFloat3(&testPos);
 							XMVECTOR v2 = XMLoadFloat3(&other->m_PersonalSearchTarget);
-							if (XMVectorGetX(XMVector3LengthSq(v1 - v2)) < 2.0f * 2.0f) { // 2米内有人了
+							if (XMVectorGetX(XMVector3LengthSq(v1 - v2)) < 4.0f) {
 								tooCloseToOthers = true;
 								break;
 							}
@@ -347,7 +335,6 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 					}
 				}
 			}
-
 			if (!foundValidSpot) {
 				m_pOwner->m_PersonalSearchTarget = basePos;
 			}
@@ -357,7 +344,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	}
 
 	// =================================================================================
-	// 2. 检查到达搜索点 (保持不变)
+	// 2. 检查到达搜索点
 	// =================================================================================
 	if (m_pOwner->m_HasLostSight)
 	{
@@ -375,14 +362,11 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 		}
 	}
 
+	// 只有当有物理击退速度时才限制移动 (近战会被 StateHit 接管，这里主要是为了保险)
 	XMVECTOR vKnockVel = XMLoadFloat3(&m_pOwner->m_KnockbackVelocity);
-	// 如果击退速度大于 0.1，说明还在滑动，禁止 AI 寻路移动
 	if (XMVectorGetX(XMVector3LengthSq(vKnockVel)) > 0.01f)
 	{
-		// 依然保持贴地，防止飞天
 		m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
-
-		// 更新旋转朝向玩家（可选，如果你想让他在滑行时盯着玩家）
 		XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
 		XMVECTOR vEnemyPos = XMLoadFloat3(&m_pOwner->m_position);
 		if (distToPlayer > 0.1f) {
@@ -390,111 +374,111 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
 			m_pOwner->SetRotationY(angle);
 		}
-
-		return; // 直接返回，不执行下面的 MoveToTarget
+		return;
 	}
 
 	// =================================================================================
 	// 3. 攻击逻辑
 	// =================================================================================
 	bool isPlayingAttack = m_pOwner->m_Animator.IsPlaying(g_pAttackAnim);
-
-
 	bool inAttackRange = (distToPlayer < m_pOwner->m_AttackRadius + 0.35f);
 
 	if (!m_pOwner->m_HasLostSight)
 	{
 		if (inAttackRange || (isPlayingAttack && m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.95f))
 		{
-			// 播放攻击动画
 			m_pOwner->m_Animator.PlayAnimation(g_pAttackAnim, true, 0.1f);
 			m_pOwner->m_Animator.SetSpeedScale(1.2f);
 
-			// 伤害判定 (保持你原有的逻辑)
 			float progress = m_pOwner->m_Animator.GetCurrentAnimationProgress();
 			if (progress < 0.2f) m_HasDealtDamageInThisCycle = false;
 			if (progress > 0.3f && !m_HasDealtDamageInThisCycle) {
-				if (distToPlayer < m_pOwner->m_AttackRadius + 1.0f) { // 伤害判定也稍微宽容点
+				if (distToPlayer < m_pOwner->m_AttackRadius + 1.0f) {
 					Player_Damage(10.0f);
 				}
 				m_HasDealtDamageInThisCycle = true;
 			}
 
-			// 
-			// 也要加防鬼畜保护：只有距离大于 0.1 才更新朝向
 			if (distToPlayer > 0.1f) {
 				XMVECTOR dir = XMVector3Normalize(XMVectorSetY(vPlayerPos - vEnemyPos, 0.0f));
 				float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
 				m_pOwner->SetRotationY(angle);
 			}
-
-			return; // 攻击中不移动
+			return;
 		}
 	}
 
 	// =================================================================================
-	// 4. 移动逻辑
+	// 4. 移动逻辑 (修改重点)
 	// =================================================================================
 	if (!isPlayingAttack)
 	{
-		// 核心移动
+		// 1. 核心移动：即使在播受击动画，也要移动 (实现滑步)
 		m_pOwner->MoveToTarget(targetPos, elapsed_time);
 
-		// 1. 默认看最终目标 
+		// 2. 旋转计算
 		XMVECTOR vLookTarget = XMLoadFloat3(&targetPos);
-
-		// 2. 如果有路径，优先看路点
 		if (!m_pOwner->m_Path.empty() && m_pOwner->m_CurrentPathIndex < m_pOwner->m_Path.size())
 		{
-			// 获取当前要去路点
 			XMFLOAT3 currentPt = m_pOwner->m_Path[m_pOwner->m_CurrentPathIndex];
 			XMVECTOR vCurrentPt = XMLoadFloat3(&currentPt);
-
-			// 算出离当前路点的距离
 			float distToCurrentPt = XMVectorGetX(XMVector3Length(XMVectorSetY(vCurrentPt - vEnemyPos, 0.0f)));
 
-			// 如果离当前拐角很近了 (< 1.0米)，且后面还有路，就提前看下一个点
 			if (distToCurrentPt < 1.0f && (m_pOwner->m_CurrentPathIndex + 1 < m_pOwner->m_Path.size()))
 			{
 				XMFLOAT3 nextPt = m_pOwner->m_Path[m_pOwner->m_CurrentPathIndex + 1];
-				vLookTarget = XMLoadFloat3(&nextPt); // 看下一个点
+				vLookTarget = XMLoadFloat3(&nextPt);
 			}
 			else
 			{
-				vLookTarget = vCurrentPt; // 看当前点
+				vLookTarget = vCurrentPt;
 			}
 		}
 
-		// 3. 用最终确定的 vLookTarget 重新计算方向向量
 		XMVECTOR vDir = XMVectorSetY(vLookTarget - vEnemyPos, 0.0f);
 		float distSq = XMVectorGetX(XMVector3LengthSq(vDir));
 
-		// 4. 只有当看向的目标比较远时 (> 0.01) 才更新旋转
 		if (distSq > 0.01f)
 		{
 			XMVECTOR dirNorm = XMVector3Normalize(vDir);
 			float targetAngle = atan2f(XMVectorGetX(dirNorm), XMVectorGetZ(dirNorm));
-
-			// 平滑旋转
 			float currentAngle = m_pOwner->GetRotation().y;
 			float diff = targetAngle - currentAngle;
 			while (diff > XM_PI) diff -= XM_2PI;
 			while (diff < -XM_PI) diff += XM_2PI;
-
-			// 旋转速度：5.0f 是比较自然的速度
 			float smoothAngle = currentAngle + diff * 5.0f * (float)elapsed_time;
 			m_pOwner->SetRotationY(smoothAngle);
 		}
 
-		// 播放走路动画
-		if (!m_pOwner->m_Animator.IsPlaying(g_pWalkAnim)) {
-			if (g_pWalkAnim) m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.2f);
+		// ---------------------------------------------------------------------
+		// 3. 动画控制：优先受击，其次走路
+		// ---------------------------------------------------------------------
+		bool isGettingShot = false;
+
+		// 检查子弹受击动画是否正在播放
+		if (g_pHitBulletAnim && m_pOwner->m_Animator.IsPlaying(g_pHitBulletAnim)) {
+			// 如果还没播完（<0.95），就锁住走路动画
+			if (m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.95f) {
+				isGettingShot = true;
+			}
+		}
+
+		// 只有当“没在挨打”的时候，才允许切回走路
+		if (!isGettingShot)
+		{
+			if (!m_pOwner->m_Animator.IsPlaying(g_pWalkAnim)) {
+				if (g_pWalkAnim) m_pOwner->m_Animator.PlayAnimation(g_pWalkAnim, true, 0.2f);
+
+				// 【关键】重置速度！因为 Damage 里可能把它设成了 1.2f
+				m_pOwner->m_Animator.SetSpeedScale(1.0f);
+			}
 		}
 	}
 	else {
 		// 停下来了
 		if (!m_pOwner->m_Animator.IsPlaying(g_pIdleAnim)) {
 			if (g_pIdleAnim) m_pOwner->m_Animator.PlayAnimation(g_pIdleAnim, true, 0.2f);
+			m_pOwner->m_Animator.SetSpeedScale(1.0f);
 		}
 	}
 
@@ -518,6 +502,15 @@ bool EnemyTest::CanSeePlayer()
 	XMVECTOR vToPlayer = XMLoadFloat3(&playerPos) - XMLoadFloat3(&enemyPos);
 	float distSq = XMVectorGetX(XMVector3LengthSq(vToPlayer));
 	if (distSq > m_DetectionRadius * m_DetectionRadius) return false;
+
+	if (m_bAlertedStatus)
+	{
+		if (distSq < 25.0f) {
+			if (!Game_IsLineOfSightBlocked(enemyPos, playerPos)) {
+				return true;
+			}
+		}
+	}
 
 	// 2. 角度检测
 	vToPlayer = XMVector3Normalize(vToPlayer);
@@ -630,72 +623,16 @@ void EnemyTest::Damage(float damage, bool isMelee)
 	if (m_bIsDead) return;
 
 	// ==========================================================
-	// 1. 【先】准备动画参数和冷却时间
+	// 1. 通用逻辑：无论什么攻击，都要立刻警觉并锁定玩家
 	// ==========================================================
-	// 必须先计算好这些，StateHit 构造函数才能读到正确的值
-	const Animation* animToPlay = nullptr;
-	float targetSpeed = 1.0f;
-	bool shouldPlay = false;
-	float knockbackForce = 0.3f;
-
-	if (isMelee)
-	{
-		shouldPlay = true;
-		animToPlay = g_pHitMeleeAnim;
-		targetSpeed = 0.8f;
-		m_HitAnimCooldown = 1.0f; // 设置 1.0 秒硬直
-		knockbackForce = 4.0f;
-	}
-	else
-	{
-		// 子弹逻辑：
-		// 如果你希望每次击退都有动作，建议去掉 rand() 或者在切换状态时强制播放
-		// 这里保留你的逻辑，但要注意：如果 shouldPlay 为 false，敌人会滑步
-		if (m_HitAnimCooldown <= 0.0f) {
-			// 只要产生击退，最好就播放动画，否则看着很怪。
-			// 建议：移除 rand 限制，或者降低限制
-			if (damage > 10.0f || (rand() % 100 < 100)) { // 建议改成 100% 或高概率
-				shouldPlay = true;
-			}
-		}
-
-		// 强制修正：既然切换了 StateHit 状态，就必须播放动画，否则会滑步
-		// 如果上面没随机中，依然强制播放一个轻微受击，或者至少更新冷却
-		if (!shouldPlay && m_HitAnimCooldown <= 0.0f) shouldPlay = true;
-
-		if (shouldPlay) {
-			animToPlay = g_pHitBulletAnim;
-			targetSpeed = 1.0f;
-			m_HitAnimCooldown = 0.5f; // 设置 0.5 秒硬直
-		}
-		knockbackForce = 0.5f;
-	}
-
-	// ==========================================================
-	// 2. 【中】切换状态 & 清理路径
-	// ==========================================================
-	// 此时 m_HitAnimCooldown 已经是最新值了，StateHit 会读取到正确的时间
 	m_bAlertedStatus = true;
-	ChangeState(new EnemyTest_StateHit(this));
-	m_Path.clear();
-	m_CurrentPathIndex = 0;
+	XMFLOAT3 playerPos = Player_GetPosition();
+	m_LastKnownPosition = playerPos;
+	m_PersonalSearchTarget = playerPos;
+	m_HasLostSight = false; // 强迫 AI 认为看见了玩家，从而直接追过去
 
 	// ==========================================================
-	// 3. 【后】播放动画 & 物理击退
-	// ==========================================================
-	if (shouldPlay && animToPlay) {
-		float blendTime = isMelee ? 0.02f : 0.05f;
-		m_Animator.PlayAnimation(animToPlay, false, blendTime);
-		m_Animator.SetSpeedScale(targetSpeed);
-	}
-
-	// 执行物理击退
-	XMFLOAT3 pPos = Player_GetPosition();
-	XMVECTOR vToEnemy = XMLoadFloat3(&m_position) - XMLoadFloat3(&pPos);
-	ApplyKnockback(vToEnemy, knockbackForce);
-
-	// ==========================================================
-	// 4. 扣血与死亡
+	// 2. 扣血与死亡判定 (先处理，防止死人还播受击)
 	// ==========================================================
 	m_HP -= damage;
 
@@ -705,11 +642,60 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_bIsDead = true;
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.2f);
 		m_DeathTimer = 3.5f;
-		m_KnockbackVelocity = { 0,0,0 };
+		m_KnockbackVelocity = { 0,0,0 }; // 死亡时消除所有速度
 
 		int rate = rand() % 100;
 		if (rate < 15) {
 			DropItem_Spawn(m_position, 4);
+		}
+		return; // 死了就直接返回，不跑下面的受击逻辑
+	}
+
+	// ==========================================================
+	// 3. 核心分歧：近战 VS 子弹
+	// ==========================================================
+
+	if (isMelee)
+	{
+		// ----------------------------------------------------
+		// A. 近战逻辑：大硬直 + 物理击退 + 切换状态
+		// ----------------------------------------------------
+
+		// 1. 切换到受击状态 (这会让敌人停下移动逻辑)
+		ChangeState(new EnemyTest_StateHit(this));
+
+		// 2. 清理寻路路径
+		m_Path.clear();
+		m_CurrentPathIndex = 0;
+
+		// 3. 设置硬直冷却 (StateHit 会读这个值作为硬直时长)
+		m_HitAnimCooldown = 1.0f;
+
+		// 4. 播放重受击动画
+		if (g_pHitMeleeAnim) {
+			m_Animator.PlayAnimation(g_pHitMeleeAnim, false, 0.02f);
+			m_Animator.SetSpeedScale(0.8f); // 慢一点，增加打击沉重感
+		}
+
+		// 5. 应用物理击退
+		XMVECTOR vToEnemy = XMLoadFloat3(&m_position) - XMLoadFloat3(&playerPos);
+		ApplyKnockback(vToEnemy, 4.0f); // 强击退
+	}
+	else
+	{
+		// ----------------------------------------------------
+		// B. 子弹逻辑：只播动画 + 不击退 + 不切状态
+		// ----------------------------------------------------
+
+		// 1. 检查动画冷却，防止高射速下动作鬼畜
+		if (m_HitAnimCooldown <= 0.0f)
+		{
+			if (g_pHitBulletAnim) {
+				// 0.1f 的混合时间保证动作切换平滑
+				m_Animator.PlayAnimation(g_pHitBulletAnim, false, 0.1f);
+				m_Animator.SetSpeedScale(1.2f);
+			}
+			m_HitAnimCooldown = 0.4f;
 		}
 	}
 }
@@ -895,14 +881,22 @@ void EnemyTest::EnemyTest_StateHit::Update(double elapsed_time)
 	float currentSpeed = XMVectorGetX(XMVector3LengthSq(vKnock));
 	bool isStopped = (currentSpeed < 0.01f);
 
-	float animProgress = m_pOwner->m_Animator.GetCurrentAnimationProgress();
-	bool isAnimFinished = (animProgress >= 0.95f);
+	bool isHitAnimPlaying = false;
+	if (g_pHitMeleeAnim && m_pOwner->m_Animator.IsPlaying(g_pHitMeleeAnim)) isHitAnimPlaying = true;
+	if (g_pHitBulletAnim && m_pOwner->m_Animator.IsPlaying(g_pHitBulletAnim)) isHitAnimPlaying = true;
 
+	bool isAnimFinished = true;
+	if (isHitAnimPlaying) {
+		// 只有确实在播受击动画时，才检查进度
+		if (m_pOwner->m_Animator.GetCurrentAnimationProgress() < 0.9f) {
+			isAnimFinished = false;
+		}
+	}
 	bool isStunTimerOver = (m_StunTimer <= 0.0f);
 
-	if (isStopped && isAnimFinished && isStunTimerOver)
+	if (isStopped && isStunTimerOver && isAnimFinished)
 	{
-		// 只有所有条件满足，才交回控制权给 AI
+		// 恢复追逐
 		m_pOwner->ChangeState(new EnemyTest::EnemyTest_StateChase(m_pOwner));
 		return;
 	}
