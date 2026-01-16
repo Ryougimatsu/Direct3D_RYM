@@ -44,10 +44,42 @@ struct PS_IN
     float4 normalW : NORMAL0; // ワールド法線
     float4 color : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
+	float4 posLight : POSITION1;
 };
 
 Texture2D tex;
 SamplerState samplerState;
+
+Texture2D shadowMap : register(t1); 
+SamplerComparisonState shadowSampler : register(s1); 
+
+float CalculateShadow(float4 posLight)
+{
+    // 1. 透视除法
+	float3 projCoords = posLight.xyz / posLight.w;
+
+    // 2. 将坐标从 [-1, 1] 变换到 [0, 1] 纹理空间
+	projCoords.x = projCoords.x * 0.5f + 0.5f;
+	projCoords.y = -projCoords.y * 0.5f + 0.5f;
+
+    // 3. 边界检查：如果超出视锥体范围，则不计算阴影（视为被照亮）
+	//if (projCoords.z > 1.0f || projCoords.x < 0.0f || projCoords.x > 1.0f || projCoords.y < 0.0f || projCoords.y > 1.0f)
+	//{
+	//	return 1.0f;
+	//}
+
+    // 4. 计算 Shadow Bias (防止阴影波纹/Shadow Acne)
+    // 这里给一个基础偏移量，实际项目中可能需要根据法线动态调整
+	float bias = 0.005f;
+	float currentDepth = projCoords.z - bias;
+
+    // 5. 采样并比较深度 (使用 SampleCmpLevelZero 进行硬件 PCF)
+    // shadowMap 中存储的是最近物体的深度。如果 currentDepth > closestDepth，则在阴影中。
+    // SampleCmpLevelZero 返回 0.0 (遮挡) 或 1.0 (照亮)，硬件会自动进行 2x2 滤波
+	float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, projCoords.xy, currentDepth);
+
+	return shadow;
+}
 
 float4 main(PS_IN pi) : SV_TARGET
 {
@@ -56,9 +88,12 @@ float4 main(PS_IN pi) : SV_TARGET
 
     // 並行光源 (ディフューズライト)
     float4 normalW = normalize(pi.normalW);
+    
+	float shadowFactor = CalculateShadow(pi.posLight);
     //float dl = max(0.0f, dot(-direcional_vector, normalW));
-    float dl = (dot(-directional_vector, normalW+1.0f)*0.5f);
-    float3 diffuse = material_color * directional_color.rgb * dl;
+	float NdotL = dot(-directional_vector, normalW);
+	float dl = saturate(NdotL); // 标准做法
+	float3 diffuse = material_color * directional_color.rgb * dl * shadowFactor;
 
     // 環境光 (アンビエントライト)
     float3 ambient = material_color * ambient_color.rgb;
@@ -67,7 +102,7 @@ float4 main(PS_IN pi) : SV_TARGET
     float3 toEye = normalize(eye_posW - pi.posW.xyz);
     float3 r = reflect(directional_vector, normalW).xyz;
     float t = pow(max(dot(r, toEye), 0.0f), specular_power);
-    float3 specular = specular_color * t;
+	float3 specular = specular_color.rgb * t * shadowFactor;
 
     float alpha = tex.Sample(samplerState, pi.uv).a * pi.color.a * diffuse_color.a;
     float3 color = ambient + diffuse + specular; // 最終的な我々の目に届く色

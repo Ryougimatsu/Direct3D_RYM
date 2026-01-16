@@ -33,5 +33,6 @@ void ModelRelease(MODEL* model);
 void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld);
 void ModelUnlitDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld);
 void ModelWeaponDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld);
+void ModelDrawShadow(MODEL* model, const DirectX::XMMATRIX& mtxWorld);
 AABB ModelGetAABB(MODEL* model, const DirectX::XMFLOAT3& position);
 

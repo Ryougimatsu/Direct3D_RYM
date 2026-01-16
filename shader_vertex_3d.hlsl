@@ -16,6 +16,11 @@ cbuffer VS_CONSTANT_BUFFER : register(b2)
     float4x4 proj;
 }
 
+cbuffer VS_SHADOW_BUFFER : register(b3)
+{
+	float4x4 lightViewProj;
+}
+
 
 struct VS_IN
 {
@@ -32,6 +37,7 @@ struct VS_OUT
     float4 normalW : NORMAL0; // ワールド法線
     float4 color : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
+	float4 posLight : POSITION1; // 光源ビュー・プロジェクション変換後の座標
 };
 
 //=============================================================================
@@ -52,6 +58,7 @@ VS_OUT main(VS_IN vi)
     vo.normalW = normalize(normalW);
     vo.posW = mul(vi.posL,world);
 
+	vo.posLight = mul(vo.posW, lightViewProj);
     
     vo.color = vi.color;
     vo.uv = vi.uv;

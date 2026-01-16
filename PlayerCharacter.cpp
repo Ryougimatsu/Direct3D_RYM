@@ -14,7 +14,7 @@ using namespace DirectX;
 PlayerCharacter* g_pPlayerInstance = nullptr;
 namespace {
 	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);  // 绕 X
-	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);                                 // 绕 Y
+	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f);  // 绕 Y
 	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // 绕 Z
 	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };  // 手心里的偏移
 	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.0f, 0.0f, 0.5f };

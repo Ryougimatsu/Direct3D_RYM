@@ -7,7 +7,7 @@
 #include "key_logger.h"
 #include "mouse.h"
 #include "texture.h"
-
+#include "Shader_Shadow.h"
 using namespace DirectX;
 
 struct Vertex3D
@@ -151,6 +151,24 @@ void Cube_Draw(int texID,const XMMATRIX mtxW)
 	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// ポリゴン描画命令発行
+	g_pContext->DrawIndexed(36, 0, 0);
+}
+
+void Cube_DrawShadow(const DirectX::XMMATRIX& mtxWorld)
+{
+	// 1. 设置 Shadow Shader 需要的 World 矩阵
+	Shader_Shadow_SetWorldMatrix(mtxWorld);
+
+	// 2. 绑定顶点缓冲 (不设置纹理，不调用 Shader_3D_Begin)
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	g_pContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	g_pContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+	// 3. 设置图元类型
+	g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// 4. 绘制
 	g_pContext->DrawIndexed(36, 0, 0);
 }
 

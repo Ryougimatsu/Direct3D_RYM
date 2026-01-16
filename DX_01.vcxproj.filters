@@ -261,6 +261,9 @@
     <ClCompile Include="NavigationSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Shader_Shadow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug_ostream.h">
@@ -464,6 +467,9 @@
     <ClInclude Include="NavigationSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Shader_Shadow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shader_pixel_2d.hlsl">
@@ -500,6 +506,9 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="SkinningShader_PS.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="ShadowMap_VS.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

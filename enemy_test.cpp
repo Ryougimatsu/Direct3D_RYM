@@ -50,7 +50,7 @@ void EnemyTest::EnemyTest_StatePatrol::PickRandomTarget()
 		float randX = m_PatrolOrigin.x + GetRandomFloat(-MAX_WANDER_RADIUS, MAX_WANDER_RADIUS);
 		float randZ = m_PatrolOrigin.z + GetRandomFloat(-MAX_WANDER_RADIUS, MAX_WANDER_RADIUS);
 
-		// 2. 【核心修改】检查这个点是否在箱子里
+		// 2. 【检查这个点是否在箱子里
 		// 我们在这个随机点构造一个虚拟的 AABB (大小和敌人差不多，比如 1x1)
 		float halfSize = 0.5f;
 		AABB testBox = {

@@ -37,6 +37,7 @@
 #include <memory>
 #include "enemy_test.h"
 #include "PlayerCharacter.h"
+#include "Shader_Shadow.h"
 //Window procedure prototype claim
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -61,6 +62,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	Shader_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Shader_3D_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
+
+	Shader_Shadow_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Shader3DUnilt_Initialize();
 
@@ -229,6 +232,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	Sprite_Finalize();
 
 	Shader_Finalize();
+
+	Shader_Shadow_Finalize();
 
 	Shader_3D_Finalize();
 

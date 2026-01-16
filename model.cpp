@@ -7,7 +7,7 @@ using namespace DirectX;
 #include "WICTextureLoader11.h"
 #include "shader_3d.h"
 #include "shader3d_unlit.h"
-
+#include "Shader_Shadow.h"
 struct Vertex3D
 {
 	XMFLOAT3 position; // 頂点座標
@@ -560,6 +560,28 @@ void ModelWeaponDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 		// 绘制
 		context->DrawIndexed(mesh->mNumFaces * 3, 0, 0);
+	}
+}
+
+void ModelDrawShadow(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
+{
+
+	// 1. 设置矩阵
+	Shader_Shadow_SetWorldMatrix(mtxWorld);
+
+	// 2. 只需要设置拓扑，不需要 Shader_Begin
+	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// 3. 遍历网格
+	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++) {
+		// 不需要设置材质和贴图！Pass 1 不需要颜色！
+
+		UINT stride = sizeof(Vertex3D);
+		UINT offset = 0;
+		Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &model->VertexBuffer[m], &stride, &offset);
+		Direct3D_GetDeviceContext()->IASetIndexBuffer(model->IndexBuffer[m], DXGI_FORMAT_R32_UINT, 0);
+
+		Direct3D_GetDeviceContext()->DrawIndexed(model->AiScene->mMeshes[m]->mNumFaces * 3, 0, 0);
 	}
 }
 

@@ -11,9 +11,17 @@ namespace
 {
 	ID3D11VertexShader* g_pVertexShader = nullptr;
 	ID3D11InputLayout* g_pInputLayout = nullptr;
-	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
-	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
+
+	// 常量缓冲区
+	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr; // World Matrix (b0)
+	ID3D11Buffer* g_pCB_LightViewProj = nullptr; // Light Matrix (b3)
+	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr; // Material Color (b0)
+
 	ID3D11PixelShader* g_pPixelShader = nullptr;
+
+	// 采样器
+	ID3D11SamplerState* g_pSamplerState = nullptr; // Slot 0: 普通贴图 (Diffuse)
+	ID3D11SamplerState* g_pShadowSampler = nullptr; // Slot 1: 阴影贴图 (Shadow)
 
 	// 注意！初期化で外部から設定されるもの。Release不要。
 	ID3D11Device* g_pDevice = nullptr;
@@ -22,83 +30,57 @@ namespace
 
 bool Shader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 {
-	HRESULT hr; // HRESULTはDirectXの関数の戻り値で、成功か失敗かを示す	
+	HRESULT hr;
 
-	// デバイスとデバイスコンテキストのチェック
-	if (!pDevice || !pContext) {
-		hal::dout << "Shader_3D_Initialize() : 渡されたデバイスやコンテキストが不正です" << std::endl;
-		return false;
-	}
-
-	// デバイスとデバイスコンテキストの保存
+	if (!pDevice || !pContext) return false;
 	g_pDevice = pDevice;
 	g_pContext = pContext;
 
-
-	// 事前コンパイル済み頂点シェーダーの読み込み
+	// 1. 读取并创建顶点着色器 (VS)
 	std::ifstream ifs_vs("resource/shader/shader_vertex_3d.cso", std::ios::binary);
+	if (!ifs_vs) return false;
 
-	if (!ifs_vs) {
-		MessageBox(nullptr, "shader_vertex_3d.csoが見つかりません", "error", MB_OK);
-		return false;
-	}
+	ifs_vs.seekg(0, std::ios::end);
+	std::streamsize filesize = ifs_vs.tellg();
+	ifs_vs.seekg(0, std::ios::beg);
 
-	// ファイルサイズを取得
-	ifs_vs.seekg(0, std::ios::end); // ファイルポインタを終端に移動
-	std::streamsize filesize = ifs_vs.tellg(); // ファイルポインタの位置を取得（つまりファイルサイズ）
-	ifs_vs.seekg(0, std::ios::beg); // ファイルポインタを先頭に戻す
-
-	// バイナリデータを格納するためのバッファを確保
 	unsigned char* vsbinary_pointer = new unsigned char[filesize];
+	ifs_vs.read((char*)vsbinary_pointer, filesize);
+	ifs_vs.close();
 
-	ifs_vs.read((char*)vsbinary_pointer, filesize); // バイナリデータを読み込む
-	ifs_vs.close(); // ファイルを閉じる
-
-	// 頂点シェーダーの作成
 	hr = g_pDevice->CreateVertexShader(vsbinary_pointer, filesize, nullptr, &g_pVertexShader);
+	if (FAILED(hr)) { delete[] vsbinary_pointer; return false; }
 
-	if (FAILED(hr)) {
-		hal::dout << "Shader_3D_Initialize() : 頂点シェーダーの作成に失敗しました" << std::endl;
-		delete[] vsbinary_pointer; // メモリを解放
-		return false;
-	}
-
-
-	//頂点レイアウトの定義
+	// 2. 创建输入布局 (Input Layout)
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
+	hr = g_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout), vsbinary_pointer, filesize, &g_pInputLayout);
+	delete[] vsbinary_pointer;
+	if (FAILED(hr)) return false;
 
-	UINT num_elements = ARRAYSIZE(layout); // 配列の要素数を取得
-
-	//頂点レイアウトの作成
-	hr = g_pDevice->CreateInputLayout(layout, num_elements, vsbinary_pointer, filesize, &g_pInputLayout);
-
-	delete[] vsbinary_pointer; // バイナリデータのバッファを解放
-
-	if (FAILED(hr)) {
-		hal::dout << "Shader_3D_Initialize() : 頂点レイアウトの作成に失敗しました" << std::endl;
-		return false;
-	}
-
-
-	// 定数バッファの作成
+	// 3. 创建常量缓冲区
 	D3D11_BUFFER_DESC buffer_desc{};
-	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4); // バッファのサイズは行列一つ分
-	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; // 定数バッファとして使用
+	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4);
+	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
-	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0); // World
+	// VS Constant Buffer 0 (World Matrix)
+	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pVSConstantBuffer0);
 
+	// VS Constant Buffer 3 (Light ViewProj)
+	hr = g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pCB_LightViewProj);
+	if (FAILED(hr)) return false;
 
-	// ピクセルシェーダーの読み込み
+	// PS Constant Buffer 0 (Material Color)
+	buffer_desc.ByteWidth = sizeof(XMFLOAT4);
+	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer0);
+
+	// 4. 读取并创建像素着色器 (PS)
 	std::ifstream ifs_ps("resource/shader/shader_pixel_3d.cso", std::ios::binary);
-	if (!ifs_ps) {
-		MessageBox(nullptr, "shader_pixel_3d.csoが見つかりません", "error", MB_OK);
-		return false;
-	}
+	if (!ifs_ps) return false;
 
 	ifs_ps.seekg(0, std::ios::end);
 	filesize = ifs_ps.tellg();
@@ -108,28 +90,46 @@ bool Shader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	ifs_ps.read((char*)psbinary_pointer, filesize);
 	ifs_ps.close();
 
-	// ピクセルシェーダーの作成
 	hr = g_pDevice->CreatePixelShader(psbinary_pointer, filesize, nullptr, &g_pPixelShader);
+	delete[] psbinary_pointer;
+	if (FAILED(hr)) return false;
 
-	delete[] psbinary_pointer; // メモリを解放
+	// 5. 创建采样器 (Sampler States)
 
-	if (FAILED(hr)) {
-		hal::dout << "Shader_3D_Initialize() : ピクセルシェーダーの作成に失敗しました" << std::endl;
-		return false;
-	}
+	// (A) 普通贴图采样器 (Slot 0) - Linear Wrap
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	g_pDevice->CreateSamplerState(&sampDesc, &g_pSamplerState);
 
+	// (B) 阴影贴图采样器 (Slot 1) - Comparison Border
+	sampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS; // 深度比较：如果 当前深度 < 阴影图深度，则照亮
 
-	buffer_desc.ByteWidth = sizeof(XMFLOAT4); // バッファのサイズは行列一つ分
+	// 【关键调试点】
+	// 如果设为 1.0f (白色)，采样到贴图外时是“无阴影”。
+	// 如果设为 0.0f (黑色)，采样到贴图外时是“全黑”。
+	sampDesc.BorderColor[0] = 1.0f;
+	sampDesc.BorderColor[1] = 1.0f;
+	sampDesc.BorderColor[2] = 1.0f;
+	sampDesc.BorderColor[3] = 1.0f;
 
-	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer0); // World
+	hr = g_pDevice->CreateSamplerState(&sampDesc, &g_pShadowSampler);
+	if (FAILED(hr)) return false;
 
 	return true;
 }
 
-
-
 void Shader_3D_Finalize()
 {
+	SAFE_RELEASE(g_pCB_LightViewProj);
+	SAFE_RELEASE(g_pShadowSampler);
+	SAFE_RELEASE(g_pSamplerState); // 释放新增的采样器
 	SAFE_RELEASE(g_pPixelShader);
 	SAFE_RELEASE(g_pVSConstantBuffer0);
 	SAFE_RELEASE(g_pPSConstantBuffer0);
@@ -139,61 +139,54 @@ void Shader_3D_Finalize()
 
 void Shader_3D_SetMatrix(const DirectX::XMMATRIX& matrix)
 {
-	// シェーダーに渡すために行列を転置する
 	XMFLOAT4X4 transpose;
-
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
 	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// 定数バッファを更新
 	g_pContext->UpdateSubresource(g_pVSConstantBuffer0, 0, nullptr, &transpose, 0, 0);
 }
 
 void Shader_3D_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 {
-	// シェーダーに渡すために行列を転置する
 	XMFLOAT4X4 transpose;
-
-	// XMMATRIXからXMFLOAT4X4へ格納する際に行列を転置
 	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-
-	// ワールド行列用の定数バッファを更新
 	g_pContext->UpdateSubresource(g_pVSConstantBuffer0, 0, nullptr, &transpose, 0, 0);
-
 }
 
-void Shader_3D_SetViewMatrix(const DirectX::XMMATRIX& matrix)
-{
-
-}
-
-void Shader_3D_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
-{
-
-}
+void Shader_3D_SetViewMatrix(const DirectX::XMMATRIX& matrix) {}
+void Shader_3D_SetProjectMatrix(const DirectX::XMMATRIX& matrix) {}
 
 void Shader_3D_SetColor(const XMFLOAT4& color)
 {
 	g_pContext->UpdateSubresource(g_pPSConstantBuffer0, 0, nullptr, &color, 0, 0);
 }
 
-void Shader_3D_SetBoneTransforms(const DirectX::XMFLOAT4X4* bones, int count)
-{
-}
+void Shader_3D_SetBoneTransforms(const DirectX::XMFLOAT4X4* bones, int count) {}
 
 void Shader_3D_Begin()
 {
-	//頂点シェーダーとピクセルシェーダーを描画パイプラインに設定
 	g_pContext->VSSetShader(g_pVertexShader, nullptr, 0);
 	g_pContext->PSSetShader(g_pPixelShader, nullptr, 0);
-
-	//頂点レイアウトを描画パイプラインに設定
 	g_pContext->IASetInputLayout(g_pInputLayout);
 
-	//定数バッファを描画パイプラインに設定
+	// 设置常规 Buffer
 	g_pContext->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
 	g_pContext->PSSetConstantBuffers(0, 1, &g_pPSConstantBuffer0);
 
-	//サンプラーステートを描画パイプラインに設定
-	//g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
+	g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
+}
+
+void Shader_3D_SetLightData(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
+{
+	// 1. 绑定阴影贴图到 Slot 1
+	g_pContext->PSSetShaderResources(1, 1, &shadowSRV);
+
+	// 2. 绑定比较采样器到 Slot 1
+	g_pContext->PSSetSamplers(1, 1, &g_pShadowSampler);
+
+	// 3. 更新并绑定 Light ViewProj 矩阵
+	// 注意：这里进行了转置，所以 game.cpp 里要传原始矩阵
+	XMFLOAT4X4 transpose;
+	XMStoreFloat4x4(&transpose, XMMatrixTranspose(lightViewProj));
+
+	g_pContext->UpdateSubresource(g_pCB_LightViewProj, 0, nullptr, &transpose, 0, 0);
+	g_pContext->VSSetConstantBuffers(3, 1, &g_pCB_LightViewProj);
 }

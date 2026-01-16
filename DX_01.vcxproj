@@ -215,6 +215,7 @@
     <ClCompile Include="shader_3d.cpp" />
     <ClCompile Include="shader_billboard.cpp" />
     <ClCompile Include="shader_field.cpp" />
+    <ClCompile Include="Shader_Shadow.cpp" />
     <ClCompile Include="SkeletonBuilder.cpp" />
     <ClCompile Include="SkinningModel.cpp" />
     <ClCompile Include="SkinningShader.cpp" />
@@ -268,6 +269,7 @@
     <ClInclude Include="PlayerCharacter.h" />
     <ClInclude Include="result.h" />
     <ClInclude Include="shader3d_unlit.h" />
+    <ClInclude Include="Shader_Shadow.h" />
     <ClInclude Include="Skeleton.h" />
     <ClInclude Include="SkeletonBuilder.h" />
     <ClInclude Include="SkinningModel.h" />
@@ -361,6 +363,10 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="ShadowMap_VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
