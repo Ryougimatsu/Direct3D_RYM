@@ -41,7 +41,7 @@ public:
 	int GetTotalAmmo() const { return m_TotalAmmo; } 
 	bool IsReloading() const { return m_IsReloading; }
 	void AddAmmo(int amount); // 捡到子弹时调用
-
+	void DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);
 	AABB GetAABB() const;
 
 	bool IsDeathAnimationFinished() const { return m_IsDeadFinished; }

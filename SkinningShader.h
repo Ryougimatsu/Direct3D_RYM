@@ -21,3 +21,5 @@ void SkinningShader_3D_SetBoneTransforms(const std::vector<DirectX::XMMATRIX>& b
 void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color);
 // 设置颜色
 void SkinningShader_3D_SetColor(const DirectX::XMFLOAT4& color);
+void SkinningShader_3D_BeginDepthOnly();
+void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, const DirectX::XMMATRIX& lightViewProj);

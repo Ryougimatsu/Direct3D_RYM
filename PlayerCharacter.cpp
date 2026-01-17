@@ -464,6 +464,32 @@ void PlayerCharacter::AddAmmo(int amount)
 	if (m_TotalAmmo > 300) m_TotalAmmo = 300;
 }
 
+void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
+{
+	if (!m_pModel) return;
+
+	// 1. 启用 DepthOnly 模式 (复用蒙皮 Shader 的 VS，但不跑 PS)
+	SkinningShader_3D_BeginDepthOnly();
+
+	// 2. 【关键】将 View/Proj 设置为光源的视角！
+	// 这样 Skinning VS 就会把顶点变换到光源空间，写入 ShadowMap
+	SkinningShader_3D_SetViewMatrix(lightView);
+	SkinningShader_3D_SetProjectMatrix(lightProj);
+
+	// 3. 设置世界矩阵 (同 Draw)
+	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + DirectX::XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+	SkinningShader_3D_SetWorldMatrix(world);
+
+	// 4. 更新骨骼 (同 Draw)
+	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
+	SkinningShader_3D_SetBoneTransforms(bones);
+
+	// 5. 绘制
+	m_pModel->Draw();
+
+	// 注意：如果有手持武器，也需要在这里绘制一遍，逻辑同上
+}
+
 AABB PlayerCharacter::GetAABB() const {
 	float halfWidth = 0.5f;  // 半宽 0.5 -> 宽度 1.0
 	float height = 1.8f;     // 高度 1.8

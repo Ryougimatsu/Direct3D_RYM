@@ -17,9 +17,10 @@ namespace
 	ID3D11Buffer* g_pCBView = nullptr; // b1
 	ID3D11Buffer* g_pCBProj = nullptr; // b2
 	ID3D11Buffer* g_pCBBones = nullptr; // b3 (动态更新优化)
-
+	ID3D11Buffer* g_pCBLightViewProj = nullptr;
+	ID3D11ShaderResourceView* g_pShadowSRV_Bound = nullptr;
 	ID3D11Buffer* g_pCBColor = nullptr; // PS b0
-
+	ID3D11SamplerState* pShadowSampler = nullptr;
 	ID3D11SamplerState* g_pSamplerState = nullptr;
 
 	ID3D11Device* g_pDevice = nullptr;
@@ -56,7 +57,7 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBWorld);
 	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBView);
 	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBProj);
-
+	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBLightViewProj);
 	bd.ByteWidth = sizeof(XMFLOAT4);
 	g_pDevice->CreateBuffer(&bd, nullptr, &g_pCBColor);
 
@@ -87,6 +88,20 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 
 	HRESULT hrSampler = g_pDevice->CreateSamplerState(&samplerDesc, &g_pSamplerState);
 	if (FAILED(hrSampler)) return false;
+
+	// 创建阴影比较采样器 (Shadow Sampler)
+	D3D11_SAMPLER_DESC shadowSampDesc = {};
+	shadowSampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT; // 支持 PCF
+	shadowSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.BorderColor[0] = 1.0f; // 边界外视为无阴影
+	shadowSampDesc.BorderColor[1] = 1.0f;
+	shadowSampDesc.BorderColor[2] = 1.0f;
+	shadowSampDesc.BorderColor[3] = 1.0f;
+	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL; // 关键：深度比较函数
+
+	g_pDevice->CreateSamplerState(&shadowSampDesc, &pShadowSampler);
 
 	return true;
 }
@@ -168,6 +183,32 @@ void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color)
 	g_pContext->UpdateSubresource(g_pCBColor, 0, nullptr, &color, 0, 0);
 }
 
+void SkinningShader_3D_BeginDepthOnly()
+{
+	// 1. 绑定 VS 和 InputLayout (复用蒙皮逻辑)
+	g_pContext->VSSetShader(g_pVertexShader, nullptr, 0);
+	g_pContext->IASetInputLayout(g_pInputLayout);
+
+	// 2. 绑定骨骼变换等 VS 常量
+	ID3D11Buffer* vsBuffers[] = { g_pCBWorld, g_pCBView, g_pCBProj, g_pCBBones };
+	g_pContext->VSSetConstantBuffers(0, 4, vsBuffers);
+
+	// 3. 【关键】解绑 PS，因为生成阴影只需要深度
+	g_pContext->PSSetShader(nullptr, nullptr, 0);
+}
+
+void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, const DirectX::XMMATRIX& lightViewProj)
+{
+	// 传入阴影图到 PS (假设在 slot 1, slot 0 是漫反射贴图)
+	g_pContext->PSSetShaderResources(1, 1, &pShadowSRV);
+	g_pContext->PSSetSamplers(1, 1, &pShadowSampler);
+
+	// 传入光源矩阵到 VS 或 PS (取决于你在哪里计算阴影坐标，推荐 VS)
+	DirectX::XMMATRIX mT = DirectX::XMMatrixTranspose(lightViewProj);
+	g_pContext->UpdateSubresource(g_pCBLightViewProj, 0, nullptr, &mT, 0, 0);
+	g_pContext->VSSetConstantBuffers(4, 1, &g_pCBLightViewProj); // 假设绑定到 b4
+}
+
 void SkinningShader_3D_Finalize()
 {
 	if (g_pSamplerState) g_pSamplerState->Release();
@@ -179,4 +220,5 @@ void SkinningShader_3D_Finalize()
 	if (g_pInputLayout) g_pInputLayout->Release();
 	if (g_pPixelShader) g_pPixelShader->Release();
 	if (g_pVertexShader) g_pVertexShader->Release();
+
 }

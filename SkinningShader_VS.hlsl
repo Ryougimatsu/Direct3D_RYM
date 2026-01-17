@@ -23,7 +23,13 @@ cbuffer CBBones : register(b3)
     float4x4 gBones[256];
 };
 
-// VS 输入：和 C++ InputLayout 一致
+cbuffer ShadowBuffer : register(b4)
+{
+    matrix LightViewProj;
+}
+
+// VS 输入：必须严格对应 C++ InputLayout
+// 注意：输入数据（顶点buffer）里是不包含 ShadowPos 的，所以这里必须去掉
 struct VS_IN
 {
     float3 Pos : POSITION;
@@ -34,7 +40,8 @@ struct VS_IN
     float4 Weights : BLENDWEIGHT0;
 };
 
-// VS 输出：和 Pixel Shader 的 PS_IN 一致
+// VS 输出：传递给 Pixel Shader 的数据
+// 注意：ShadowPos 是在这里计算并传递给 PS 的，所以这里需要加上
 struct PS_IN
 {
     float4 posH : SV_POSITION;
@@ -42,6 +49,7 @@ struct PS_IN
     float4 normalW : NORMAL0;
     float4 color : COLOR0;
     float2 uv : TEXCOORD0;
+    float4 ShadowPos : TEXCOORD1; // [修正2] 新增：用于传递阴影坐标
 };
 
 PS_IN main(VS_IN vin)
@@ -88,11 +96,13 @@ PS_IN main(VS_IN vin)
     float4 viewPos = mul(worldPos, gView);
     float4 projPos = mul(viewPos, gProj);
 
+    // ----------- 赋值输出 -----------
     vout.posH = projPos;
     vout.posW = worldPos;
     vout.normalW = float4(worldN, 0.0f);
     vout.color = vin.Color;
     vout.uv = vin.Tex;
+    vout.ShadowPos = mul(worldPos, LightViewProj);
 
     return vout;
 }

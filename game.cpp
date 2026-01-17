@@ -209,7 +209,7 @@ void Game_Draw()
 		DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
 		ModelDrawShadow(g_DoorModel, goalWorld);
 	}
-
+	g_Player->DrawShadow(lightView, lightProj);
 	Shader_Shadow_End();
 
 	// =============================================================
@@ -232,13 +232,12 @@ void Game_Draw()
 		view = XMLoadFloat4x4(&v);
 		proj = XMLoadFloat4x4(&p);
 	}
-
-	// 1. 绘制角色 (不受阴影影响，先画)
-	if (g_Player) g_Player->Draw(view, proj);
-	Enemy_Draw(view, proj);
-
-	// 准备光照矩阵
+	ID3D11ShaderResourceView* shadowSRV = Shader_Shadow_GetSRV();
 	XMMATRIX lightVP = lightView * lightProj;
+	SkinningShader_3D_SetShadowResources(shadowSRV, lightVP);
+	// 1. 绘制角色 (不受阴影影响，先画)
+	g_Player->Draw(view, proj);
+	Enemy_Draw(view, proj);
 
 	// 设置相机参数到 Shader
 	Camera_SetMatrixToShader(view, proj);
