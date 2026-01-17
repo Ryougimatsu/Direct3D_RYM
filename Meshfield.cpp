@@ -112,10 +112,11 @@ void MeshField_Finalize()
 	SAFE_RELEASE(g_pVertexBuffer);
 }
 
-void MeshField_Draw(const DirectX::XMMATRIX& mtxW)
+void MeshField_Draw(const DirectX::XMMATRIX& mtxW, const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
 {
 	// シェーダーを描画パイプラインに設定
 	Shader_field_Begin();
+	Shader_field_SetLightData(lightViewProj, shadowSRV);
 	Texture_Set(g_MeshFieldTexId0,0);
 	Texture_Set(g_MeshFieldTexId1,1);
 	// 頂点バッファを描画パイプラインに設定

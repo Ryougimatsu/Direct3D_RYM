@@ -166,27 +166,30 @@ void Shader_3D_Begin()
 	g_pContext->VSSetShader(g_pVertexShader, nullptr, 0);
 	g_pContext->PSSetShader(g_pPixelShader, nullptr, 0);
 	g_pContext->IASetInputLayout(g_pInputLayout);
-
-	// 设置常规 Buffer
 	g_pContext->VSSetConstantBuffers(0, 1, &g_pVSConstantBuffer0);
+	if (g_pCB_LightViewProj) {
+		g_pContext->VSSetConstantBuffers(3, 1, &g_pCB_LightViewProj);
+	}
+
 	g_pContext->PSSetConstantBuffers(0, 1, &g_pPSConstantBuffer0);
 
 	g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
+	g_pContext->PSSetSamplers(5, 1, &g_pShadowSampler);
 }
 
-void Shader_3D_SetLightData(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
+void Shader_3D_SetLightData(const XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
 {
-	// 1. 绑定阴影贴图到 Slot 1
-	g_pContext->PSSetShaderResources(1, 1, &shadowSRV);
+	// 1) 可选：先解绑（防止同资源冲突/状态残留）
+	ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+	g_pContext->PSSetShaderResources(5, 1, nullSRV);
+	g_pContext->PSSetShaderResources(1, 1, nullSRV);
 
-	// 2. 绑定比较采样器到 Slot 1
-	g_pContext->PSSetSamplers(1, 1, &g_pShadowSampler);
+	g_pContext->PSSetShaderResources(5, 1, &shadowSRV);
 
-	// 3. 更新并绑定 Light ViewProj 矩阵
-	// 注意：这里进行了转置，所以 game.cpp 里要传原始矩阵
+	g_pContext->PSSetSamplers(5, 1, &g_pShadowSampler);
+
 	XMFLOAT4X4 transpose;
 	XMStoreFloat4x4(&transpose, XMMatrixTranspose(lightViewProj));
-
 	g_pContext->UpdateSubresource(g_pCB_LightViewProj, 0, nullptr, &transpose, 0, 0);
 	g_pContext->VSSetConstantBuffers(3, 1, &g_pCB_LightViewProj);
 }

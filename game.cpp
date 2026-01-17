@@ -237,49 +237,45 @@ void Game_Draw()
 	if (g_Player) g_Player->Draw(view, proj);
 	Enemy_Draw(view, proj);
 
+	// 准备光照矩阵
+	XMMATRIX lightVP = lightView * lightProj;
+
+	// 设置相机参数到 Shader
+	Camera_SetMatrixToShader(view, proj);
+
 	// --- 进入 Shader_3D 渲染阶段 ---
 	Shader_3D_Begin();
 
-	// 准备通用参数
-	XMMATRIX lightVP = lightView * lightProj;
-	Camera_SetMatrixToShader(view, proj);
+	// 准备通用光照参数
 	Light_SetAmbient({ 0.4f, 0.4f, 0.4f });
 	XMVECTOR dirVec = XMVector3Normalize(g_LightTarget - g_LightPos);
 	XMFLOAT4 lightDirF4;
 	XMStoreFloat4(&lightDirF4, dirVec);
 	Light_SetDirectionalWorld(lightDirF4, { 0.8f, 0.8f, 0.8f, 1.0f });
 
-	// ---------------------------------------------------------
-	// 第一阶段：绑定阴影图，绘制地图
-	// ---------------------------------------------------------
+	// 设置阴影数据 (给接下来直接使用 Shader_3D 的物体，如 DropItem, Door)
 	Shader_3D_SetLightData(lightVP, Shader_Shadow_GetSRV());
-	Map_Draw();
 
-	// ---------------------------------------------------------
-	// 第二阶段：绘制掉落物 (它可能会修改 Slot 1 导致阴影图失效!)
-	// ---------------------------------------------------------
+	// 绘制地图 (包含地面和墙壁)
+	// 注意：Map_Draw 内部需要负责将 lightVP 和 SRV 传递给 MeshField 和 Cube
+	Map_Draw(lightVP, Shader_Shadow_GetSRV());
+
+	// 绘制掉落物
 	DropItem_Draw();
 
-	// ---------------------------------------------------------
-	// 【关键修复】第三阶段：必须重新绑定阴影图！
-	// 因为上面的 DropItem_Draw 刚刚把 Slot 1 弄脏了
-	// ---------------------------------------------------------
+	// 绘制门 (确保数据再次绑定，防止被中间的绘制打断)
 	Shader_3D_SetLightData(lightVP, Shader_Shadow_GetSRV());
-
-	// ---------------------------------------------------------
-	// 第四阶段：绘制门 (现在它能读到正确的阴影图了，不会报错)
-	// ---------------------------------------------------------
 	DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
 	ModelDraw(g_DoorModel, goalWorld);
-
 
 	// ---------------------------------------------------------
 	// 第五阶段：绘制天空和子弹 (最后画)
 	// ---------------------------------------------------------
 
 	// 解绑 Shadow Map SRV (必须解绑，否则下一帧 Pass 1 无法写入)
+	// 【非常重要】如果当前绑定的 SRV slot 5 是 ShadowMap，必须设为 NULL
 	ID3D11ShaderResourceView* nullSRV = nullptr;
-	Direct3D_GetDeviceContext()->PSSetShaderResources(1, 1, &nullSRV);
+	Direct3D_GetDeviceContext()->PSSetShaderResources(5, 1, &nullSRV);
 
 	Sky_Draw();
 	Bullet_Draw();

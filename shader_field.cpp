@@ -13,6 +13,8 @@ namespace
 	ID3D11Buffer* g_pVSConstantBuffer0 = nullptr;
 	ID3D11Buffer* g_pPSConstantBuffer0 = nullptr;
 	ID3D11PixelShader* g_pPixelShader = nullptr;
+	ID3D11Buffer* g_pCB_FieldShadow = nullptr; 
+	ID3D11SamplerState* g_pShadowSamplerField = nullptr;
 
 	// 注意！初期化で外部から設定されるもの。Release不要。
 	ID3D11Device* g_pDevice = nullptr;
@@ -120,6 +122,23 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 
 	g_pDevice->CreateBuffer(&buffer_desc, nullptr, &g_pPSConstantBuffer0); // World
 
+	D3D11_BUFFER_DESC cbDesc = {};
+	cbDesc.ByteWidth = sizeof(XMFLOAT4X4);
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	g_pDevice->CreateBuffer(&cbDesc, nullptr, &g_pCB_FieldShadow);
+
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+	sampDesc.BorderColor[0] = 1.0f;
+	sampDesc.BorderColor[1] = 1.0f;
+	sampDesc.BorderColor[2] = 1.0f;
+	sampDesc.BorderColor[3] = 1.0f;
+	g_pDevice->CreateSamplerState(&sampDesc, &g_pShadowSamplerField);
+
 	return true;
 }
 
@@ -127,6 +146,8 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 
 void Shader_field_Finalize()
 {
+	SAFE_RELEASE(g_pCB_FieldShadow);
+	SAFE_RELEASE(g_pShadowSamplerField);
 	SAFE_RELEASE(g_pPixelShader);
 	SAFE_RELEASE(g_pVSConstantBuffer0);
 	SAFE_RELEASE(g_pPSConstantBuffer0);
@@ -191,4 +212,20 @@ void Shader_field_Begin()
 
 	//サンプラーステートを描画パイプラインに設定
 	//g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
+}
+
+void Shader_field_SetLightData(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
+{
+	// 更新 Constant Buffer
+	XMFLOAT4X4 transpose;
+	XMStoreFloat4x4(&transpose, XMMatrixTranspose(lightViewProj));
+	g_pContext->UpdateSubresource(g_pCB_FieldShadow, 0, nullptr, &transpose, 0, 0);
+
+	// 绑定资源
+	// VS b5: Light Matrix
+	g_pContext->VSSetConstantBuffers(5, 1, &g_pCB_FieldShadow);
+	// PS t5: Shadow Map
+	g_pContext->PSSetShaderResources(5, 1, &shadowSRV);
+	// PS s5: Shadow Sampler
+	g_pContext->PSSetSamplers(5, 1, &g_pShadowSamplerField);
 }

@@ -30,11 +30,31 @@ struct PS_IN
     float4 normalW : NORMAL0; // ワールド法線
     float4 blend : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
+    float4 posLight : POSITION1;
 };
 Texture2D tex0 : register(t0);
 Texture2D tex1 : register(t1);
+SamplerState samp : register(s0);;
+Texture2D shadowMap : register(t5);
+SamplerComparisonState shadowSampler : register(s5);
+float CalculateShadow(float4 posLight)
+{
+    float3 projCoords = posLight.xyz / posLight.w;
+    projCoords.x = projCoords.x * 0.5f + 0.5f;
+    projCoords.y = -projCoords.y * 0.5f + 0.5f;
 
-SamplerState samp;
+    // 边界检查：超出光源范围视为无阴影
+    if (projCoords.z > 1.0f || projCoords.x < 0.0f || projCoords.x > 1.0f || projCoords.y < 0.0f || projCoords.y > 1.0f)
+        return 1.0f;
+
+    float bias = 0.005f;
+    float currentDepth = projCoords.z - bias;
+    
+    // PCF 采样
+    float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, projCoords.xy, currentDepth);
+    return shadow;
+}
+
 
 float4 main(PS_IN pi) : SV_TARGET
 {
@@ -48,11 +68,12 @@ float4 main(PS_IN pi) : SV_TARGET
 
     // 材質の色
     float3 material_color = tex_color.rgb * diffuse_color.rgb;
+    float shadowFactor = CalculateShadow(pi.posLight);
 
     // 並行光源 (ディフューズライト)
     float4 normalW = normalize(pi.normalW);
     float dl = (dot(-directional_vector, normalW+1.0f)*0.5f);
-    float3 diffuse = material_color * directional_color.rgb * dl;
+    float3 diffuse = material_color * directional_color.rgb * dl * shadowFactor;
 
     // 環境光 (アンビエントライト)
     float3 ambient = material_color * ambient_color.rgb;
@@ -61,7 +82,7 @@ float4 main(PS_IN pi) : SV_TARGET
     float3 toEye = normalize(eye_posW - pi.posW.xyz);
     float3 r = reflect(directional_vector, normalW).xyz;
     float t = pow(max(dot(r, toEye), 0.0f), specular_power);
-    float3 specular = specular_color * t;
+    float3 specular = specular_color.rgb * t * shadowFactor;
     //float3 specular = diffuse_color.rgb * t;
    
 

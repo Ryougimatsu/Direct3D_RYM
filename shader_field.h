@@ -14,5 +14,6 @@ void Shader_field_SetViewMatrix(const DirectX::XMMATRIX& matrix);
 void Shader_field_SetProjectMatrix(const DirectX::XMMATRIX& matrix);
 void Shader_field_3D_SetColor(const DirectX::XMFLOAT4& color);
 void Shader_field_Begin();
+void Shader_field_SetLightData(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV);
 
 #endif 

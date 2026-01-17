@@ -47,11 +47,11 @@ struct PS_IN
 	float4 posLight : POSITION1;
 };
 
-Texture2D tex;
-SamplerState samplerState;
+Texture2D tex : register(t0);
+SamplerState samplerState : register(s0);
 
-Texture2D shadowMap : register(t1); 
-SamplerComparisonState shadowSampler : register(s1); 
+Texture2D shadowMap : register(t5);
+SamplerComparisonState shadowSampler : register(s5);
 
 float CalculateShadow(float4 posLight)
 {

@@ -101,7 +101,7 @@ void Map_Finalize()
 	g_MapObjects.clear();
 }
 
-void Map_Draw()
+void Map_Draw(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
 {
 	XMMATRIX mtxWorld;
 
@@ -111,7 +111,7 @@ void Map_Draw()
 			mtxWorld = XMMatrixIdentity();
 			// 设置地面反光属性
 			Light_SetSpecularWorld(Player_Camera_GetPosition(), 1.0f, { 0.1f, 0.1f, 0.1f, 1.0f });
-			MeshField_Draw(mtxWorld);
+			MeshField_Draw(mtxWorld, lightViewProj, shadowSRV);
 			// 恢复默认反光强度
 			Light_SetSpecularWorld(Player_Camera_GetPosition(), 10.0f, { 0.8f, 0.8f, 0.8f, 1.0f });
 			break;
@@ -122,6 +122,7 @@ void Map_Draw()
 
 			// 如果想把墙变红，可以在这里 SetColor，画完再 SetColor(White)
 			Shader_3D_SetColor({ 1.0f, 0.5f, 0.5f, 1.0f });
+			Shader_3D_SetLightData(lightViewProj, shadowSRV);
 			Cube_Draw(g_WallTextureID, mtxWorld);
 			Shader_3D_SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 恢复白色
 			break;

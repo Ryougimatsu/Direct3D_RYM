@@ -26,6 +26,10 @@ cbuffer VS_CONSTANT_BUFFER : register(b4)
     float4 directional_vector;
     float4 directional_color;
 }
+cbuffer VS_SHADOW_BUFFER : register(b5)
+{
+    float4x4 lightViewProj;
+}
 struct VS_IN
 {
     float4 posL : POSITION0; // ローカル座標
@@ -41,6 +45,7 @@ struct VS_OUT
     float4 normalW : NORMAL0; // ワールド法線
     float4 blend : COLOR0; // 色
     float2 uv : TEXCOORD0; // uv
+    float4 posLight : POSITION1;
 };
 
 //=============================================================================
@@ -58,7 +63,7 @@ VS_OUT main(VS_IN vi)
     vo.normalW = normalize(normalW);
     vo.posW = mul(vi.posL,world);
 
-    
+    vo.posLight = mul(vo.posW, lightViewProj);
     vo.blend = vi.blend;
     vo.uv = vi.uv;
 
