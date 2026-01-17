@@ -19,5 +19,6 @@ void Shader_Shadow_End();
 
 // 获取阴影图的 SRV (供 Shader_3D 使用)
 ID3D11ShaderResourceView* Shader_Shadow_GetSRV();
+void Shader_Shadow_Apply();
 
 #endif

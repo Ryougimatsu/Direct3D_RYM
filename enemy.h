@@ -33,6 +33,7 @@ public:
 	virtual bool IsAlerted() const = 0;
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
 	virtual void SetPosition(const DirectX::XMFLOAT3& pos) = 0;
+	virtual void DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj) const = 0;
 	virtual void ApplyKnockback(const DirectX::XMVECTOR& direction, float force) = 0;
 	virtual DirectX::XMFLOAT3 GetRotation() const = 0;
 	virtual AABB GetAABB() {
@@ -53,3 +54,4 @@ void Enemy_Create(const DirectX::XMFLOAT3& position);
 int Enemy_GetEnemyCount();
 Enemy* Enemy_GetEnemy(int index);
 void Enemy_ApplyMeleeDamage(const DirectX::XMFLOAT3& position, const DirectX::XMVECTOR& forward, float radius, float angle);
+void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);

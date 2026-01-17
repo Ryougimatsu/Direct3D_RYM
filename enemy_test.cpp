@@ -827,6 +827,29 @@ void EnemyTest::Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const
 
 }
 
+void EnemyTest::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj) const
+{
+	if (g_pSkinningModel == nullptr) return;
+
+	// 1. 计算世界矩阵 (与 Draw 函数完全一致)
+	float modelScale = 0.01f;
+	XMMATRIX S = XMMatrixScaling(modelScale, modelScale, modelScale);
+	XMMATRIX R = XMMatrixRotationY(m_Rotation.y + XM_PI);
+	XMMATRIX T = XMMatrixTranslation(m_position.x, m_position.y, m_position.z);
+	XMMATRIX World = S * R * T;
+
+	// 2. 设置世界矩阵
+	SkinningShader_3D_SetWorldMatrix(World);
+
+	// 3. 设置骨骼变换矩阵 (必须更新，否则阴影还是 T-Pose)
+	// 注意：这里需要移除 const 限制来获取 Animator，或者把 GetFinalBoneMatrices 设为 const
+	std::vector<XMMATRIX> bones = const_cast<Animator&>(m_Animator).GetFinalBoneMatrices(g_pSkinningModel->GetSkeleton());
+	SkinningShader_3D_SetBoneTransforms(bones);
+
+	// 4. 绘制
+	const_cast<SkinningModel*>(g_pSkinningModel)->Draw();
+}
+
 EnemyTest::EnemyTest_StateSearch::EnemyTest_StateSearch(EnemyTest* pOwner)
 	: m_pOwner(pOwner), m_SearchTimer(2.5f) // 动作持续 2.5 秒
 {

@@ -18,7 +18,7 @@ namespace {
 
 	// 视口
 	D3D11_VIEWPORT g_ShadowViewport;
-	const float SHADOW_MAP_SIZE = 2048.0f;
+	const float SHADOW_MAP_SIZE = 4096.0f;
 
 	// 缓存的光源矩阵
 	DirectX::XMFLOAT4X4 g_LightViewProj;
@@ -174,6 +174,21 @@ ID3D11ShaderResourceView* Shader_Shadow_GetSRV()
 	return g_pShadowSRV;
 }
 
+void Shader_Shadow_Apply()
+{
+	// 恢复 Shadow Vertex Shader
+	g_pContext->VSSetShader(g_pShadowVS, nullptr, 0);
+	g_pContext->PSSetShader(nullptr, nullptr, 0); // 阴影生成不需要 PS
+
+	// 恢复 Input Layout
+	g_pContext->IASetInputLayout(g_pShadowInputLayout);
+
+	// 恢复 Constant Buffer (绑定到 b0)
+	g_pContext->VSSetConstantBuffers(0, 1, &g_pShadowConstantBuffer);
+
+	// 恢复 Rasterizer (带 DepthBias)
+	g_pContext->RSSetState(g_pShadowRasterizer);
+}
 void Shader_Shadow_Finalize()
 {
 	if (g_pShadowVS) g_pShadowVS->Release();

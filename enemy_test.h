@@ -64,7 +64,7 @@ public:
 
     void Update(double elapsed_time) override;
     void Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const override;
-
+    void DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj) const override;
     static void LoadAssets();
     static void UnloadAssets();
     static std::vector<EnemyTest*> g_AllEnemies;

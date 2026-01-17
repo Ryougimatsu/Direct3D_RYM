@@ -9,6 +9,8 @@
 #include "key_logger.h"
 #include "Pathfinder.h"
 #include "game.h"
+#include "Shader_Shadow.h"
+#include "model.h"
 using namespace DirectX;
 
 PlayerCharacter* g_pPlayerInstance = nullptr;
@@ -468,26 +470,61 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 {
 	if (!m_pModel) return;
 
-	// 1. 启用 DepthOnly 模式 (复用蒙皮 Shader 的 VS，但不跑 PS)
+	// ==========================================
+	// 1. 绘制玩家 (蒙皮模型)
+	// ==========================================
+
+	// 启用 Skinning DepthOnly 模式
 	SkinningShader_3D_BeginDepthOnly();
 
-	// 2. 【关键】将 View/Proj 设置为光源的视角！
-	// 这样 Skinning VS 就会把顶点变换到光源空间，写入 ShadowMap
+	// 设置矩阵 (View/Proj 是光源的)
 	SkinningShader_3D_SetViewMatrix(lightView);
 	SkinningShader_3D_SetProjectMatrix(lightProj);
 
-	// 3. 设置世界矩阵 (同 Draw)
+	// 构造玩家世界矩阵
 	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + DirectX::XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 	SkinningShader_3D_SetWorldMatrix(world);
 
-	// 4. 更新骨骼 (同 Draw)
+	// 更新骨骼并绘制
 	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
 	SkinningShader_3D_SetBoneTransforms(bones);
-
-	// 5. 绘制
 	m_pModel->Draw();
 
-	// 注意：如果有手持武器，也需要在这里绘制一遍，逻辑同上
+
+	// ==========================================
+	// 2. 绘制枪械 (静态模型)
+	// ==========================================
+	// 只有在非收枪状态（或你需要一直显示枪）时才绘制
+	// 这里复用 Draw 函数中的判断逻辑
+	if (m_MeleeTimer <= 0.2f && m_pGunModel)
+	{
+		// 【关键步骤】切换回静态阴影 Shader 状态
+		Shader_Shadow_Apply();
+
+		// 计算枪的世界矩阵 (逻辑与 Draw 函数完全一致)
+		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
+		if (nameMap.count("mixamorig:RightHand"))
+		{
+			int handIdx = nameMap.at("mixamorig:RightHand");
+
+			// 获取手部骨骼矩阵
+			DirectX::XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+
+			// 枪的局部变换
+			DirectX::XMMATRIX gunLocal =
+				DirectX::XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
+				DirectX::XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
+				DirectX::XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
+
+			// 最终世界矩阵 = 枪局部 * 手骨骼 * 玩家世界
+			DirectX::XMMATRIX gunWorld = gunLocal * handMat * world;
+
+			// 调用 model.cpp 中现成的阴影绘制函数
+			// 注意：ModelDrawShadow 内部只设置矩阵，依赖外部的 VS/IL 状态
+			// 所以前面的 Shader_Shadow_Apply() 是必须的
+			ModelDrawShadow(m_pGunModel, gunWorld);
+		}
+	}
 }
 
 AABB PlayerCharacter::GetAABB() const {

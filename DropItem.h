@@ -15,3 +15,4 @@ void DropItem_Draw();
 
 // [核心接口] 在指定位置生成一个掉落物 (参数: 位置, 道具ID)
 void DropItem_Spawn(DirectX::XMFLOAT3 position, int itemId);
+void DropItem_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);

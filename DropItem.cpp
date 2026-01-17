@@ -7,7 +7,8 @@
 #include "Inventory.h"  
 #include <vector>
 #include "Meshfield.h"
-
+#include "Shader_Shadow.h"
+#include "model.h"
 using namespace DirectX;
 
 
@@ -19,7 +20,6 @@ struct DropItem
 	float floatAngle;
 	float rotationY;
 };
-
 namespace
 {
 	const int MAX_DROPS = 100;
@@ -60,6 +60,31 @@ void DropItem_Spawn(XMFLOAT3 position, int itemId)
 			g_Drops[i].rotationY = 0.0f;
 			return;
 		}
+	}
+}
+
+void DropItem_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
+{
+	// 1. 【绝对关键】强制恢复阴影 Shader 和 光栅化状态(CullMode=None)
+	// 这能解决因状态残留导致的闪烁问题
+	Shader_Shadow_Apply();
+
+	for (int i = 0; i < MAX_DROPS; i++)
+	{
+		if (!g_Drops[i].active) continue;
+
+		DropItem& item = g_Drops[i];
+
+		// 2. 构建矩阵：缩放 -> 旋转 -> 位移
+		// 这里的 rotationY 会让阴影跟随旋转
+		DirectX::XMMATRIX scale = DirectX::XMMatrixScaling(0.5f, 0.5f, 0.5f);
+		DirectX::XMMATRIX rot = DirectX::XMMatrixRotationY(item.rotationY);
+		DirectX::XMMATRIX trans = DirectX::XMMatrixTranslation(item.position.x, item.position.y, item.position.z);
+
+		DirectX::XMMATRIX world = scale * rot * trans;
+
+		// 3. 绘制
+		Cube_DrawShadow(world);
 	}
 }
 

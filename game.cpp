@@ -36,7 +36,7 @@
 #include "cube.h"
 #include "score.h"
 #include "NavigationSystem.h"
-#include "Shader_Shadow.h" // 引入阴影
+#include "Shader_Shadow.h"
 
 using namespace DirectX;
 
@@ -210,6 +210,8 @@ void Game_Draw()
 		ModelDrawShadow(g_DoorModel, goalWorld);
 	}
 	g_Player->DrawShadow(lightView, lightProj);
+	Enemy_DrawShadow(lightView, lightProj);
+	DropItem_DrawShadow(lightView, lightProj);
 	Shader_Shadow_End();
 
 	// =============================================================
