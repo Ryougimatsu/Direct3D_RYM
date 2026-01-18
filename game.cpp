@@ -1,61 +1,79 @@
+// ======================================================================================
+// Includes
+// ======================================================================================
+// System & Math
 #include "game.h"
-#include "shader.h"
-#include "Sampler.h"
-#include "Meshfield.h"
-#include "Light.h"
-#include <DirectXMath.h>
-#include "model.h"
-#include "camera.h"
-#include "Player_Camera.h"
-#include "map.h"
-#include "billboard.h"
-#include "texture.h"
-#include "sprite_anime.h"
-#include "bullet.h"
-#include "bullet_hit_effect.h"
 #include "direct3d.h"
-#include "sky.h"
-#include "enemy.h"
-#include "MapCamera.h"
-#include "DebugCamera.h"
 #include "mouse.h"
-#include "sprite.h"
-#include "Inventory.h"
-#include "DropItem.h"
-#include "GameUI.h"
-#include "SkinningModel.h"
-#include "SkinningShader.h"
-#include <memory>
-#include <string>
-#include "shader_3d.h"
-#include "PlayerCharacter.h"
-#include "enemy_test.h"
-#include "Pathfinder.h"
+#include "score.h"
 #include "fade.h"
 #include "scene.h"
-#include "cube.h"
-#include "score.h"
-#include "NavigationSystem.h"
+#include <DirectXMath.h>
+#include <memory>
+#include <string>
+
+// Graphics & Shaders
+#include "shader.h"
+#include "shader_3d.h"
 #include "Shader_Shadow.h"
+#include "SkinningShader.h"
+#include "Sampler.h"
+#include "Light.h"
+#include "texture.h"
+#include "billboard.h"
+#include "camera.h"
+
+// Game Systems
+#include "map.h"
+#include "Meshfield.h"
+#include "sky.h"
+#include "Pathfinder.h"
+#include "NavigationSystem.h"
+#include "Player_Camera.h"
+#include "MapCamera.h"
+#include "DebugCamera.h"
+#include "GameUI.h"
+
+// Game Objects & Models
+#include "model.h"
+#include "cube.h"
+#include "SkinningModel.h"
+#include "PlayerCharacter.h"
+#include "enemy.h"
+#include "enemy_test.h"
+#include "bullet.h"
+#include "bullet_hit_effect.h"
+#include "DropItem.h"
+#include "Inventory.h"
+#include "sprite.h"
+#include "sprite_anime.h"
 
 using namespace DirectX;
 
+// ======================================================================================
+// Internal Globals & Constants
+// ======================================================================================
 namespace
 {
+	// 游戏状态
 	bool g_IsDebugCameraMode = false;
-	PlayerCharacter* g_Player = nullptr;
-	const DirectX::XMFLOAT3 g_GoalPos = { 20.0f, 1.0f, 10.0f };
-	MODEL* g_DoorModel = nullptr;
 	double g_CurrentGameTime = 0.0;
 
-	// 光源参数 (定义在这里，Draw中直接使用)
-	// 光源位置建议设高一点，以覆盖更大的阴影范围
+	// 关键对象
+	PlayerCharacter* g_Player = nullptr;
+	MODEL* g_DoorModel = nullptr;
+	const DirectX::XMFLOAT3 g_GoalPos = { 20.0f, 1.0f, 10.0f };
+
+	// 光源参数 (阴影生成用)
+	// 位置设高一点以覆盖更广的区域
 	XMVECTOR g_LightPos = XMVectorSet(20.0f, 30.0f, -10.0f, 1.0f);
-	// 简单的向下指
 	XMVECTOR g_LightTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	XMVECTOR g_LightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 }
 
+// ======================================================================================
+// Helper Functions (Wrappers)
+// ======================================================================================
 bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end)
 {
 	return Map_CheckLineOfSightBlocked(start, end);
@@ -66,55 +84,82 @@ bool Game_CheckCollisionWithWalls(const AABB& objAabb)
 	return Map_CheckCollision(objAabb);
 }
 
+// ======================================================================================
+// Game Lifecycle: Load & Initialize
+// ======================================================================================
 void Game_LoadContent()
 {
+	// 1. 加载资源与静态模型
 	g_DoorModel = ModelLoad("resource/Model/Door.fbx", 0.05f);
+
+	// 2. 初始化子系统
 	Map_Initialize(g_GoalPos);
-	Bullet_Initialize();
 	Sky_Initialize();
+	Bullet_Initialize();
 	Pathfinder::Initialize();
 	NavigationSystem::Initialize();
-	bool success = NavigationSystem::GetInstance()->Build();
+
+	// 构建导航网格
+	if (!NavigationSystem::GetInstance()->Build()) {
+		OutputDebugStringA("[Game] Navigation Build Failed!\n");
+	}
+
+	// 3. 初始化摄像机与UI
 	Player_Camera_Initialize();
+	GameUI_Initialize();
+
+	// 4. 初始化物品系统
 	Inventory_Initialize();
 	DropItem_Initialize();
-	g_CurrentGameTime = 0.0;
 
+	// 5. 初始化角色与敌人
 	if (!g_Player) {
 		g_Player = new PlayerCharacter();
 		if (!g_Player->Initialize()) {
 			OutputDebugStringA("[Game] PlayerCharacter Initialize Failed!\n");
 		}
 	}
-
 	EnemyTest::LoadAssets();
 	Enemy_Initialize();
-	GameUI_Initialize();
+
+	// 6. 重置时间
+	g_CurrentGameTime = 0.0;
 }
 
 void Game_Initialize()
 {
+	// 重置摄像机
 	Camera_Initialize();
 	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
 
+	// 重置玩家位置
 	if (g_Player) {
 		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
 	}
 
+	// 初始化分数显示位置
 	float screenW = (float)Direct3D_GetBackBufferWidth();
 	int digits = 6;
 	float fontSize = 32.0f;
 	float margin = 20.0f;
 	float scoreX = screenW - (digits * fontSize) - margin;
 	float scoreY = margin;
-
 	Score_Initialize(scoreX, scoreY, digits);
 	Score_Reset();
+
+	// 重置时间
+	g_CurrentGameTime = 0.0;
+
+	// 开始淡入
 	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
 }
 
+// ======================================================================================
+// Game Lifecycle: Update
+// ======================================================================================
 void Game_Update(double elapsed_time)
 {
+	// --- 1. 输入处理与模式切换 ---
 	if (KeyLogger_IsTrigger(KK_TAB))
 	{
 		g_IsDebugCameraMode = !g_IsDebugCameraMode;
@@ -127,10 +172,8 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
-	DirectX::XMFLOAT3 pPos = { 0.0f, 0.0f, 0.0f };
-	if (g_Player) {
-		pPos = g_Player->GetPosition();
-	}
+	// --- 2. 摄像机更新 ---
+	DirectX::XMFLOAT3 pPos = (g_Player) ? g_Player->GetPosition() : DirectX::XMFLOAT3{ 0,0,0 };
 
 	if (g_IsDebugCameraMode) {
 		DebugCamera_Update(elapsed_time);
@@ -138,33 +181,39 @@ void Game_Update(double elapsed_time)
 	else {
 		Player_Camera_Update(elapsed_time, pPos);
 	}
+
+	// 摄像机跟随天空盒
+	Sky_SetPosition(Player_Camera_GetPosition());
+
+	// --- 3. 实体更新 ---
 	Enemy_Update(elapsed_time);
 	Bullet_Update(elapsed_time);
 	Bullet_CheckCollisionWithEnemies();
-	Sky_SetPosition(Player_Camera_GetPosition());
-	Score_Update();
 	DropItem_Update(elapsed_time);
 	Inventory_Update(elapsed_time);
+	Score_Update();
 
+	// 玩家更新
 	if (!g_IsDebugCameraMode && g_Player)
 	{
 		g_Player->Update(elapsed_time);
 
+		// 死亡检测：动画播放完毕后切换场景
 		if (g_Player->IsDeathAnimationFinished())
 		{
 			delete g_Player;
 			g_Player = nullptr;
 			Scene_Change(SCENE_GAMEOVER);
+			return;
 		}
 	}
 
+	// --- 4. 游戏逻辑判断 ---
 	if (g_Player && !g_Player->IsDead())
 	{
 		g_CurrentGameTime += elapsed_time;
-	}
 
-	if (g_Player && !g_Player->IsDead())
-	{
+		// 胜利条件检测：到达目标点
 		AABB playerAABB = g_Player->GetAABB();
 		AABB goalAABB;
 		if (g_DoorModel) {
@@ -182,45 +231,52 @@ void Game_Update(double elapsed_time)
 	}
 }
 
+// ======================================================================================
+// Game Lifecycle: Draw
+// ======================================================================================
 void Game_Draw()
 {
-	// =============================================================
-	// 0. 准备光源矩阵
-	// =============================================================
+	// ----------------------------------------------------------------
+	// 0. 准备光源矩阵 (用于阴影和光照)
+	// ----------------------------------------------------------------
 	XMMATRIX lightView = XMMatrixLookAtLH(g_LightPos, g_LightTarget, g_LightUp);
 	XMMATRIX lightProj = XMMatrixOrthographicLH(160.0f, 160.0f, 1.0f, 200.0f);
+	XMMATRIX lightVP = lightView * lightProj;
 
-	// =============================================================
+	// ----------------------------------------------------------------
 	// Pass 1: Shadow Map 生成 (只渲染深度)
-	// =============================================================
+	// ----------------------------------------------------------------
 	Shader_Shadow_Begin(lightView, lightProj);
-
-	// 1. 绘制墙壁
-	const std::vector<MapObject>& mapObjs = Map_GetObjects();
-	for (const auto& obj : mapObjs) {
-		if (obj.KindId == MAP_KIND_WALL) {
-			XMMATRIX world = XMMatrixTranslation(obj.Position.x, obj.Position.y, obj.Position.z);
-			Cube_DrawShadow(world);
+	{
+		// 1. 绘制静态场景阴影 (墙壁)
+		const std::vector<MapObject>& mapObjs = Map_GetObjects();
+		for (const auto& obj : mapObjs) {
+			if (obj.KindId == MAP_KIND_WALL) {
+				XMMATRIX world = XMMatrixTranslation(obj.Position.x, obj.Position.y, obj.Position.z);
+				Cube_DrawShadow(world);
+			}
 		}
-	}
 
-	// 2. 绘制门
-	if (g_DoorModel) {
-		DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
-		ModelDrawShadow(g_DoorModel, goalWorld);
+		// 2. 绘制道具/门阴影
+		if (g_DoorModel) {
+			DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
+			ModelDrawShadow(g_DoorModel, goalWorld);
+		}
+		DropItem_DrawShadow(lightView, lightProj);
+
+		// 3. 绘制角色阴影 (Player & Enemy)
+		if (g_Player) g_Player->DrawShadow(lightView, lightProj);
+		Enemy_DrawShadow(lightView, lightProj);
 	}
-	g_Player->DrawShadow(lightView, lightProj);
-	Enemy_DrawShadow(lightView, lightProj);
-	DropItem_DrawShadow(lightView, lightProj);
 	Shader_Shadow_End();
 
-	// =============================================================
+	// ----------------------------------------------------------------
 	// Pass 2: 正常场景渲染 (Main Pass)
-	// =============================================================
+	// ----------------------------------------------------------------
 	Direct3D_SetOffBackBuffer();
 	Direct3D_ClearBackBuffer();
 
-	// 获取相机矩阵
+	// 1. 获取摄像机矩阵
 	XMMATRIX view, proj;
 	if (g_IsDebugCameraMode) {
 		XMFLOAT4X4 v = DebugCamera_GetViewMatrix();
@@ -234,76 +290,86 @@ void Game_Draw()
 		view = XMLoadFloat4x4(&v);
 		proj = XMLoadFloat4x4(&p);
 	}
-	ID3D11ShaderResourceView* shadowSRV = Shader_Shadow_GetSRV();
-	XMMATRIX lightVP = lightView * lightProj;
-	SkinningShader_3D_SetShadowResources(shadowSRV, lightVP);
-	// 1. 绘制角色 (不受阴影影响，先画)
-	g_Player->Draw(view, proj);
-	Enemy_Draw(view, proj);
 
-	// 设置相机参数到 Shader
+	// 设置全局相机参数
 	Camera_SetMatrixToShader(view, proj);
 
-	// --- 进入 Shader_3D 渲染阶段 ---
+	// 2. 绘制蒙皮动画角色 (Player & Enemy)
+	// 注意：需要绑定 Shadow Map 到 Skinning Shader
+	ID3D11ShaderResourceView* shadowSRV = Shader_Shadow_GetSRV();
+	SkinningShader_3D_SetShadowResources(shadowSRV, lightVP);
+
+	if (g_Player) g_Player->Draw(view, proj);
+	Enemy_Draw(view, proj);
+
+	// 3. 绘制静态 3D 物体 (Map, Items, Door)
+	// 切换到通用 3D Shader
 	Shader_3D_Begin();
 
-	// 准备通用光照参数
+	// 设置光照参数
 	Light_SetAmbient({ 0.4f, 0.4f, 0.4f });
 	XMVECTOR dirVec = XMVector3Normalize(g_LightTarget - g_LightPos);
 	XMFLOAT4 lightDirF4;
 	XMStoreFloat4(&lightDirF4, dirVec);
 	Light_SetDirectionalWorld(lightDirF4, { 0.8f, 0.8f, 0.8f, 1.0f });
 
-	// 设置阴影数据 (给接下来直接使用 Shader_3D 的物体，如 DropItem, Door)
-	Shader_3D_SetLightData(lightVP, Shader_Shadow_GetSRV());
+	// 设置阴影数据 (给 Shader_3D 使用)
+	Shader_3D_SetLightData(lightVP, shadowSRV);
 
-	// 绘制地图 (包含地面和墙壁)
-	// 注意：Map_Draw 内部需要负责将 lightVP 和 SRV 传递给 MeshField 和 Cube
-	Map_Draw(lightVP, Shader_Shadow_GetSRV());
-
-	// 绘制掉落物
+	// 执行绘制
+	Map_Draw(lightVP, shadowSRV); // 内部绘制地面和墙壁
 	DropItem_Draw();
 
-	// 绘制门 (确保数据再次绑定，防止被中间的绘制打断)
-	Shader_3D_SetLightData(lightVP, Shader_Shadow_GetSRV());
+	// 绘制门 (重新绑定数据以防被覆盖)
+	Shader_3D_SetLightData(lightVP, shadowSRV);
 	DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
 	ModelDraw(g_DoorModel, goalWorld);
 
-	// ---------------------------------------------------------
-	// 第五阶段：绘制天空和子弹 (最后画)
-	// ---------------------------------------------------------
-
-	// 解绑 Shadow Map SRV (必须解绑，否则下一帧 Pass 1 无法写入)
-	// 【非常重要】如果当前绑定的 SRV slot 5 是 ShadowMap，必须设为 NULL
+	// ----------------------------------------------------------------
+	// Pass 3: 透明物体与天空 (Translucent & Sky)
+	// ----------------------------------------------------------------
+	// 【非常重要】解绑 Shadow Map SRV
+	// 因为 Shadow Map 可能会在下一帧被当作 Render Target 写入，DX11 不允许同时作为 Input 和 Output
 	ID3D11ShaderResourceView* nullSRV = nullptr;
 	Direct3D_GetDeviceContext()->PSSetShaderResources(5, 1, &nullSRV);
 
 	Sky_Draw();
 	Bullet_Draw();
 
-	// =============================================================
-	// UI & 2D 渲染
-	// =============================================================
+	// ----------------------------------------------------------------
+	// Pass 4: UI & 2D 渲染
+	// ----------------------------------------------------------------
 	Direct3D_SetOffscreenTexture(0);
 	Direct3D_SetDepthEnable(false);
 
 	Sprite_Begin();
-	GameUI_Draw();
-	Score_Draw();
-	Inventory_Draw();
-	UI_DrawHUD();
+	{
+		GameUI_Draw();
+		Score_Draw();
+		Inventory_Draw();
+		UI_DrawHUD();
+	}
 	Sprite_End();
 
 	Direct3D_SetDepthEnable(true);
 }
+
+// ======================================================================================
+// Game Lifecycle: Finalize
+// ======================================================================================
 void Game_Finalize()
 {
+	// 释放角色
 	if (g_Player) {
 		delete g_Player;
 		g_Player = nullptr;
 	}
+
+	// 释放静态模型
 	ModelRelease(g_DoorModel);
 	g_DoorModel = nullptr;
+
+	// 释放子系统
 	Inventory_Finalize();
 	DropItem_Finalize();
 	Enemy_Finalize();
