@@ -66,7 +66,7 @@ namespace
 
 	// 光源参数 (阴影生成用)
 	// 位置设高一点以覆盖更广的区域
-	XMVECTOR g_LightPos = XMVectorSet(20.0f, 30.0f, -10.0f, 1.0f);
+	XMVECTOR g_LightPos = XMVectorSet(15.0f, 10.0f, -5.0f, 1.0f);
 	XMVECTOR g_LightTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	XMVECTOR g_LightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 }
@@ -240,7 +240,7 @@ void Game_Draw()
 	// 0. 准备光源矩阵 (用于阴影和光照)
 	// ----------------------------------------------------------------
 	XMMATRIX lightView = XMMatrixLookAtLH(g_LightPos, g_LightTarget, g_LightUp);
-	XMMATRIX lightProj = XMMatrixOrthographicLH(160.0f, 160.0f, 1.0f, 200.0f);
+	XMMATRIX lightProj = XMMatrixOrthographicLH(100.0f, 100.0f, 1.0f, 200.0f);
 	XMMATRIX lightVP = lightView * lightProj;
 
 	// ----------------------------------------------------------------

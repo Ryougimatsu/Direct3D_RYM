@@ -16,6 +16,8 @@ namespace {
 	ID3D11ShaderResourceView* g_pShadowSRV = nullptr;
 	ID3D11RasterizerState* g_pShadowRasterizer = nullptr; // 需要 DepthBias
 
+
+
 	// 视口
 	D3D11_VIEWPORT g_ShadowViewport;
 	const float SHADOW_MAP_SIZE = 4096.0f;

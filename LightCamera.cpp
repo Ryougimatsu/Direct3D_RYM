@@ -45,7 +45,7 @@ const DirectX::XMFLOAT4X4& LightCamera_GetProjectionMatrix()
 	XMFLOAT4X4 mtxProj;
 
 	// 参数：ViewLeft, ViewRight, ViewBottom, ViewTop, NearZ, FarZ
-	XMMATRIX proj = XMMatrixOrthographicOffCenterLH(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 1000.0f);
+	XMMATRIX proj = XMMatrixOrthographicOffCenterLH(-30.0f, 30.0f, -30.0f, 30.0f, 0.1f, 1000.0f);
 
 	XMStoreFloat4x4(&mtxProj, proj);
 

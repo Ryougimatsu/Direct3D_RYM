@@ -22,7 +22,7 @@ namespace
 	ID3D11Buffer* g_pCBColor = nullptr; // PS b0
 	ID3D11SamplerState* pShadowSampler = nullptr;
 	ID3D11SamplerState* g_pSamplerState = nullptr;
-
+	ID3D11RasterizerState* g_pSkinShadowRasterizer = nullptr;
 	ID3D11Device* g_pDevice = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 }
@@ -102,6 +102,17 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL; // 关键：深度比较函数
 
 	g_pDevice->CreateSamplerState(&shadowSampDesc, &pShadowSampler);
+	D3D11_RASTERIZER_DESC rsDesc = {};
+	rsDesc.FillMode = D3D11_FILL_SOLID;
+	rsDesc.CullMode = D3D11_CULL_NONE; // 阴影建议双面渲染，腿部更实
+	rsDesc.FrontCounterClockwise = FALSE;
+	rsDesc.DepthBias = 0;              // 强制为 0
+	rsDesc.DepthBiasClamp = 0.0f;
+	rsDesc.SlopeScaledDepthBias = 0.0f; // 强制为 0
+	rsDesc.DepthClipEnable = TRUE;
+
+	HRESULT hrRS = g_pDevice->CreateRasterizerState(&rsDesc, &g_pSkinShadowRasterizer);
+	if (FAILED(hrRS)) return false;
 
 	return true;
 }
@@ -193,8 +204,10 @@ void SkinningShader_3D_BeginDepthOnly()
 	ID3D11Buffer* vsBuffers[] = { g_pCBWorld, g_pCBView, g_pCBProj, g_pCBBones };
 	g_pContext->VSSetConstantBuffers(0, 4, vsBuffers);
 
-	// 3. 【关键】解绑 PS，因为生成阴影只需要深度
+	// 3. 解绑 PS，因为生成阴影只需要深度
 	g_pContext->PSSetShader(nullptr, nullptr, 0);
+
+	g_pContext->RSSetState(g_pSkinShadowRasterizer);
 }
 
 void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, const DirectX::XMMATRIX& lightViewProj)
@@ -211,7 +224,6 @@ void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, 
 
 void SkinningShader_3D_Finalize()
 {
-	if (g_pSamplerState) g_pSamplerState->Release();
 	if (g_pCBColor) g_pCBColor->Release();
 	if (g_pCBBones) g_pCBBones->Release();
 	if (g_pCBProj) g_pCBProj->Release();
@@ -220,5 +232,7 @@ void SkinningShader_3D_Finalize()
 	if (g_pInputLayout) g_pInputLayout->Release();
 	if (g_pPixelShader) g_pPixelShader->Release();
 	if (g_pVertexShader) g_pVertexShader->Release();
-
+	if (g_pSkinShadowRasterizer) g_pSkinShadowRasterizer->Release();
+	if (g_pSamplerState) g_pSamplerState->Release();
+	if (pShadowSampler) pShadowSampler->Release();
 }
