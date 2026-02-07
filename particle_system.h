@@ -22,15 +22,8 @@ private:
 public:
 	void Initialize(int maxParticles, int texID);
 	void Finalize();
-
-	// 每帧更新：计算物理移动、老化
 	void Update(double dt);
-
-	// 绘制所有激活的粒子
 	void Draw();
-
-	// 发射粒子 (产生爆炸/特效)
-	// pos: 发射位置, count: 发射数量
 	void Emit(DirectX::XMFLOAT3 pos, int count);
 	void EmitSmoke(DirectX::XMFLOAT3 pos, int count);
 };

@@ -3,8 +3,6 @@
 #include <stdlib.h> 
 
 using namespace DirectX;
-
-// 辅助函数：生成随机浮点数 [min, max]
 float RandomFloat(float min, float max) {
 	return min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
 }
@@ -51,9 +49,6 @@ void ParticleSystem::Update(double dt) {
 }
 
 void ParticleSystem::Draw() {
-	// 开启混合模式 (通常在调用此函数前，在 Game_Draw 中开启 Additive 或 Alpha Blend)
-	// 这里直接复用你的 Billboard_Draw
-
 	for (const auto& p : m_Particles) {
 		if (!p.Active) continue;
 
@@ -74,7 +69,7 @@ void ParticleSystem::Emit(DirectX::XMFLOAT3 pos, int count) {
 	// 寻找空闲的粒子进行发射
 	for (auto& p : m_Particles) {
 		if (emittedCount >= count) break;
-		if (p.Active) continue; // 跳过正忙的粒子
+		if (p.Active) continue;
 
 		// 激活粒子
 		p.Active = true;
