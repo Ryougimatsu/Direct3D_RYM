@@ -31,6 +31,7 @@ static ID3D11DepthStencilState* g_pDepthStencilStateDepthDisable = nullptr; // �
 static ID3D11DepthStencilState* g_pDepthStencilStateDepthEnable = nullptr; // 深度ステンシルステート（深度有効用）
 static ID3D11DepthStencilState* g_pDepthStencilStateDepthWriteDisable = nullptr; 
 static ID3D11RasterizerState* g_pRasterizerState = nullptr; // ラスタライザーステート
+static ID3D11BlendState* g_pBlendStateAdd = nullptr;
 /* バックバッファ関連 */
 static ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
 static ID3D11Texture2D* g_pDepthStencilBuffer = nullptr;
@@ -160,6 +161,26 @@ bool Direct3D_Initialize(HWND hWnd)
 
 	g_pDevice->CreateBlendState(&bd, &g_pBlendStateMultiply);
 
+	// =========================================================
+	// 【新增】创建加法混合状态 (Additive Blending)
+	// =========================================================
+	// 将 DestBlend 改为 D3D11_BLEND_ONE (保留背景色)，实现颜色叠加变亮
+	bd.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	bd.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+	bd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+
+	// Alpha 通道设置 (通常保持默认)
+	bd.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	bd.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	bd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	hr = g_pDevice->CreateBlendState(&bd, &g_pBlendStateAdd);
+	if (FAILED(hr)) {
+		return false;
+	}
+	// =========================================================
+
 	float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	g_pDeviceContext->OMSetBlendState(g_pBlendStateMultiply, blend_factor, 0xffffffff);
 
@@ -208,7 +229,7 @@ void Direct3D_Finalize()
 	SAFE_RELEASE(g_pDepthStencilStateDepthEnable)
 	SAFE_RELEASE(g_pBlendStateMultiply)
 	SAFE_RELEASE(g_pRasterizerState)
-
+	SAFE_RELEASE(g_pBlendStateAdd)
 	releaseOffscreenBuffer();
 	releaseBackBuffer();
 
@@ -273,20 +294,37 @@ void Direct3D_SetDepthEnable(bool enable)
 
 	}
 }
-
 void Direct3D_SetBlendState(bool enable)
 {
-	if (enable)
-	{
-		// 开启混合 (使用你代码中初始化好的 Alpha Blend 状态)
-		float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		g_pDeviceContext->OMSetBlendState(g_pBlendStateMultiply, blend_factor, 0xffffffff);
+	if (enable) {
+		Direct3D_SetBlendState(BLEND_MODE_ALPHA);
 	}
-	else
+	else {
+		Direct3D_SetBlendState(BLEND_MODE_NONE);
+	}
+}
+
+void Direct3D_SetBlendState(BLEND_MODE mode)
+{
+	float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	UINT sampleMask = 0xffffffff;
+
+	switch (mode)
 	{
-		// 关闭混合 (传入 nullptr 会重置为默认状态: Opaque)
-		float blend_factor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		g_pDeviceContext->OMSetBlendState(nullptr, blend_factor, 0xffffffff);
+	case BLEND_MODE_NONE:
+		// 关闭混合 (nullptr)
+		g_pDeviceContext->OMSetBlendState(nullptr, blend_factor, sampleMask);
+		break;
+
+	case BLEND_MODE_ALPHA:
+		// 普通透明混合 (你原有的 g_pBlendStateMultiply)
+		g_pDeviceContext->OMSetBlendState(g_pBlendStateMultiply, blend_factor, sampleMask);
+		break;
+
+	case BLEND_MODE_ADD:
+		// 【新增】加法混合
+		g_pDeviceContext->OMSetBlendState(g_pBlendStateAdd, blend_factor, sampleMask);
+		break;
 	}
 }
 

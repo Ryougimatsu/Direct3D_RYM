@@ -264,6 +264,9 @@
     <ClCompile Include="Shader_Shadow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="particle_system.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="debug_ostream.h">
@@ -468,6 +471,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Shader_Shadow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="particle_system.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

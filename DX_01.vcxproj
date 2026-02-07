@@ -202,6 +202,7 @@
     <ClCompile Include="mouse.cpp" />
     <ClCompile Include="NavigationSystem.cpp" />
     <ClCompile Include="Pad_Logger.cpp" />
+    <ClCompile Include="particle_system.cpp" />
     <ClCompile Include="Pathfinder.cpp" />
     <ClCompile Include="PlayerCharacter.cpp" />
     <ClCompile Include="Player_Camera.cpp" />
@@ -265,6 +266,7 @@
     <ClInclude Include="MapCamera.h" />
     <ClInclude Include="NavigationSystem.h" />
     <ClInclude Include="Pad_Logger.h" />
+    <ClInclude Include="particle_system.h" />
     <ClInclude Include="Pathfinder.h" />
     <ClInclude Include="PlayerCharacter.h" />
     <ClInclude Include="result.h" />

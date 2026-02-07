@@ -216,3 +216,49 @@ void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
 
 	context->Draw(4, 0);
 }
+
+void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot, const DirectX::XMFLOAT4& color)
+{
+	// 1. 设置 Shader 和 混合状态
+	Shader_Billboard_Begin();
+
+	// 【修正 1】使用参数传入的颜色 (color)，而不是写死的白色
+	// 这样粒子才能变色或淡出
+	Shader_Billboard_SetColor(color);
+
+	// 【修正 2】设置默认 UV (显示整张图片)
+	// 粒子通常使用整张纹理，不需要切图。参数顺序参考原代码：{{宽, 高}, {u, v}}
+	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
+
+	// 3. 设置纹理和顶点缓冲
+	Texture_Set(texID);
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	Direct3D_GetDeviceContext()->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	Direct3D_GetDeviceContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+
+	// 4. 计算矩阵 (Billboard 核心)
+	XMFLOAT4X4 CameraMatrix = Player_Camera_GetViewMatrix();
+	// 消除摄像机位移，只保留旋转，这样公告板才会“看”向摄像机
+	CameraMatrix._41 = CameraMatrix._42 = CameraMatrix._43 = 0.0f;
+
+	// 转置矩阵 (DirectXMath 中处理 View 矩阵逆变换的一种常用方式)
+	XMMATRIX iv = XMMatrixTranspose(XMLoadFloat4x4(&CameraMatrix));
+
+	// 【修正 3】Pivot 偏移 (让缩放和旋转围绕中心点)
+	XMMATRIX pivot_offset = XMMatrixTranslation(-pivot.x, -pivot.y, 0.0f);
+
+	// 【修正 4】使用参数 scale.x 和 scale.y，而不是未定义的 width/height
+	XMMATRIX mtxs = XMMatrixScaling(scale.x, scale.y, 1.0f);
+
+	// 【修正 5】使用参数 position，而不是未定义的 pos
+	// 加上 pivot 恢复偏移
+	XMMATRIX mtxt = XMMatrixTranslation(position.x + pivot.x, position.y + pivot.y, position.z);
+
+	// 组合矩阵: 偏移 -> 缩放 -> 旋转(Billboard) -> 移动
+	Shader_Billboard_SetWorldMatrix(pivot_offset * mtxs * iv * mtxt);
+
+	// 5. 绘制
+	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
+}

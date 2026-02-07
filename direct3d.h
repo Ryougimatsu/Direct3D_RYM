@@ -18,6 +18,12 @@
 // �Z�[�t�����[�X�}�N��
 #define SAFE_RELEASE(o) if (o) { (o)->Release(); o = NULL; }
 
+enum BLEND_MODE
+{
+	BLEND_MODE_NONE,   // 不混合 (Opaque)
+	BLEND_MODE_ALPHA,  // 普通透明混合 (SrcAlpha, InvSrcAlpha) - 用于烟雾、UI
+	BLEND_MODE_ADD,    // 加法混合 (SrcAlpha, One) - 用于火焰、光效、粒子
+};
 
 bool Direct3D_Initialize(HWND hWnd);
 void Direct3D_Finalize();
@@ -34,6 +40,7 @@ ID3D11DeviceContext* Direct3D_GetDeviceContext();
 
 void Direct3D_SetDepthEnable(bool enable);
 void Direct3D_SetBlendState(bool enable);
+void Direct3D_SetBlendState(BLEND_MODE mode);
 void Direct3D_SetDepthStencilStateDepthWriteDisable(bool enalbe);
 
 DirectX::XMMATRIX Direct3D_MatrixViewport();

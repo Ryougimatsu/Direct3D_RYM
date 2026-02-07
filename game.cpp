@@ -11,6 +11,7 @@
 #include <DirectXMath.h>
 #include <memory>
 #include <string>
+#include <stdlib.h> 
 
 // Graphics & Shaders
 #include "shader.h"
@@ -47,6 +48,7 @@
 #include "Inventory.h"
 #include "sprite.h"
 #include "sprite_anime.h"
+#include "particle_system.h"
 
 using namespace DirectX;
 
@@ -69,11 +71,15 @@ namespace
 	XMVECTOR g_LightPos = XMVectorSet(15.0f, 10.0f, -5.0f, 1.0f);
 	XMVECTOR g_LightTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	XMVECTOR g_LightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	ParticleSystem* g_SmokeSystem = nullptr;
+	int g_TexSmoke = -1;
+	float g_SmokeTimer = 0.0f;
 }
 
 // ======================================================================================
 // Helper Functions (Wrappers)
 // ======================================================================================
+extern float RandomFloat(float min, float max);
 bool Game_IsLineOfSightBlocked(const DirectX::XMFLOAT3& start, const DirectX::XMFLOAT3& end)
 {
 	return Map_CheckLineOfSightBlocked(start, end);
@@ -83,7 +89,6 @@ bool Game_CheckCollisionWithWalls(const AABB& objAabb)
 {
 	return Map_CheckCollision(objAabb);
 }
-
 // ======================================================================================
 // Game Lifecycle: Load & Initialize
 // ======================================================================================
@@ -124,6 +129,10 @@ void Game_LoadContent()
 
 	// 6. 重置时间
 	g_CurrentGameTime = 0.0;
+
+	g_TexSmoke = Texture_LoadFromFile(L"resource/texture/kenney_particle-pack/PNG (Transparent)/smoke_07.png");
+	g_SmokeSystem = new ParticleSystem();
+	g_SmokeSystem->Initialize(2000, g_TexSmoke);
 }
 
 void Game_Initialize()
@@ -192,6 +201,8 @@ void Game_Update(double elapsed_time)
 	DropItem_Update(elapsed_time);
 	Inventory_Update(elapsed_time);
 	Score_Update();
+	g_SmokeSystem->Update(elapsed_time);
+	g_SmokeTimer += (float)elapsed_time;
 
 	// 玩家更新
 	if (!g_IsDebugCameraMode && g_Player)
@@ -228,6 +239,18 @@ void Game_Update(double elapsed_time)
 			Score_SetTime(g_CurrentGameTime);
 			Scene_Change(SCENE_RESULT);
 		}
+	}
+	if (g_SmokeTimer > 0.2f) {
+		g_SmokeTimer = 0.0f;
+
+		// 在地图范围内随机选一个点
+		// 假设地图大小是 -20 到 20
+		float randX = RandomFloat(-20.0f, 20.0f);
+		float randZ = RandomFloat(-20.0f, 20.0f);
+
+		// 在地面 (Y=0) 生成 1 个烟雾粒子
+		// 如果想看起来更浓，可以一次生成 3-5 个
+		g_SmokeSystem->EmitSmoke({ randX, 0.0f, randZ }, 2);
 	}
 }
 
@@ -328,14 +351,17 @@ void Game_Draw()
 	// ----------------------------------------------------------------
 	// Pass 3: 透明物体与天空 (Translucent & Sky)
 	// ----------------------------------------------------------------
-	// 【非常重要】解绑 Shadow Map SRV
+	// 解绑 Shadow Map SRV
 	// 因为 Shadow Map 可能会在下一帧被当作 Render Target 写入，DX11 不允许同时作为 Input 和 Output
 	ID3D11ShaderResourceView* nullSRV = nullptr;
 	Direct3D_GetDeviceContext()->PSSetShaderResources(5, 1, &nullSRV);
 
 	Sky_Draw();
 	Bullet_Draw();
-
+	Direct3D_SetBlendState(BLEND_MODE_ALPHA);
+	Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+	g_SmokeSystem->Draw();
+	Direct3D_SetDepthStencilStateDepthWriteDisable(true);
 	// ----------------------------------------------------------------
 	// Pass 4: UI & 2D 渲染
 	// ----------------------------------------------------------------
@@ -364,7 +390,11 @@ void Game_Finalize()
 		delete g_Player;
 		g_Player = nullptr;
 	}
-
+	if (g_SmokeSystem) {
+		g_SmokeSystem->Finalize();
+		delete g_SmokeSystem;
+		g_SmokeSystem = nullptr;
+	}
 	// 释放静态模型
 	ModelRelease(g_DoorModel);
 	g_DoorModel = nullptr;
