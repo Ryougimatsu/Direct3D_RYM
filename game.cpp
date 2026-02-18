@@ -140,7 +140,7 @@ void Game_Initialize()
 	// 重置摄像机
 	Camera_Initialize();
 	DebugCamera_Initialize({ 0.0f, 5.0f, -10.0f }, { 0.0f, 0.0f, 0.0f });
-
+	Mouse_SetMode(MOUSE_POSITION_MODE_RELATIVE);
 	// 重置玩家位置
 	if (g_Player) {
 		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
@@ -177,7 +177,21 @@ void Game_Update(double elapsed_time)
 			DebugCamera_SetPosition(Player_Camera_GetPosition());
 		}
 		else {
+			Mouse_SetMode(MOUSE_POSITION_MODE_RELATIVE);
+		}
+	}
+	if (KeyLogger_IsTrigger(KK_LEFTALT))
+	{
+		Mouse_State mState;
+		Mouse_GetState(&mState);
+
+		if (mState.positionMode == MOUSE_POSITION_MODE_RELATIVE) {
+			// 如果当前是隐藏(相对)模式，切换为显示(绝对)模式
 			Mouse_SetMode(MOUSE_POSITION_MODE_ABSOLUTE);
+		}
+		else {
+			// 如果当前是显示(绝对)模式，切换为隐藏(相对)模式
+			Mouse_SetMode(MOUSE_POSITION_MODE_RELATIVE);
 		}
 	}
 

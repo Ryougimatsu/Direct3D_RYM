@@ -104,8 +104,10 @@ XMVECTOR GetMouseWorldPos(const XMMATRIX& view, const XMMATRIX& proj) {
 	GetCursorPos(&pt);
 	ScreenToClient(Direct3D_GetWindowHandle(), &pt);
 
-	float sw = (float)Direct3D_GetBackBufferWidth();
-	float sh = (float)Direct3D_GetBackBufferHeight();
+	RECT clientRect;
+	GetClientRect(Direct3D_GetWindowHandle(), &clientRect);
+	float sw = static_cast<float>(clientRect.right - clientRect.left);
+	float sh = static_cast<float>(clientRect.bottom - clientRect.top);
 
 	// 1. 转换到 NDC 空间
 	float ndcX = (2.0f * pt.x) / sw - 1.0f;
