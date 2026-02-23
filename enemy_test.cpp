@@ -13,6 +13,7 @@
 #include "DropItem.h"
 #include "game.h"
 #include "score.h"
+#include "Shader_Shadow.h"
 
 using namespace DirectX;
 
@@ -237,7 +238,7 @@ void EnemyTest::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XM
 	XMMATRIX World = S * R * T;
 
 	// 2. 设置世界矩阵
-	SkinningShader_3D_SetWorldMatrix(World);
+	Shader_Shadow_SetWorldMatrix(World);
 
 	// 3. 设置骨骼变换矩阵
 	std::vector<XMMATRIX> bones = const_cast<Animator&>(m_Animator).GetFinalBoneMatrices(g_pSkinningModel->GetSkeleton());

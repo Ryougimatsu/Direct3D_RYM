@@ -56,29 +56,27 @@ SamplerComparisonState shadowSampler : register(s5);
 float CalculateShadow(float4 posLight)
 {
     // 1. 透视除法
-	float3 projCoords = posLight.xyz / posLight.w;
+    float3 projCoords = posLight.xyz / posLight.w;
 
     // 2. 将坐标从 [-1, 1] 变换到 [0, 1] 纹理空间
-	projCoords.x = projCoords.x * 0.5f + 0.5f;
-	projCoords.y = -projCoords.y * 0.5f + 0.5f;
+    projCoords.x = projCoords.x * 0.5f + 0.5f;
+    projCoords.y = -projCoords.y * 0.5f + 0.5f;
 
     // 3. 边界检查：如果超出视锥体范围，则不计算阴影（视为被照亮）
-	//if (projCoords.z > 1.0f || projCoords.x < 0.0f || projCoords.x > 1.0f || projCoords.y < 0.0f || projCoords.y > 1.0f)
-	//{
-	//	return 1.0f;
-	//}
+    // 【修复1】建议把这里的注释解开，这能防止阴影贴图视野之外的地面变成死黑色
+    if (projCoords.z > 1.0f || projCoords.x < 0.0f || projCoords.x > 1.0f || projCoords.y < 0.0f || projCoords.y > 1.0f)
+    {
+        return 1.0f;
+    }
 
     // 4. 计算 Shadow Bias (防止阴影波纹/Shadow Acne)
-    // 这里给一个基础偏移量，实际项目中可能需要根据法线动态调整
-	float bias = 0.005f;
-	float currentDepth = projCoords.z - bias;
+    float bias = 0.0f;
+    float currentDepth = projCoords.z - bias;
 
     // 5. 采样并比较深度 (使用 SampleCmpLevelZero 进行硬件 PCF)
-    // shadowMap 中存储的是最近物体的深度。如果 currentDepth > closestDepth，则在阴影中。
-    // SampleCmpLevelZero 返回 0.0 (遮挡) 或 1.0 (照亮)，硬件会自动进行 2x2 滤波
-	float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, projCoords.xy, currentDepth);
+    float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, projCoords.xy, currentDepth);
 
-	return shadow;
+    return shadow;
 }
 
 float4 main(PS_IN pi) : SV_TARGET

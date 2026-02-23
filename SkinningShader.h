@@ -23,3 +23,5 @@ void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color);
 void SkinningShader_3D_SetColor(const DirectX::XMFLOAT4& color);
 void SkinningShader_3D_BeginDepthOnly();
 void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, const DirectX::XMMATRIX& lightViewProj);
+struct ID3D11Buffer;
+ID3D11Buffer* SkinningShader_3D_GetBoneBuffer();

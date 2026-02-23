@@ -373,22 +373,32 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 {
 	if (!m_pModel) return;
 
-	// 1. 绘制玩家 (蒙皮深度)
-	SkinningShader_3D_BeginDepthOnly();
-	SkinningShader_3D_SetViewMatrix(lightView);
-	SkinningShader_3D_SetProjectMatrix(lightProj);
+	// ==========================================================
+	// 1. 绘制玩家主体 (使用新的骨骼阴影 Shader)
+	// ==========================================================
+	Shader_Shadow_ApplySkinning();
 
+	// 传递并设置世界矩阵 (Shader_Shadow 会自动结合 LightView 和 LightProj 计算并更新 b0)
 	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + DirectX::XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
-	SkinningShader_3D_SetWorldMatrix(world);
+	Shader_Shadow_SetWorldMatrix(world);
 
+	// 获取当前动画的骨骼矩阵并更新到显存 (这会更新 g_pCBBones)
 	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
 	SkinningShader_3D_SetBoneTransforms(bones);
+
+	// 【关键】手动将骨骼 Buffer 绑定到 Vertex Shader 的槽位 1 (对应 hlsl 里的 register(b1))
+	ID3D11Buffer* pBoneBuffer = SkinningShader_3D_GetBoneBuffer();
+	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &pBoneBuffer);
+
+	// 绘制模型
 	m_pModel->Draw();
 
-	// 2. 绘制枪械 (静态阴影)
+	// ==========================================================
+	// 2. 绘制枪械 (恢复静态阴影 Shader)
+	// ==========================================================
 	if (m_MeleeTimer <= 0.2f && m_pGunModel)
 	{
-		// 切换回静态阴影 Shader 状态
+		// 切换回静态物体的 Shadow Shader
 		Shader_Shadow_Apply();
 
 		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
@@ -402,6 +412,7 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 				DirectX::XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 
 			DirectX::XMMATRIX gunWorld = gunLocal * handMat * world;
+			// 静态模型画阴影
 			ModelDrawShadow(m_pGunModel, gunWorld);
 		}
 	}

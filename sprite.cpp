@@ -71,6 +71,8 @@ void Sprite_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 
 	g_pDevice->CreateBuffer(&bd, NULL, &g_pVertexBuffer);
 
+	g_pDevice->CreateBlendState(&blendDesc, &g_pBlendState);
+
 
 }
 

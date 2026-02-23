@@ -49,6 +49,7 @@
 #include "sprite.h"
 #include "sprite_anime.h"
 #include "particle_system.h"
+#include "Font.h"
 
 using namespace DirectX;
 
@@ -60,7 +61,7 @@ namespace
 	// 游戏状态
 	bool g_IsDebugCameraMode = false;
 	double g_CurrentGameTime = 0.0;
-
+	bool g_IsPaused = false;
 	// 关键对象
 	PlayerCharacter* g_Player = nullptr;
 	MODEL* g_DoorModel = nullptr;
@@ -68,12 +69,15 @@ namespace
 
 	// 光源参数 (阴影生成用)
 	// 位置设高一点以覆盖更广的区域
-	XMVECTOR g_LightPos = XMVectorSet(15.0f, 10.0f, -5.0f, 1.0f);
+	XMVECTOR g_LightPos = XMVectorSet(10.0f, 25.0f, -5.0f, 1.0f);
 	XMVECTOR g_LightTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	XMVECTOR g_LightUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	ParticleSystem* g_SmokeSystem = nullptr;
 	int g_TexSmoke = -1;
 	float g_SmokeTimer = 0.0f;
+
+	int g_TexArrow = -1;
+	int g_TexWhite = -1;
 }
 
 // ======================================================================================
@@ -133,6 +137,8 @@ void Game_LoadContent()
 	g_TexSmoke = Texture_LoadFromFile(L"resource/texture/kenney_particle-pack/PNG (Transparent)/smoke_07.png");
 	g_SmokeSystem = new ParticleSystem();
 	g_SmokeSystem->Initialize(2000, g_TexSmoke);
+	g_TexArrow = Texture_LoadFromFile(L"resource/texture/arrow.png");
+	g_TexWhite = Texture_LoadFromFile(L"resource/texture/white.png");
 }
 
 void Game_Initialize()
@@ -168,6 +174,15 @@ void Game_Initialize()
 // ======================================================================================
 void Game_Update(double elapsed_time)
 {
+	Inventory_Update(elapsed_time);
+	if (Inventory_IsOpen()) {
+		return;
+	}
+
+	if (KeyLogger_IsTrigger(KK_P)) {
+		g_IsPaused = !g_IsPaused;
+	}
+
 	// --- 1. 输入处理与模式切换 ---
 	if (KeyLogger_IsTrigger(KK_TAB))
 	{
@@ -195,6 +210,13 @@ void Game_Update(double elapsed_time)
 		}
 	}
 
+	if (g_IsPaused) {
+		if (g_IsDebugCameraMode) {
+			DebugCamera_Update(elapsed_time);
+		}
+		return;
+	}
+
 	// --- 2. 摄像机更新 ---
 	DirectX::XMFLOAT3 pPos = (g_Player) ? g_Player->GetPosition() : DirectX::XMFLOAT3{ 0,0,0 };
 
@@ -213,7 +235,6 @@ void Game_Update(double elapsed_time)
 	Bullet_Update(elapsed_time);
 	Bullet_CheckCollisionWithEnemies();
 	DropItem_Update(elapsed_time);
-	Inventory_Update(elapsed_time);
 	Score_Update();
 	g_SmokeSystem->Update(elapsed_time);
 	g_SmokeTimer += (float)elapsed_time;
@@ -277,7 +298,7 @@ void Game_Draw()
 	// 0. 准备光源矩阵 (用于阴影和光照)
 	// ----------------------------------------------------------------
 	XMMATRIX lightView = XMMatrixLookAtLH(g_LightPos, g_LightTarget, g_LightUp);
-	XMMATRIX lightProj = XMMatrixOrthographicLH(100.0f, 100.0f, 1.0f, 200.0f);
+	XMMATRIX lightProj = XMMatrixOrthographicLH(300.0f, 300.0f, 1.0f, 200.0f);
 	XMMATRIX lightVP = lightView * lightProj;
 
 	// ----------------------------------------------------------------
@@ -388,6 +409,73 @@ void Game_Draw()
 		Score_Draw();
 		Inventory_Draw();
 		UI_DrawHUD();
+		if (g_Player && g_TexArrow != -1 && !g_IsDebugCameraMode)
+		{
+			// 1. 获取视口信息
+			D3D11_VIEWPORT vp;
+			UINT numVp = 1;
+			Direct3D_GetDeviceContext()->RSGetViewports(&numVp, &vp);
+
+			// 2. 获取当前的摄像机矩阵
+			DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&Player_Camera_GetViewMatrix());
+			DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
+			DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+
+			// 3. 获取玩家和目标点的 3D 坐标
+			DirectX::XMFLOAT3 pPos = g_Player->GetPosition();
+			pPos.y += 1.0f; // 抬高到角色胸口位置算投影更准
+			DirectX::XMVECTOR vPlayerPos = DirectX::XMLoadFloat3(&pPos);
+
+			// 取目标点坐标（强制高度与玩家一致，防止因为门太高导致屏幕方向算歪）
+			DirectX::XMVECTOR vGoalPos = DirectX::XMLoadFloat3(&g_GoalPos);
+			vGoalPos = DirectX::XMVectorSetY(vGoalPos, pPos.y);
+
+			// 4. 将 3D 世界坐标投影到 2D 屏幕像素坐标！
+			DirectX::XMVECTOR vScreenPlayer = DirectX::XMVector3Project(vPlayerPos, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, proj, view, world);
+
+			// 为了防止门在摄像机背后时投影坐标翻转，我们只取玩家正前方朝向门的“1米处”来做屏幕方向计算
+			DirectX::XMVECTOR vDirToGoal = DirectX::XMVector3Normalize(vGoalPos - vPlayerPos);
+			DirectX::XMVECTOR vPointAhead = vPlayerPos + vDirToGoal * 1.0f;
+			DirectX::XMVECTOR vScreenAhead = DirectX::XMVector3Project(vPointAhead, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, proj, view, world);
+
+			// 5. 计算屏幕上的 2D 向量和旋转角度
+			DirectX::XMVECTOR vScreenDir = vScreenAhead - vScreenPlayer;
+			float screenDx = DirectX::XMVectorGetX(vScreenDir);
+			float screenDy = DirectX::XMVectorGetY(vScreenDir);
+
+			// atan2f 可以直接算出 2D 向量的弧度角
+			float angle = atan2f(screenDy, screenDx);
+
+			// 6. 让箭头环绕在玩家屏幕位置的周围 (半径 100 像素)
+			float orbitRadius = 100.0f;
+			float arrowCenterX = DirectX::XMVectorGetX(vScreenPlayer) + cosf(angle) * orbitRadius;
+			float arrowCenterY = DirectX::XMVectorGetY(vScreenPlayer) + sinf(angle) * orbitRadius;
+
+			// 7. 绘制旋转后的箭头 Sprite
+			float arrowSize = 64.0f; // 箭头在屏幕上的大小
+
+			//  arrow.png 贴图是(→)的。
+			// 如果你的贴图默认是(↑)的，请把下面传入的 angle 改为 (angle + 1.57f)
+			Sprite_Draw(g_TexArrow,
+				arrowCenterX - arrowSize * 0.5f, arrowCenterY - arrowSize * 0.5f, // 左上角起点
+				arrowSize, arrowSize, // 绘制宽高
+				0, 0, 1024, 1024,       // 贴图UV裁剪
+				angle,                // 旋转角度
+				{ 1.0f, 0.8f, 0.2f, 0.8f } // 颜色和透明度 (这里用了一个半透明的橙黄色)
+			);
+		}
+		if (g_IsPaused)
+		{
+			float screenW = (float)Direct3D_GetBackBufferWidth();
+			float screenH = (float)Direct3D_GetBackBufferHeight();
+			if (g_TexWhite != -1) {
+				Sprite_Draw(g_TexWhite, 0.0f, 0.0f, screenW, screenH, { 0.0f, 0.0f, 0.0f, 0.5f });
+			}
+
+			float textX = screenW / 2.0f - 60.0f;
+			float textY = screenH / 2.0f - 20.0f;
+			Font_Draw(L"PAUSED", textX, textY, { 1.0f, 1.0f, 1.0f, 1.0f });
+		}
 	}
 	Sprite_End();
 

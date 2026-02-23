@@ -54,7 +54,7 @@ float CalcShadowFactor(float4 shadowPos)
     }
 
     // 4. 深度偏移 (Bias) 防止阴影波纹 (Shadow Acne)
-    float bias = 0.0001f;
+    float bias = 0.0f;
     float currentDepth = projCoords.z - bias;
 
     // 5. PCF 采样 (使用 SampleCmpLevelZero 进行硬件比较过滤)
@@ -84,7 +84,7 @@ float4 main(PS_IN pin) : SV_TARGET
     // 2. 准备光照向量
     float3 normal = normalize(pin.normalW.xyz);
     // [注意] 这里的硬编码光照方向应该与生成阴影的光源方向一致，否则阴影会“错位”
-    float3 lightDir = normalize(float3(-20.0f, -30.0f, 10.0f));
+    float3 lightDir = normalize(float3(-10.0f, -25.0f, 5.0f));
 
     // 3. 计算基础漫反射 (Half Lambert)
     float NdotL = saturate(dot(normal, -lightDir));

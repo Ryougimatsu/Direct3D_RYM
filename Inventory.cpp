@@ -357,6 +357,18 @@ void UI_DrawHUD()
 	else {
 		DrawDebugText(x, y, "AMMO: %d / %d", cur, tot);
 	}
+
+	float padX = 30.0f;               // 距离左边缘的边距
+	float startY = screenH - 240.0f;  // 距离底部的起始高度
+	float lineH = 30.0f;              // 每行文字的行距
+
+	DrawDebugText(padX, startY + lineH * 0, "CONTROLS:");
+	DrawDebugText(padX, startY + lineH * 1, "[W A S D] Move");
+	DrawDebugText(padX, startY + lineH * 2, "[L-Click] Shoot");
+	DrawDebugText(padX, startY + lineH * 3, "[I]       Inventory");
+	DrawDebugText(padX, startY + lineH * 4, "[P]       Pause");
+	DrawDebugText(padX, startY + lineH * 5, "[R] to RELOAD");
+	DrawDebugText(padX, startY + lineH * 6, "[F] to ATTACK");
 }
 
 int Inventory_GetIconsTextureID()

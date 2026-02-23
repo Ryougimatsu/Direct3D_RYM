@@ -1,6 +1,7 @@
 #include "Shader_Shadow.h"
 #include "debug_ostream.h"
 #include <fstream>
+#include <vector>
 
 namespace {
 	ID3D11Device* g_pDevice = nullptr;
@@ -8,6 +9,10 @@ namespace {
 
 	ID3D11VertexShader* g_pShadowVS = nullptr;
 	ID3D11InputLayout* g_pShadowInputLayout = nullptr;
+
+	ID3D11VertexShader* g_pSkinningShadowVS = nullptr;
+	ID3D11InputLayout* g_pSkinningShadowInputLayout = nullptr;
+
 	ID3D11Buffer* g_pShadowConstantBuffer = nullptr; // 存放 World * LightView * LightProj
 
 	// 阴影纹理资源
@@ -20,7 +25,7 @@ namespace {
 
 	// 视口
 	D3D11_VIEWPORT g_ShadowViewport;
-	const float SHADOW_MAP_SIZE = 4096.0f;
+	const float SHADOW_MAP_SIZE = 8192.0f;
 
 	// 缓存的光源矩阵
 	DirectX::XMFLOAT4X4 g_LightViewProj;
@@ -69,9 +74,9 @@ bool Shader_Shadow_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pConte
 	D3D11_RASTERIZER_DESC rasterDesc = {};
 	rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.CullMode = D3D11_CULL_NONE;
-	rasterDesc.DepthBias = 0;
+	rasterDesc.DepthBias = 500;
 	rasterDesc.DepthBiasClamp = 0.0f;
-	rasterDesc.SlopeScaledDepthBias = 0.0f;
+	rasterDesc.SlopeScaledDepthBias = 1.0f;
 	hr = g_pDevice->CreateRasterizerState(&rasterDesc, &g_pShadowRasterizer);
 
 	// 5. 设置阴影视口
@@ -101,6 +106,31 @@ bool Shader_Shadow_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pConte
 	};
 	g_pDevice->CreateInputLayout(layout, 1, binary, size, &g_pShadowInputLayout);
 	delete[] binary;
+
+	std::ifstream ifsSkin("resource/shader/SkinningShadowMap_VS.cso", std::ios::binary);
+	if (ifsSkin) {
+		ifsSkin.seekg(0, std::ios::end);
+		size_t sizeSkin = ifsSkin.tellg();
+		ifsSkin.seekg(0, std::ios::beg);
+		char* binarySkin = new char[sizeSkin];
+		ifsSkin.read(binarySkin, sizeSkin);
+		ifsSkin.close();
+
+		hr = g_pDevice->CreateVertexShader(binarySkin, sizeSkin, nullptr, &g_pSkinningShadowVS);
+
+		// [注意] 这里的 Layout 必须与你的 C++ VertexSkinning 结构体完全对应！
+		// 使用 D3D11_APPEND_ALIGNED_ELEMENT 可以自动计算偏移量
+		D3D11_INPUT_ELEMENT_DESC skinLayout[] = {
+			{ "POSITION",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",       0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR",        0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",     0, DXGI_FORMAT_R32G32_FLOAT,       0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT,  0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "BLENDWEIGHT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+		g_pDevice->CreateInputLayout(skinLayout, ARRAYSIZE(skinLayout), binarySkin, sizeSkin, &g_pSkinningShadowInputLayout);
+		delete[] binarySkin;
+	}
 
 	// 8. Constant Buffer (Matrix)
 	D3D11_BUFFER_DESC cbDesc = {};
@@ -191,10 +221,25 @@ void Shader_Shadow_Apply()
 	// 恢复 Rasterizer (带 DepthBias)
 	g_pContext->RSSetState(g_pShadowRasterizer);
 }
+
+void Shader_Shadow_ApplySkinning()
+{
+	// 绑定动画专属的 VS 和 InputLayout
+	g_pContext->VSSetShader(g_pSkinningShadowVS, nullptr, 0);
+	g_pContext->PSSetShader(nullptr, nullptr, 0); // 阴影生成不需要 PS
+	g_pContext->IASetInputLayout(g_pSkinningShadowInputLayout);
+
+	// 矩阵常量缓冲区同样绑定在 b0
+	g_pContext->VSSetConstantBuffers(0, 1, &g_pShadowConstantBuffer);
+	g_pContext->RSSetState(g_pShadowRasterizer);
+}
+
 void Shader_Shadow_Finalize()
 {
 	if (g_pShadowVS) g_pShadowVS->Release();
 	if (g_pShadowInputLayout) g_pShadowInputLayout->Release();
+	if (g_pSkinningShadowVS) g_pSkinningShadowVS->Release();
+	if (g_pSkinningShadowInputLayout) g_pSkinningShadowInputLayout->Release();
 	if (g_pShadowConstantBuffer) g_pShadowConstantBuffer->Release();
 	if (g_pShadowMapTexture) g_pShadowMapTexture->Release();
 	if (g_pShadowDSV) g_pShadowDSV->Release();

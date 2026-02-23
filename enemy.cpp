@@ -8,6 +8,8 @@
 #include "Meshfield.h"
 #include "map.h"
 #include "NavigationSystem.h"
+#include "Shader_Shadow.h"
+#include "direct3d.h"
 using namespace DirectX;
 
 
@@ -357,17 +359,10 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 
 void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
 {
-	// 复用 SkinningShader 的 DepthOnly 状态开始逻辑
-	// 注意：这里不需要手动调用 SkinningShader_3D_BeginDepthOnly()，
-	// 因为每个敌人实例的 DrawShadow 内部会调用它（或者你可以优化为在这里调用一次，下面只设矩阵）
-	// 为了简单起见，我们让每个敌人自己处理，或者模仿 Draw() 的逻辑：
+	Shader_Shadow_ApplySkinning();
 
-	// 方案 A：批量绘制优化 (推荐)
-	SkinningShader_3D_BeginDepthOnly(); // 开启深度模式
-
-	// 设置统一的光源 View/Proj
-	SkinningShader_3D_SetViewMatrix(lightView);
-	SkinningShader_3D_SetProjectMatrix(lightProj);
+	ID3D11Buffer* pBoneBuffer = SkinningShader_3D_GetBoneBuffer();
+	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &pBoneBuffer);
 
 	for (auto* e : g_Enemies) {
 		// 调用每个敌人的 DrawShadow，但只需要传简单的世界矩阵设置即可

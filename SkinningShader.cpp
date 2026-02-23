@@ -222,6 +222,11 @@ void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, 
 	g_pContext->VSSetConstantBuffers(4, 1, &g_pCBLightViewProj); // 假设绑定到 b4
 }
 
+ID3D11Buffer* SkinningShader_3D_GetBoneBuffer()
+{
+	return g_pCBBones;
+}
+
 void SkinningShader_3D_Finalize()
 {
 	if (g_pCBColor) g_pCBColor->Release();
