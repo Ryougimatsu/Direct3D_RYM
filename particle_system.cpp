@@ -177,24 +177,28 @@ void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir
 		if (p.Active) continue;
 
 		p.Active = true;
-		// 沿枪管方向偏移 0.1f 避免嵌入枪管
+
+		// 稍微将生成点往前推 0.5f，让粒子更容易逃离中心强光
 		p.Position = {
-			pos.x + dir.x * 0.1f,
-			pos.y + dir.y * 0.1f,
-			pos.z + dir.z * 0.1f
+			pos.x + dir.x * 0.5f,
+			pos.y + dir.y * 0.5f,
+			pos.z + dir.z * 0.5f
 		};
 
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(0.08f, 0.2f);
-		p.Size = RandomFloat(0.6f, 1.2f);
 
-		// 亮黄色, alpha 在 Update 中会自动衰减产生橙色→透明过渡
+		// 【修改1：延长一点存活时间，确保能飞得更远】
+		p.LifeTime = RandomFloat(0.1f, 0.3f);
+
+		// 【修改2：把粒子整体放大，增强存在感】
+		p.Size = RandomFloat(1.0f, 2.0f);
+
 		p.Color = { 1.0f, 0.85f, 0.2f, 1.0f };
 
-		// 沿枪管方向喷射 + 侧向随机扩散
-		float forwardSpeed = RandomFloat(3.0f, 10.0f);
-		float sideSpread = RandomFloat(-1.5f, 1.5f);
-		float upSpread = RandomFloat(-1.5f, 1.5f);
+		// 【修改3：极大幅度增加初速度和侧向扩散范围，制造“爆散”感】
+		float forwardSpeed = RandomFloat(8.0f, 15.0f); // 原来是 3~10，现在让它喷得更快
+		float sideSpread = RandomFloat(-3.5f, 3.5f);   // 增加向两侧溅射的范围
+		float upSpread = RandomFloat(-3.5f, 3.5f);     // 增加向上下溅射的范围
 
 		XMVECTOR vel = vDir * forwardSpeed + vRight * sideSpread + vActualUp * upSpread;
 		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&p.Velocity), vel);

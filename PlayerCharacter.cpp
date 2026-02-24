@@ -154,7 +154,6 @@ bool PlayerCharacter::Initialize() {
 	m_Animator.PlayAnimation(m_pModel->GetDefaultAnimation(), true);
 	m_LaserTexID = Texture_LoadFromFile(L"resource/texture/Laser.png");
 	Billboard_Initialize();
-	m_MuzzleTexID = Texture_LoadFromFile(L"resource/texture/muzzle_04_rotated.png");
 
 	// 初始化枪口火焰粒子系统
 	m_MuzzleFireTexID = Texture_LoadFromFile(L"resource/texture/kenney_particle-pack/PNG (Transparent)/flame_01.png");
@@ -224,7 +223,6 @@ void PlayerCharacter::Update(double dt) {
 		m_InvincibleTimer -= (float)dt;
 		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
 	}
-	if (m_MuzzleFlashTimer > 0.0f) m_MuzzleFlashTimer -= (float)dt;
 
 	// --- 换弹逻辑 (R键) ---
 	if (KeyLogger_IsTrigger(KK_R) && !m_IsReloading && m_CurrentAmmo < MAG_SIZE && m_TotalAmmo > 0) {
@@ -312,26 +310,26 @@ void PlayerCharacter::Update(double dt) {
 				XMMATRIX gunWorld = gunLocal * handMat * world;
 
 				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-				XMVECTOR bulletStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
-				XMVECTOR bulletDir = gunWorld.r[0];
-				float offsetDistance = 0.5f;
-				bulletStartPos = XMVectorAdd(bulletStartPos, XMVectorScale(bulletDir, offsetDistance));
+				XMVECTOR basePos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+
+				// 1. 必须 Normalize，剔除 m_Scale 带来的 0.01 倍缩放影响
+				XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
+
+				// 2. 使用与 Draw 函数中画激光完全一致的 1.0f 偏移量
+				XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.0f);
 
 				XMFLOAT3 p, v;
-				XMStoreFloat3(&p, bulletStartPos);
-				XMStoreFloat3(&v, bulletDir);
+				XMStoreFloat3(&p, actualMuzzlePos);
+				XMStoreFloat3(&v, gunForwardDir);
+
+				// 生成子弹：子弹也从真正的枪口射出
 				Bullet_Create(p, v);
 				m_CurrentAmmo--;
 
-				// 发射枪口火焰粒子 (使用与 Draw 中一致的 1.25f 偏移，定位到枪口端)
-				XMVECTOR muzzleTip = XMVectorAdd(
-					XMVector3TransformCoord(muzzleLocalV, gunWorld),
-					XMVectorScale(bulletDir, 4.0f));
-				XMFLOAT3 muzzleTipPos;
-				XMStoreFloat3(&muzzleTipPos, muzzleTip);
-				m_pMuzzleFireSystem->EmitMuzzleFire(muzzleTipPos, v, 15);
+				// 发射枪口火焰粒子：使用实际计算的枪口位置
+				m_pMuzzleFireSystem->EmitMuzzleFire(p, v, 15);
+				// 【关键修复结束】
 
-				m_MuzzleFlashTimer = 0.05f;
 
 				Player_EmitSound(m_Position, 25.0f);
 				m_ShootTimer = m_FireRate;
@@ -391,24 +389,11 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
 
 			// 【关键修复】：加上枪管的长度偏移 0.5f
-			XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.25f);
+			XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.0f);
 
 			// 画激光瞄准线 (让激光也从真正的枪口发出来)
 			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
 			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 0.02f);
-
-			if (m_MuzzleFlashTimer > 0.0f)
-			{
-				Direct3D_SetBlendState(BLEND_MODE_ADD);
-				Direct3D_SetDepthStencilStateDepthWriteDisable(false);
-
-				float alpha = 1.0f;
-
-				MuzzleFlash_Axial_Draw(m_MuzzleTexID, actualMuzzlePos, gunForwardDir, 2.5f, 2.5f, alpha, view);
-
-				Direct3D_SetDepthStencilStateDepthWriteDisable(true);
-				Direct3D_SetBlendState(BLEND_MODE_NONE);
-			}
 
 			// 绘制枪口火焰粒子 (additive blend)
 			Direct3D_SetBlendState(BLEND_MODE_ADD);
@@ -418,11 +403,6 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			Direct3D_SetBlendState(BLEND_MODE_NONE);
 		}
 	}
-
-	Direct3D_SetBlendState(BLEND_MODE_ADD);                         
-	Direct3D_SetDepthStencilStateDepthWriteDisable(false);
-	Direct3D_SetDepthStencilStateDepthWriteDisable(true);
-	Direct3D_SetBlendState(BLEND_MODE_NONE);
 }
 
 void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
