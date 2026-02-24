@@ -6,6 +6,7 @@
 #include "WICTextureLoader11.h"
 #include <filesystem>
 #include "SkinningShader.h"
+#include <assimp/cimport.h>
 
 using namespace DirectX;
 
@@ -26,8 +27,8 @@ SkinningModel::~SkinningModel() {
 // --- 核心加载逻辑 ---
 
 bool SkinningModel::Load(const std::string& fileName, float scale) {
-	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(fileName,
+	// 【修改点】：用 aiImportFile 替代 Assimp::Importer
+	const aiScene* scene = aiImportFile(fileName.c_str(),
 		aiProcess_Triangulate |
 		aiProcess_ConvertToLeftHanded |
 		aiProcess_LimitBoneWeights |
@@ -37,24 +38,28 @@ bool SkinningModel::Load(const std::string& fileName, float scale) {
 
 	ProcessSkeleton(scene);
 	ProcessMesh(scene, scale);
-
-	// 加载主文件内的动画，默认命名为 "Default" 或提取 FBX 内部名
 	ProcessAnimation(scene, "Default", scale);
-
 	ProcessMaterials(scene, fileName);
+
+	// 【修改点】：记得手动释放内存
+	aiReleaseImport(scene);
 	return true;
 }
 
 // [核心追加方法]：从另一个文件（如 Run.fbx）提取动画
 bool SkinningModel::LoadAnimation(const std::string& animName, const std::string& fileName, float scale) {
-	Assimp::Importer importer;
-	// 动画提取不需要太复杂的后期处理，保证坐标系一致即可
-	const aiScene* scene = importer.ReadFile(fileName, aiProcess_ConvertToLeftHanded);
+	// 【修改点】：用 aiImportFile 替代 Assimp::Importer
+	const aiScene* scene = aiImportFile(fileName.c_str(), aiProcess_ConvertToLeftHanded);
 
-	if (!scene || scene->mNumAnimations == 0) return false;
+	if (!scene || scene->mNumAnimations == 0) {
+		if (scene) aiReleaseImport(scene);
+		return false;
+	}
 
-	// 注入到 mAnimations 库中
 	ProcessAnimation(scene, animName, scale);
+
+	// 【修改点】：释放内存
+	aiReleaseImport(scene);
 	return true;
 }
 
@@ -77,22 +82,28 @@ void SkinningModel::ProcessAnimation(const aiScene* scene, const std::string& an
 		AnimationChannel& dst = newAnim.channels[nodeName];
 
 		// 采样位移
-		for (uint32_t k = 0; k < ch->mNumPositionKeys; ++k)
-			dst.positions.push_back({ (float)ch->mPositionKeys[k].mTime,
-				{ ch->mPositionKeys[k].mValue.x * scale,
-				  ch->mPositionKeys[k].mValue.y * scale,
-				  ch->mPositionKeys[k].mValue.z * scale } });
+		if (ch->mPositionKeys != nullptr && ch->mNumPositionKeys > 0) {
+			for (uint32_t k = 0; k < ch->mNumPositionKeys; ++k)
+				dst.positions.push_back({ (float)ch->mPositionKeys[k].mTime,
+					{ ch->mPositionKeys[k].mValue.x * scale,
+					  ch->mPositionKeys[k].mValue.y * scale,
+					  ch->mPositionKeys[k].mValue.z * scale } });
+		}
 
-		// 采样旋转
-		for (uint32_t k = 0; k < ch->mNumRotationKeys; ++k)
-			dst.rotations.push_back({ (float)ch->mRotationKeys[k].mTime,
-				{ ch->mRotationKeys[k].mValue.x, ch->mRotationKeys[k].mValue.y,
-				  ch->mRotationKeys[k].mValue.z, ch->mRotationKeys[k].mValue.w } });
+		// 采样旋转 (之前崩溃的地方，加上双重保护)
+		if (ch->mRotationKeys != nullptr && ch->mNumRotationKeys > 0) {
+			for (uint32_t k = 0; k < ch->mNumRotationKeys; ++k)
+				dst.rotations.push_back({ (float)ch->mRotationKeys[k].mTime,
+					{ ch->mRotationKeys[k].mValue.x, ch->mRotationKeys[k].mValue.y,
+					  ch->mRotationKeys[k].mValue.z, ch->mRotationKeys[k].mValue.w } });
+		}
 
 		// 采样缩放
-		for (uint32_t k = 0; k < ch->mNumScalingKeys; ++k)
-			dst.scales.push_back({ (float)ch->mScalingKeys[k].mTime,
-				{ ch->mScalingKeys[k].mValue.x, ch->mScalingKeys[k].mValue.y, ch->mScalingKeys[k].mValue.z } });
+		if (ch->mScalingKeys != nullptr && ch->mNumScalingKeys > 0) {
+			for (uint32_t k = 0; k < ch->mNumScalingKeys; ++k)
+				dst.scales.push_back({ (float)ch->mScalingKeys[k].mTime,
+					{ ch->mScalingKeys[k].mValue.x, ch->mScalingKeys[k].mValue.y, ch->mScalingKeys[k].mValue.z } });
+		}
 	}
 
 	// 存入动画库

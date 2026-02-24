@@ -166,9 +166,7 @@ void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir
 	// 构造枪管方向的正交基 (用于侧向扩散)
 	XMVECTOR vDir = XMVector3Normalize(XMLoadFloat3(&dir));
 	XMVECTOR vUp = XMVectorSet(0, 1, 0, 0);
-	// 若枪管几乎朝正上方, 换一个参考轴
-	if (fabsf(XMVectorGetY(vDir)) > 0.99f)
-		vUp = XMVectorSet(1, 0, 0, 0);
+	if (fabsf(XMVectorGetY(vDir)) > 0.99f) vUp = XMVectorSet(1, 0, 0, 0);
 	XMVECTOR vRight = XMVector3Normalize(XMVector3Cross(vUp, vDir));
 	XMVECTOR vActualUp = XMVector3Cross(vDir, vRight);
 
@@ -178,27 +176,26 @@ void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir
 
 		p.Active = true;
 
-		// 稍微将生成点往前推 0.5f，让粒子更容易逃离中心强光
+		// 【关键修复 1】：取消之前加的 0.5f 的巨大偏移，让粒子贴回枪口！
+		// 只留极小的 0.05f 偏移防止嵌入枪管模型内部
 		p.Position = {
-			pos.x + dir.x * 0.5f,
-			pos.y + dir.y * 0.5f,
-			pos.z + dir.z * 0.5f
+			pos.x + dir.x * 0.05f,
+			pos.y + dir.y * 0.05f,
+			pos.z + dir.z * 0.05f
 		};
 
 		p.Age = 0.0f;
+		p.LifeTime = RandomFloat(0.1f, 0.2f); // 保持寿命短促，体现火花的爆发力
+		p.Size = RandomFloat(1.0f, 2.0f);     // 保持粒子大尺寸
 
-		// 【修改1：延长一点存活时间，确保能飞得更远】
-		p.LifeTime = RandomFloat(0.1f, 0.3f);
-
-		// 【修改2：把粒子整体放大，增强存在感】
-		p.Size = RandomFloat(1.0f, 2.0f);
-
+		// 亮黄色
 		p.Color = { 1.0f, 0.85f, 0.2f, 1.0f };
 
-		// 【修改3：极大幅度增加初速度和侧向扩散范围，制造“爆散”感】
-		float forwardSpeed = RandomFloat(8.0f, 15.0f); // 原来是 3~10，现在让它喷得更快
-		float sideSpread = RandomFloat(-3.5f, 3.5f);   // 增加向两侧溅射的范围
-		float upSpread = RandomFloat(-3.5f, 3.5f);     // 增加向上下溅射的范围
+		// 【关键修复 2】：速度大幅度降低！
+		// 之前给的 8~15 太快了，现在改成 2~6，让火花在枪口附近形成一团高亮的视觉残留
+		float forwardSpeed = RandomFloat(2.0f, 6.0f);
+		float sideSpread = RandomFloat(-1.5f, 1.5f);  // 缩小扩散范围，让光芒更聚集
+		float upSpread = RandomFloat(-1.5f, 1.5f);
 
 		XMVECTOR vel = vDir * forwardSpeed + vRight * sideSpread + vActualUp * upSpread;
 		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&p.Velocity), vel);

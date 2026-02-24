@@ -1,22 +1,21 @@
 
 // 定数バッファ
-cbuffer VS_CONSTANT_BUFFER : register(b0)
+cbuffer cbWorld : register(b0)
 {
     float4x4 world;
-
 }
 
-cbuffer VS_CONSTANT_BUFFER : register(b1)
+cbuffer cbView : register(b1)
 {
     float4x4 view;
 }
 
-cbuffer VS_CONSTANT_BUFFER : register(b2)
+cbuffer cbProj : register(b2)
 {
     float4x4 proj;
 }
 
-cbuffer VS_CONSTANT_BUFFER : register(b3)
+cbuffer cbUV : register(b3)
 {
     float2 scale;
     float2 translation;

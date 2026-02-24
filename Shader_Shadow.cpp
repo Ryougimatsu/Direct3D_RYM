@@ -150,6 +150,9 @@ void Shader_Shadow_Begin(const DirectX::XMMATRIX& lightView, const DirectX::XMMA
 	UINT num = 1;
 	g_pContext->RSGetViewports(&num, &g_OldViewport);
 	g_pContext->OMGetRenderTargets(1, &g_pOldRTV, &g_pOldDSV);
+	ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+	g_pContext->PSSetShaderResources(1, 1, nullSRV); // 释放 SkinningShader 残留的 Slot 1
+	g_pContext->PSSetShaderResources(5, 1, nullSRV); // 释放 Shader_3D 残留的 Slot 5
 
 	// 2. 设置为 Shadow Map 渲染目标 (No Color Buffer, Only Depth)
 	ID3D11RenderTargetView* nullRTV[1] = { nullptr };

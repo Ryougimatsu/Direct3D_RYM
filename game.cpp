@@ -352,16 +352,10 @@ void Game_Draw()
 	// 设置全局相机参数
 	Camera_SetMatrixToShader(view, proj);
 
-	// 2. 绘制蒙皮动画角色 (Player & Enemy)
-	// 注意：需要绑定 Shadow Map 到 Skinning Shader
 	ID3D11ShaderResourceView* shadowSRV = Shader_Shadow_GetSRV();
-	SkinningShader_3D_SetShadowResources(shadowSRV, lightVP);
 
-	if (g_Player) g_Player->Draw(view, proj);
-	Enemy_Draw(view, proj);
-
+	// =================【顺序调整：先画地图等静态物体】=================
 	// 3. 绘制静态 3D 物体 (Map, Items, Door)
-	// 切换到通用 3D Shader
 	Shader_3D_Begin();
 
 	// 设置光照参数
@@ -371,17 +365,19 @@ void Game_Draw()
 	XMStoreFloat4(&lightDirF4, dirVec);
 	Light_SetDirectionalWorld(lightDirF4, { 0.8f, 0.8f, 0.8f, 1.0f });
 
-	// 设置阴影数据 (给 Shader_3D 使用)
+	// 执行绘制地图和掉落物
 	Shader_3D_SetLightData(lightVP, shadowSRV);
-
-	// 执行绘制
-	Map_Draw(lightVP, shadowSRV); // 内部绘制地面和墙壁
+	Map_Draw(lightVP, shadowSRV);
 	DropItem_Draw();
 
-	// 绘制门 (重新绑定数据以防被覆盖)
+	// 绘制门 
 	Shader_3D_SetLightData(lightVP, shadowSRV);
 	DirectX::XMMATRIX goalWorld = DirectX::XMMatrixTranslation(g_GoalPos.x, g_GoalPos.y, g_GoalPos.z);
 	ModelDraw(g_DoorModel, goalWorld);
+	SkinningShader_3D_SetShadowResources(shadowSRV, lightVP);
+
+	if (g_Player) g_Player->Draw(view, proj);
+	Enemy_Draw(view, proj);
 
 	// ----------------------------------------------------------------
 	// Pass 3: 透明物体与天空 (Translucent & Sky)

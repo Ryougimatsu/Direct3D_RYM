@@ -391,15 +391,31 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			// 【关键修复】：加上枪管的长度偏移 0.5f
 			XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.0f);
 
-			// 画激光瞄准线 (让激光也从真正的枪口发出来)
-			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
-			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 0.02f);
-
-			// 绘制枪口火焰粒子 (additive blend)
 			Direct3D_SetBlendState(BLEND_MODE_ADD);
+
+			// 2. 彻底关闭深度测试！(非常关键：让激光无视地面的遮挡，自带透视)
+			Direct3D_SetDepthEnable(false);
+
+			// 3. 关闭深度写入 (沿用你之前的设定，作为双保险)
 			Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+
+			// 【新增修复】：为 Billboard Shader 设置默认的全局颜色和 UV 缩放！
+			// 重置颜色为纯白（1,1,1,1），否则默认全为0，导致完全透明
+			Shader_Billboard_SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+
+			// 重置 UV 缩放为 1.0，平移为 0.0，否则贴图无法正常展开
+			UVParameter defaultUV = { {1.0f, 1.0f}, {0.0f, 0.0f} };
+			Shader_Billboard_SetUVParameter(defaultUV);
+			// 画激光瞄准线 (现在激光可以完美穿透场景，永远可见了)
+			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
+			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 0.2f);
+
+			// 绘制枪口火焰粒子
 			m_pMuzzleFireSystem->Draw();
+
+			// 4. 画完特效后，务必恢复默认状态，防止把后续的 UI 渲染搞崩
 			Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+			Direct3D_SetDepthEnable(true);
 			Direct3D_SetBlendState(BLEND_MODE_NONE);
 		}
 	}

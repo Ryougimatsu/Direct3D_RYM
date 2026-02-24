@@ -167,7 +167,7 @@ ID3D11Buffer* Billboard_GetVertexBuffer() {
 	return g_pVertexBuffer;
 }
 
-void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
+void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR end, float width)
 {
 	// 1. 计算线段信息
 	XMVECTOR dir = end - start;
@@ -182,8 +182,15 @@ void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
 	XMVECTOR camPos = XMLoadFloat3(&Player_Camera_GetPosition());
 	XMVECTOR lookAt = XMVector3Normalize(camPos - midPos);
 
-	XMVECTOR right = XMVector3Normalize(XMVector3Cross(lookAt, up));
+	// 【关键修复】：防共线保护！防止点积接近 1 或 -1 时产生 NaN 矩阵
+	if (fabsf(XMVectorGetX(XMVector3Dot(up, lookAt))) > 0.999f) {
+		lookAt = XMVectorAdd(lookAt, XMVectorSet(0.01f, 0.01f, 0.0f, 0.0f));
+		lookAt = XMVector3Normalize(lookAt);
+	}
+
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(up, lookAt));
 	XMVECTOR forward = XMVector3Cross(right, up);
+
 	XMMATRIX mtxR;
 	mtxR.r[0] = right;
 	mtxR.r[1] = up;
@@ -195,12 +202,8 @@ void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
 
 	Shader_Billboard_Begin();
 
-
 	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
-
-
 	Shader_Billboard_SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
-
 	Shader_Billboard_SetWorldMatrix(mtxS * mtxR * mtxT);
 
 	Texture_Set(texid);
