@@ -160,6 +160,49 @@ void ParticleSystem::EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 di
 	}
 }
 
+void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count) {
+	int emittedCount = 0;
+
+	// 构造枪管方向的正交基 (用于侧向扩散)
+	XMVECTOR vDir = XMVector3Normalize(XMLoadFloat3(&dir));
+	XMVECTOR vUp = XMVectorSet(0, 1, 0, 0);
+	// 若枪管几乎朝正上方, 换一个参考轴
+	if (fabsf(XMVectorGetY(vDir)) > 0.99f)
+		vUp = XMVectorSet(1, 0, 0, 0);
+	XMVECTOR vRight = XMVector3Normalize(XMVector3Cross(vUp, vDir));
+	XMVECTOR vActualUp = XMVector3Cross(vDir, vRight);
+
+	for (auto& p : m_Particles) {
+		if (emittedCount >= count) break;
+		if (p.Active) continue;
+
+		p.Active = true;
+		// 沿枪管方向偏移 0.1f 避免嵌入枪管
+		p.Position = {
+			pos.x + dir.x * 0.1f,
+			pos.y + dir.y * 0.1f,
+			pos.z + dir.z * 0.1f
+		};
+
+		p.Age = 0.0f;
+		p.LifeTime = RandomFloat(0.08f, 0.2f);
+		p.Size = RandomFloat(0.6f, 1.2f);
+
+		// 亮黄色, alpha 在 Update 中会自动衰减产生橙色→透明过渡
+		p.Color = { 1.0f, 0.85f, 0.2f, 1.0f };
+
+		// 沿枪管方向喷射 + 侧向随机扩散
+		float forwardSpeed = RandomFloat(3.0f, 10.0f);
+		float sideSpread = RandomFloat(-1.5f, 1.5f);
+		float upSpread = RandomFloat(-1.5f, 1.5f);
+
+		XMVECTOR vel = vDir * forwardSpeed + vRight * sideSpread + vActualUp * upSpread;
+		XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&p.Velocity), vel);
+
+		emittedCount++;
+	}
+}
+
 void ParticleSystem::EmitBlood(DirectX::XMFLOAT3 pos, int count) {
 	int emittedCount = 0;
 	for (auto& p : m_Particles) {

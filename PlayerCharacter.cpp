@@ -95,7 +95,11 @@ void Player_EmitSound(const DirectX::XMFLOAT3& pos, float radius) {
 // 1. 生命周期 (Lifecycle)
 // ----------------------------------------------------------------
 PlayerCharacter::~PlayerCharacter() {
-	// 析构逻辑
+	if (m_pMuzzleFireSystem) {
+		m_pMuzzleFireSystem->Finalize();
+		delete m_pMuzzleFireSystem;
+		m_pMuzzleFireSystem = nullptr;
+	}
 }
 
 void PlayerCharacter::LoadAssets()
@@ -151,6 +155,11 @@ bool PlayerCharacter::Initialize() {
 	m_LaserTexID = Texture_LoadFromFile(L"resource/texture/Laser.png");
 	Billboard_Initialize();
 	m_MuzzleTexID = Texture_LoadFromFile(L"resource/texture/muzzle_04_rotated.png");
+
+	// 初始化枪口火焰粒子系统
+	m_MuzzleFireTexID = Texture_LoadFromFile(L"resource/texture/kenney_particle-pack/PNG (Transparent)/flame_01.png");
+	m_pMuzzleFireSystem = new ParticleSystem();
+	m_pMuzzleFireSystem->Initialize(500, m_MuzzleFireTexID);
 
 	return true;
 }
@@ -314,6 +323,14 @@ void PlayerCharacter::Update(double dt) {
 				Bullet_Create(p, v);
 				m_CurrentAmmo--;
 
+				// 发射枪口火焰粒子 (使用与 Draw 中一致的 1.25f 偏移，定位到枪口端)
+				XMVECTOR muzzleTip = XMVectorAdd(
+					XMVector3TransformCoord(muzzleLocalV, gunWorld),
+					XMVectorScale(bulletDir, 4.0f));
+				XMFLOAT3 muzzleTipPos;
+				XMStoreFloat3(&muzzleTipPos, muzzleTip);
+				m_pMuzzleFireSystem->EmitMuzzleFire(muzzleTipPos, v, 15);
+
 				m_MuzzleFlashTimer = 0.05f;
 
 				Player_EmitSound(m_Position, 25.0f);
@@ -325,6 +342,8 @@ void PlayerCharacter::Update(double dt) {
 	// --- 5. 动画更新 ---
 	m_Animator.Update(dt);
 
+	// --- 6. 粒子系统更新 ---
+	m_pMuzzleFireSystem->Update(dt);
 }
 
 void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj) {
@@ -390,6 +409,13 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 				Direct3D_SetDepthStencilStateDepthWriteDisable(true);
 				Direct3D_SetBlendState(BLEND_MODE_NONE);
 			}
+
+			// 绘制枪口火焰粒子 (additive blend)
+			Direct3D_SetBlendState(BLEND_MODE_ADD);
+			Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+			m_pMuzzleFireSystem->Draw();
+			Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+			Direct3D_SetBlendState(BLEND_MODE_NONE);
 		}
 	}
 

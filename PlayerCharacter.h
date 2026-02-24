@@ -89,6 +89,8 @@ private:
 	MODEL* m_pGunModel = nullptr; // 建议初始化为 nullptr
 	int m_MuzzleTexID = -1;           // 枪口特效贴图
 	float m_MuzzleFlashTimer = 0.0f;  // 枪口特效显示计时器
+	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统
+	int m_MuzzleFireTexID = -1;                    // 火焰纹理 ID
 
 	// ==========================================
 	// 配置参数 (Configuration / Settings)

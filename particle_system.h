@@ -27,5 +27,6 @@ public:
 	void Emit(DirectX::XMFLOAT3 pos, int count);
 	void EmitSmoke(DirectX::XMFLOAT3 pos, int count);
 	void EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count);
+	void EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count);
 	void EmitBlood(DirectX::XMFLOAT3 pos, int count);
 };
