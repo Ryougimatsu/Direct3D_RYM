@@ -11,6 +11,7 @@
 #include "game.h"
 #include "Shader_Shadow.h"
 #include "model.h"
+#include "shader_billboard.h"
 
 using namespace DirectX;
 
@@ -149,6 +150,7 @@ bool PlayerCharacter::Initialize() {
 	m_Animator.PlayAnimation(m_pModel->GetDefaultAnimation(), true);
 	m_LaserTexID = Texture_LoadFromFile(L"resource/texture/Laser.png");
 	Billboard_Initialize();
+	m_MuzzleTexID = Texture_LoadFromFile(L"resource/texture/muzzle_04_rotated.png");
 
 	return true;
 }
@@ -213,6 +215,7 @@ void PlayerCharacter::Update(double dt) {
 		m_InvincibleTimer -= (float)dt;
 		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
 	}
+	if (m_MuzzleFlashTimer > 0.0f) m_MuzzleFlashTimer -= (float)dt;
 
 	// --- 换弹逻辑 (R键) ---
 	if (KeyLogger_IsTrigger(KK_R) && !m_IsReloading && m_CurrentAmmo < MAG_SIZE && m_TotalAmmo > 0) {
@@ -311,6 +314,8 @@ void PlayerCharacter::Update(double dt) {
 				Bullet_Create(p, v);
 				m_CurrentAmmo--;
 
+				m_MuzzleFlashTimer = 0.05f;
+
 				Player_EmitSound(m_Position, 25.0f);
 				m_ShootTimer = m_FireRate;
 			}
@@ -319,6 +324,7 @@ void PlayerCharacter::Update(double dt) {
 
 	// --- 5. 动画更新 ---
 	m_Animator.Update(dt);
+
 }
 
 void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj) {
@@ -327,6 +333,9 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	// 1. 设置着色器全局矩阵
 	SkinningShader_3D_SetViewMatrix(view);
 	SkinningShader_3D_SetProjectMatrix(proj);
+
+	Shader_Billboard_SetViewMatrix(view);
+	Shader_Billboard_SetProjectMatrix(proj);
 
 	// 2. 构造世界矩阵
 	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
@@ -358,15 +367,36 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			// 画枪
 			ModelDraw(m_pGunModel, gunWorld);
 
-			// 画激光瞄准线
 			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-			XMVECTOR laserStartPos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+			XMVECTOR basePos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
 			XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
-			XMVECTOR laserEndPos = laserStartPos + (gunForwardDir * m_LaserLength);
 
-			Laser_Billboard_Draw(m_LaserTexID, laserStartPos, laserEndPos, 0.02f);
+			// 【关键修复】：加上枪管的长度偏移 0.5f
+			XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.25f);
+
+			// 画激光瞄准线 (让激光也从真正的枪口发出来)
+			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
+			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 0.02f);
+
+			if (m_MuzzleFlashTimer > 0.0f)
+			{
+				Direct3D_SetBlendState(BLEND_MODE_ADD);
+				Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+
+				float alpha = 1.0f;
+
+				MuzzleFlash_Axial_Draw(m_MuzzleTexID, actualMuzzlePos, gunForwardDir, 2.5f, 2.5f, alpha, view);
+
+				Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+				Direct3D_SetBlendState(BLEND_MODE_NONE);
+			}
 		}
 	}
+
+	Direct3D_SetBlendState(BLEND_MODE_ADD);                         
+	Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+	Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+	Direct3D_SetBlendState(BLEND_MODE_NONE);
 }
 
 void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)

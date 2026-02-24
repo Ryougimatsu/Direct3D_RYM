@@ -12,7 +12,7 @@ void ParticleSystem::Initialize(int maxParticles, int texID) {
 	m_TextureID = texID;
 	m_Particles.resize(maxParticles);
 
-	// ³õÊ¼»¯ËùÓĞÁ£×ÓÎª·Ç¼¤»î×´Ì¬
+	// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½Ç¼ï¿½ï¿½ï¿½×´Ì¬
 	for (auto& p : m_Particles) {
 		p.Active = false;
 	}
@@ -26,23 +26,23 @@ void ParticleSystem::Update(double dt) {
 	for (auto& p : m_Particles) {
 		if (!p.Active) continue;
 
-		// 1. ¸üĞÂÉúÃüÖÜÆÚ
+		// 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		p.Age += (float)dt;
 		if (p.Age >= p.LifeTime) {
-			p.Active = false; // ËÀÍö
+			p.Active = false; // ï¿½ï¿½ï¿½ï¿½
 			continue;
 		}
 
-		// 2. ÎïÀí¸üĞÂ (Î»ÖÃ += ËÙ¶È * Ê±¼ä)
+		// 2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (Î»ï¿½ï¿½ += ï¿½Ù¶ï¿½ * Ê±ï¿½ï¿½)
 		p.Position.x += p.Velocity.x * (float)dt;
 		p.Position.y += p.Velocity.y * (float)dt;
 		p.Position.z += p.Velocity.z * (float)dt;
 
-		// 3. ¼òµ¥µÄÖØÁ¦Ğ§¹û (¿ÉÑ¡)
-		// p.Velocity.y -= 9.8f * (float)dt * 0.5f; 
+		// 3. ï¿½òµ¥µï¿½ï¿½ï¿½ï¿½ï¿½Ğ§ï¿½ï¿½ (ï¿½ï¿½Ñ¡)
+		//p.Velocity.y -= 9.8f * (float)dt * 0.5f; 
 		p.Size += 1.5f * (float)dt;
 
-		// 4. ÑÕÉ«µ­³öĞ§¹û (Alpha ËæÊ±¼ä´Ó 1 ±äµ½ 0)
+		// 4. ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ğ§ï¿½ï¿½ (Alpha ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ 1 ï¿½äµ½ 0)
 		float lifeRatio = p.Age / p.LifeTime;
 		p.Color.w = 1.0f - lifeRatio; // Alpha
 	}
@@ -52,7 +52,7 @@ void ParticleSystem::Draw() {
 	for (const auto& p : m_Particles) {
 		if (!p.Active) continue;
 
-		// µ÷ÓÃ¸Õ²ÅĞŞ¸Ä¹ıµÄ´øÑÕÉ«µÄ Billboard_Draw
+		// ï¿½ï¿½ï¿½Ã¸Õ²ï¿½ï¿½Ş¸Ä¹ï¿½ï¿½Ä´ï¿½ï¿½ï¿½É«ï¿½ï¿½ Billboard_Draw
 		Billboard_Draw(
 			m_TextureID,
 			p.Position,
@@ -66,23 +66,23 @@ void ParticleSystem::Draw() {
 void ParticleSystem::Emit(DirectX::XMFLOAT3 pos, int count) {
 	int emittedCount = 0;
 
-	// Ñ°ÕÒ¿ÕÏĞµÄÁ£×Ó½øĞĞ·¢Éä
+	// Ñ°ï¿½Ò¿ï¿½ï¿½Ğµï¿½ï¿½ï¿½ï¿½Ó½ï¿½ï¿½Ğ·ï¿½ï¿½ï¿½
 	for (auto& p : m_Particles) {
 		if (emittedCount >= count) break;
 		if (p.Active) continue;
 
-		// ¼¤»îÁ£×Ó
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		p.Active = true;
 		p.Position = pos;
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(0.5f, 1.5f); // Ëæ»ú´æ»î 0.5~1.5Ãë
-		p.Size = RandomFloat(0.5f, 1.0f);     // Ëæ»ú´óĞ¡
-		p.Color = { 1.0f, 0.5f, 0.2f, 1.0f }; // ³ÈÉ« (»ğ»¨)
+		p.LifeTime = RandomFloat(0.5f, 1.5f); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0.5~1.5ï¿½ï¿½
+		p.Size = RandomFloat(0.5f, 1.0f);     // ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¡
+		p.Color = { 1.0f, 0.5f, 0.2f, 1.0f }; // ï¿½ï¿½É« (ï¿½ï¿½)
 
-		// Ëæ»úËÙ¶È (ÏòËÄÖÜÕ¨¿ª)
+		// ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¨ï¿½ï¿½)
 		p.Velocity = {
 			RandomFloat(-5.0f, 5.0f),
-			RandomFloat(2.0f, 8.0f),  // ÉÔÎ¢ÏòÉÏ
+			RandomFloat(2.0f, 8.0f),  // ï¿½ï¿½Î¢ï¿½ï¿½ï¿½ï¿½
 			RandomFloat(-5.0f, 5.0f)
 		};
 
@@ -97,33 +97,88 @@ void ParticleSystem::EmitSmoke(DirectX::XMFLOAT3 pos, int count) {
 		if (emittedCount >= count) break;
 		if (p.Active) continue;
 
-		// 1. ¼¤»î
+		// 1. ï¿½ï¿½ï¿½ï¿½
 		p.Active = true;
 		p.Position = pos;
 
-		// 2. ³õÊ¼Ëæ»úÎ»ÖÃÆ«ÒÆ (ÈÃÑÌÎí²»Òª¶¼¼·ÔÚÒ»¸öµãÉú³öÀ´£¬¶øÊÇÓĞÒ»µã·¶Î§)
+		// 2. ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½Î»ï¿½ï¿½Æ«ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ã·¶Î§)
 		float offset = 0.5f;
 		p.Position.x += RandomFloat(-offset, offset);
 		p.Position.z += RandomFloat(-offset, offset);
-		p.Position.y += RandomFloat(0.0f, 0.5f); // ÉÔÎ¢ÀëµØÒ»µã
+		p.Position.y += RandomFloat(0.0f, 0.5f); // ï¿½ï¿½Î¢ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(3.0f, 5.0f); // ÑÌÎí´æ»îÊ±¼ä½Ï³¤ (3-5Ãë)
+		p.LifeTime = RandomFloat(3.0f, 5.0f); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Ï³ï¿½ (3-5ï¿½ï¿½)
 
-		// 3. ³õÊ¼´óĞ¡ (´Ó 2.0 µ½ 3.0£¬±È½Ï´ó)
+		// 3. ï¿½ï¿½Ê¼ï¿½ï¿½Ğ¡ (ï¿½ï¿½ 2.0 ï¿½ï¿½ 3.0ï¿½ï¿½ï¿½È½Ï´ï¿½)
 		p.Size = RandomFloat(2.0f, 3.0f);
 
-		// 4. ÑÕÉ«£º»Ò»ÒÉ« (0.5, 0.5, 0.5)£¬°ëÍ¸Ã÷ (Alpha 0.6)
-		// Õ½³¡ÑÌÎíÍ¨³£±È½Ï°µ£¬²»ÊÇ´¿°×µÄ
+		// 4. ï¿½ï¿½É«ï¿½ï¿½ï¿½Ò»ï¿½É« (0.5, 0.5, 0.5)ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½ (Alpha 0.6)
+		// Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½È½Ï°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ï¿½×µï¿½
 		p.Color = { 0.5f, 0.5f, 0.5f, 0.6f };
 
-		// 5. ËÙ¶È£ºÖ÷ÒªÊÇ»ºÂıÏòÉÏ£¬ÉÔÎ¢´øµãËæ»ú·çÏò
+		// 5. ï¿½Ù¶È£ï¿½ï¿½ï¿½Òªï¿½Ç»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï£ï¿½ï¿½ï¿½Î¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		p.Velocity = {
-			RandomFloat(-0.5f, 0.5f), // XÖáÎ¢·ç
-			RandomFloat(1.0f, 2.5f),  // YÖáÏòÉÏÆ¯¸¡
-			RandomFloat(-0.5f, 0.5f)  // ZÖáÎ¢·ç
+			RandomFloat(-0.5f, 0.5f), // Xï¿½ï¿½Î¢ï¿½ï¿½
+			RandomFloat(1.0f, 2.5f),  // Yï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¯ï¿½ï¿½
+			RandomFloat(-0.5f, 0.5f)  // Zï¿½ï¿½Î¢ï¿½ï¿½
 		};
 
+		emittedCount++;
+	}
+}
+
+void ParticleSystem::EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count) {
+	int emittedCount = 0;
+
+	for (auto& p : m_Particles) {
+		if (emittedCount >= count) break;
+		if (p.Active) continue;
+
+		p.Active = true;
+		// ç¨å¾®å°†ç²’å­æ²¿ç€å­å¼¹æ–¹å‘å¾€å‰æ¨ä¸€ç‚¹ï¼Œé¿å…ç‰¹æ•ˆåµŒåœ¨æªç®¡é‡Œ
+		p.Position = {
+			pos.x + dir.x * 0.2f,
+			pos.y + dir.y * 0.2f,
+			pos.z + dir.z * 0.2f
+		};
+
+		p.Age = 0.0f;
+		// å¯¿å‘½æçŸ­ï¼Œé€šå¸¸ 0.05 ç§’åˆ° 0.1 ç§’å³å¯
+		p.LifeTime = RandomFloat(0.05f, 0.1f);
+
+		// æ ¹æ®ä½ çš„å›¾ç‰‡å¤§å°è°ƒæ•´ï¼Œå¯ä»¥éšæœºå¤§å°å¢åŠ çˆ†å‘æ„Ÿ
+		p.Size = RandomFloat(1.5f, 2.5f);
+
+		// é¢œè‰²ä¿æŒåŸå›¾é¢œè‰² (è®¾ä¸ºçº¯ç™½ï¼ŒAlpha 1.0)
+		p.Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		// æªå£ç«ç„°ä¸éœ€è¦å¤§å¹…åº¦ç§»åŠ¨ï¼Œç»™ä¸€ä¸ªæå°çš„åˆé€Ÿåº¦ç”šè‡³ 0 éƒ½å¯ä»¥
+		p.Velocity = { 0.0f, 0.0f, 0.0f };
+
+		emittedCount++;
+	}
+}
+
+void ParticleSystem::EmitBlood(DirectX::XMFLOAT3 pos, int count) {
+	int emittedCount = 0;
+	for (auto& p : m_Particles) {
+		if (emittedCount >= count) break;
+		if (p.Active) continue;
+
+		p.Active = true;
+		p.Position = pos;
+		p.Age = 0.0f;
+		p.LifeTime = RandomFloat(0.4f, 0.8f);
+		p.Size = RandomFloat(0.2f, 0.5f);
+		p.Color = { 0.6f, 0.0f, 0.0f, 1.0f }; // æš—çº¢è‰²ä»£è¡¨è¡€æ¶²
+
+		// å‘ä¸Šå››å‘¨å–·æº…
+		p.Velocity = {
+			RandomFloat(-3.0f, 3.0f),
+			RandomFloat(2.0f, 6.0f),
+			RandomFloat(-3.0f, 3.0f)
+		};
 		emittedCount++;
 	}
 }

@@ -23,3 +23,5 @@ void Billboard_Draw(
 	const DirectX::XMFLOAT2& pivot = { 0.0f,0.0f },
 	const DirectX::XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f }
 );
+void MuzzleFlash_Cross_Draw(int texid, DirectX::XMVECTOR muzzlePos, DirectX::XMVECTOR gunForwardDir, float width, float height, float alpha);
+void MuzzleFlash_Axial_Draw(int texid, DirectX::XMVECTOR muzzlePos, DirectX::XMVECTOR gunForwardDir, float width, float height, float alpha, const DirectX::XMMATRIX& viewMatrix);

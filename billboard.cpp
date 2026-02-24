@@ -183,8 +183,7 @@ void Laser_Billboard_Draw(int texid, XMVECTOR start, XMVECTOR end, float width)
 	XMVECTOR lookAt = XMVector3Normalize(camPos - midPos);
 
 	XMVECTOR right = XMVector3Normalize(XMVector3Cross(lookAt, up));
-	XMVECTOR forward = XMVector3Cross(up, right);
-
+	XMVECTOR forward = XMVector3Cross(right, up);
 	XMMATRIX mtxR;
 	mtxR.r[0] = right;
 	mtxR.r[1] = up;
@@ -261,4 +260,123 @@ void Billboard_Draw(int texID, const DirectX::XMFLOAT3& position, const DirectX:
 	// 5. 绘制
 	Direct3D_GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	Direct3D_GetDeviceContext()->Draw(NUM_VERTEX, 0);
+}
+
+void MuzzleFlash_Cross_Draw(int texid, DirectX::XMVECTOR muzzlePos, DirectX::XMVECTOR gunForwardDir, float width, float height, float alpha)
+{
+	// 1. 设置 Shader
+	Shader_Billboard_Begin();
+	Shader_Billboard_SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
+	Texture_Set(texid);
+
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	ID3D11DeviceContext* context = Direct3D_GetDeviceContext();
+	context->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+
+	// 关闭背面剔除 (确保十字面的两面都能看见) 引擎底层虽然设了 NONE，这里保险起见确认下
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// 2. 构造 3D 局部坐标系
+	using namespace DirectX;
+	XMVECTOR forward = XMVector3Normalize(gunForwardDir);
+	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	if (fabsf(XMVectorGetY(forward)) > 0.99f) {
+		up = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+	}
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(forward, up));
+	up = XMVector3Normalize(XMVector3Cross(right, forward));
+
+	// 【关键修复 1：取消巨大的中心偏移】
+	// 让图片的中心尽量靠近枪管，只往前推 0.2f 防止嵌进枪管里。
+	// 如果你发现特效太靠后了，可以适当加大这个 0.2f
+	XMVECTOR offsetPos = muzzlePos + forward * 0.2f;
+	XMMATRIX mtxT = XMMatrixTranslationFromVector(offsetPos);
+	XMMATRIX mtxS = XMMatrixScaling(width, height, 1.0f);
+
+	// 【关键修复 2：矩阵方向映射】
+	// 默认情况：假设你的贴图里，火焰是【朝上(Y轴)】喷射的
+	XMMATRIX mtx1;
+	mtx1.r[0] = right;
+	mtx1.r[1] = forward; // 图片的Y轴映射到枪管前方
+	mtx1.r[2] = up;
+	mtx1.r[3] = XMVectorSet(0, 0, 0, 1);
+
+	// === ⚠️ 调试提示 ⚠️ ===
+	// 如果你运行后发现火焰是“横向”长在枪管上的，说明你的贴图是【朝右(X轴)】喷射的！
+	// 请注释掉上面两行，解开下面两行的注释：
+	// mtx1.r[0] = forward; // 图片的X轴映射到枪管前方
+	// mtx1.r[1] = right;   
+	// ======================
+
+	// 构造第二个交叉面 (绕着枪管自转 90 度)
+	XMMATRIX rot90 = XMMatrixRotationAxis(forward, XM_PIDIV2);
+	XMMATRIX mtx2;
+	mtx2.r[0] = XMVector3TransformNormal(mtx1.r[0], rot90);
+	mtx2.r[1] = XMVector3TransformNormal(mtx1.r[1], rot90);
+	mtx2.r[2] = XMVector3TransformNormal(mtx1.r[2], rot90);
+	mtx2.r[3] = XMVectorSet(0, 0, 0, 1);
+
+	// 3. 绘制两个相交的面
+	Shader_Billboard_SetWorldMatrix(mtxS * mtx1 * mtxT);
+	context->Draw(4, 0);
+
+	Shader_Billboard_SetWorldMatrix(mtxS * mtx2 * mtxT);
+	context->Draw(4, 0);
+}
+
+void MuzzleFlash_Axial_Draw(int texid, DirectX::XMVECTOR muzzlePos, DirectX::XMVECTOR gunForwardDir, float width, float height, float alpha, const DirectX::XMMATRIX& viewMatrix)
+{
+	Shader_Billboard_Begin();
+	Shader_Billboard_SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
+	Texture_Set(texid);
+
+	UINT stride = sizeof(Vertex3D);
+	UINT offset = 0;
+	ID3D11DeviceContext* context = Direct3D_GetDeviceContext();
+	context->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+	context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R16_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	using namespace DirectX;
+
+	// 1. 获取图片向前的 Y 轴对齐枪口方向
+	XMVECTOR up = XMVector3Normalize(gunForwardDir);
+
+	// 2. 【核心黑科技】：通过逆矩阵直接从渲染管线中抽出真实的摄像机坐标
+	XMVECTOR det;
+	XMMATRIX invView = XMMatrixInverse(&det, viewMatrix);
+	XMVECTOR camPos = invView.r[3]; // 第 4 行就是摄像机的世界坐标！
+
+	// 3. 计算指向摄像机的向量
+	XMVECTOR lookAt = XMVector3Normalize(camPos - muzzlePos);
+
+	if (fabsf(XMVectorGetX(XMVector3Dot(up, lookAt))) > 0.999f) {
+		lookAt = XMVectorAdd(lookAt, XMVectorSet(0.01f, 0.01f, 0.0f, 0.0f));
+		lookAt = XMVector3Normalize(lookAt);
+	}
+
+	// 【最终修复】：用 (枪口方向) 叉乘 (看向摄像机的方向) 来获得 X 轴
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(up, lookAt));
+
+	// 然后用 (X 轴) 叉乘 (枪口方向) 来获得 Z 轴法线。
+	// 这样不仅矩阵不会翻转，而且法线会完美指向顶部的摄像机！
+	XMVECTOR forward = XMVector3Cross(right, up);
+
+	XMMATRIX mtxR;
+	mtxR.r[0] = right;
+	mtxR.r[1] = up;      // Y轴 = 枪口方向
+	mtxR.r[2] = forward; // Z轴(法线) = 朝向摄像机
+	mtxR.r[3] = XMVectorSet(0, 0, 0, 1);
+
+	// 4. 【关键修复】：取消巨大的中心偏移，只往前推 0.2f
+	XMVECTOR offsetPos = muzzlePos + up * 0.2f;
+	XMMATRIX mtxT = XMMatrixTranslationFromVector(offsetPos);
+	XMMATRIX mtxS = XMMatrixScaling(width, height, 1.0f);
+
+	Shader_Billboard_SetWorldMatrix(mtxS * mtxR * mtxT);
+	context->Draw(4, 0);
 }

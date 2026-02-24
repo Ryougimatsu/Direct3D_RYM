@@ -8,7 +8,7 @@
 #include "Animator.h"
 #include "model.h"
 #include "collision.h"
-
+#include "particle_system.h"
 // ----------------------------------------------------------------
 // Enums
 // ----------------------------------------------------------------
@@ -87,6 +87,8 @@ private:
 	SkinningModel* m_pModel = nullptr;
 	Animator       m_Animator;
 	MODEL* m_pGunModel = nullptr; // 建议初始化为 nullptr
+	int m_MuzzleTexID = -1;           // 枪口特效贴图
+	float m_MuzzleFlashTimer = 0.0f;  // 枪口特效显示计时器
 
 	// ==========================================
 	// 配置参数 (Configuration / Settings)

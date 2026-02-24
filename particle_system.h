@@ -2,22 +2,22 @@
 #include <DirectXMath.h>
 #include <vector>
 
-// µ¥¸öÁ£×ÓµÄÊý¾Ý½á¹¹
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½Ý½á¹¹
 struct Particle {
-	DirectX::XMFLOAT3 Position;  // Î»ÖÃ
-	DirectX::XMFLOAT3 Velocity;  // ËÙ¶È (·½Ïò * ËÙÂÊ)
-	DirectX::XMFLOAT4 Color;     // ÑÕÉ« (°üº¬ Alpha)
-	float Age;                   // µ±Ç°´æ»îÊ±¼ä
-	float LifeTime;              // ×ÜÉúÃüÖÜÆÚ
-	float Size;                  // ´óÐ¡
-	bool Active;                 // ÊÇ·ñ¼¤»î
+	DirectX::XMFLOAT3 Position;  // Î»ï¿½ï¿½
+	DirectX::XMFLOAT3 Velocity;  // ï¿½Ù¶ï¿½ (ï¿½ï¿½ï¿½ï¿½ * ï¿½ï¿½ï¿½ï¿½)
+	DirectX::XMFLOAT4 Color;     // ï¿½ï¿½É« (ï¿½ï¿½ï¿½ï¿½ Alpha)
+	float Age;                   // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
+	float LifeTime;              // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	float Size;                  // ï¿½ï¿½Ð¡
+	bool Active;                 // ï¿½Ç·ñ¼¤»ï¿½
 };
 
 class ParticleSystem {
 private:
-	std::vector<Particle> m_Particles; // Á£×Ó³Ø
+	std::vector<Particle> m_Particles; // ï¿½ï¿½ï¿½Ó³ï¿½
 	int m_MaxParticles;
-	int m_TextureID;                   // Á£×ÓÊ¹ÓÃµÄÎÆÀí ID
+	int m_TextureID;                   // ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ ID
 
 public:
 	void Initialize(int maxParticles, int texID);
@@ -26,4 +26,6 @@ public:
 	void Draw();
 	void Emit(DirectX::XMFLOAT3 pos, int count);
 	void EmitSmoke(DirectX::XMFLOAT3 pos, int count);
+	void EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count);
+	void EmitBlood(DirectX::XMFLOAT3 pos, int count);
 };
