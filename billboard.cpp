@@ -167,7 +167,7 @@ ID3D11Buffer* Billboard_GetVertexBuffer() {
 	return g_pVertexBuffer;
 }
 
-void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR end, float width)
+void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR end, float width, const DirectX::XMMATRIX& viewMatrix, const DirectX::XMFLOAT4& color)
 {
 	// 1. 计算线段信息
 	XMVECTOR dir = end - start;
@@ -176,20 +176,25 @@ void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR 
 
 	XMVECTOR midPos = start + dir * 0.5f;
 
-	// 2. 构造朝向矩阵（轴向 billboard）
-	XMVECTOR up = XMVector3Normalize(dir);  // 激光方向 -> Y
+	// 2. 从传入的 View 矩阵中精准抽出摄像机世界坐标 (解决延迟漂移)
+	XMVECTOR det;
+	XMMATRIX invView = XMMatrixInverse(&det, viewMatrix);
+	XMVECTOR camPos = invView.r[3];
 
-	XMVECTOR camPos = XMLoadFloat3(&Player_Camera_GetPosition());
+	// 3. 构造朝向矩阵（轴向 billboard）
+	XMVECTOR up = XMVector3Normalize(dir);  // 激光方向 -> Y
 	XMVECTOR lookAt = XMVector3Normalize(camPos - midPos);
 
-	// 【关键修复】：防共线保护！防止点积接近 1 或 -1 时产生 NaN 矩阵
-	if (fabsf(XMVectorGetX(XMVector3Dot(up, lookAt))) > 0.999f) {
+	// 【致命错误修复】：防共线保护！(绝对不能删)
+	// 防止视线和激光平行时产生 NaN 导致全屏乱码斜线
+	if (fabsf(XMVectorGetX(XMVector3Dot(up, lookAt))) > 0.995f) {
 		lookAt = XMVectorAdd(lookAt, XMVectorSet(0.01f, 0.01f, 0.0f, 0.0f));
 		lookAt = XMVector3Normalize(lookAt);
 	}
 
-	XMVECTOR right = XMVector3Normalize(XMVector3Cross(up, lookAt));
-	XMVECTOR forward = XMVector3Cross(right, up);
+	// 【背面剔除修复】：lookAt 在前，up 在后！
+	XMVECTOR right = XMVector3Normalize(XMVector3Cross(lookAt, up));
+	XMVECTOR forward = XMVector3Normalize(XMVector3Cross(right, up));
 
 	XMMATRIX mtxR;
 	mtxR.r[0] = right;
@@ -201,9 +206,10 @@ void Laser_Billboard_Draw(int texid, DirectX::XMVECTOR start, DirectX::XMVECTOR 
 	XMMATRIX mtxT = XMMatrixTranslationFromVector(midPos);
 
 	Shader_Billboard_Begin();
-
 	Shader_Billboard_SetUVParameter({ { 1.0f, 1.0f }, { 0.0f, 0.0f } });
-	Shader_Billboard_SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
+
+	// 使用传入的颜色 (如果是蓝色底色，可以用 {1,1,1,1} 原色显示)
+	Shader_Billboard_SetColor(color);
 	Shader_Billboard_SetWorldMatrix(mtxS * mtxR * mtxT);
 
 	Texture_Set(texid);
