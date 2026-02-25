@@ -361,11 +361,14 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 				bool isAlerted = enemy->IsAlerted();
 
 				float finalDamage = 0.0f;
+				bool isAlive = (enemy->GetHP() > 0.0f);
 
 				if (isBackstab && !isAlerted) {
 					// --- 潜行击杀 ---
 					finalDamage = 100.0f; // 致命一击
-					m_pBleedSystem->EmitBlood(enemy->GetPosition(), 20); // 产生血液粒子效果
+					if (isAlive) {
+						m_pBleedSystem->EmitBlood(enemy->GetPosition(), 20);
+					}
 				}
 				else {
 					// --- 正面/警觉攻击 ---
@@ -373,7 +376,9 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 
 					// 施加击退
 					enemy->ApplyKnockback(dirToEnemy, 2.0f);
-					m_pBleedSystem->EmitBlood(enemy->GetPosition(), 10); // 产生较少的血液粒子效果
+					if (isAlive) {
+						m_pBleedSystem->EmitBlood(enemy->GetPosition(), 10);
+					}
 				}
 
 				// 应用伤害

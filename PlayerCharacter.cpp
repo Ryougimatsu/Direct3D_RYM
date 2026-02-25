@@ -12,6 +12,7 @@
 #include "Shader_Shadow.h"
 #include "model.h"
 #include "shader_billboard.h"
+#include "map.h"
 
 using namespace DirectX;
 
@@ -77,6 +78,40 @@ namespace {
 		if (degrees >= -67.5f && degrees < -22.5f)   return "Walk Forward Left";
 
 		return "Rifle Aiming Idle";
+	}
+
+	float CalculateLaserDistance(const DirectX::XMFLOAT3& startPos, const DirectX::XMFLOAT3& direction, float maxDistance) {
+		Ray laserRay;
+		laserRay.origin = startPos;
+		laserRay.direction = direction;
+
+		float closestDist = maxDistance;
+
+		// 1. 检测地图障碍物 (墙壁等)
+		const auto& mapObjects = Map_GetObjects();
+		for (const auto& obj : mapObjects) {
+			if (obj.KindId != MAP_KIND_WALL) continue; // 只检测墙壁
+			float hitDist = 0.0f;
+			if (Collision_IntersectRayAABB(laserRay, obj.Aabb, hitDist)) {
+				if (hitDist > 0.0f && hitDist < closestDist) {
+					closestDist = hitDist;
+				}
+			}
+		}
+
+		// 2. 检测敌人
+		for (int i = 0; i < Enemy_GetEnemyCount(); i++) {
+			Enemy* pEnemy = Enemy_GetEnemy(i);
+			if (!pEnemy) continue;
+			float hitDist = 0.0f;
+			if (Collision_IntersectRayAABB(laserRay, pEnemy->GetAABB(), hitDist)) {
+				if (hitDist > 0.0f && hitDist < closestDist) {
+					closestDist = hitDist;
+				}
+			}
+		}
+
+		return closestDist;
 	}
 }
 
@@ -391,16 +426,27 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 
 			// 【修改 1】：直接用 basePos 作为枪口起点，不要再额外 + 1.0f 了
 			XMVECTOR actualMuzzlePos = basePos;
+			//XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
+			DirectX::XMFLOAT3 startF3, dirF3;
+			DirectX::XMStoreFloat3(&startF3, actualMuzzlePos);
+			DirectX::XMStoreFloat3(&dirF3, gunForwardDir);
+
+			// 计算截断后的真实长度
+			float actualLength = CalculateLaserDistance(startF3, dirF3, m_LaserLength);
+
+			// 算出真实的终点位置
+			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * actualLength);
 
 			Direct3D_SetBlendState(BLEND_MODE_ADD);
 
-			// 【修改 2】：必须开启深度测试！否则激光会透视画在人物后背上
+			// 必须开启深度测试！否则激光会透视画在人物后背上
 			Direct3D_SetDepthEnable(true);
 
 			// 关闭深度写入
 			Direct3D_SetDepthStencilStateDepthWriteDisable(false);
 
-			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
+
+
 
 			// 画激光 
 			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 1.5f, view, { 1.0f, 1.0f, 1.0f, 1.0f });

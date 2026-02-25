@@ -53,6 +53,8 @@ public:
 	// 4. 状态与战斗 (State & Combat)
 	// ==========================================
 	void Damage(float damage, bool isMelee) override;
+	float GetHP() const override;
+	bool IsDead() const override;
 	bool IsDestroyed() const override;
 
 	void ChangeState(State* pNextState) override;

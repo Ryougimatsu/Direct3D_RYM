@@ -383,6 +383,16 @@ void EnemyTest::Damage(float damage, bool isMelee)
 	}
 }
 
+float EnemyTest::GetHP() const
+{
+	return m_HP;
+}
+
+bool EnemyTest::IsDead() const
+{
+	return m_HP <= 0.0f;
+}
+
 void EnemyTest::ChangeState(State* pNextState)
 {
 	Enemy::ChangeState(pNextState);

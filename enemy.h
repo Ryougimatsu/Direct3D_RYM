@@ -33,6 +33,8 @@ public:
 	virtual void Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const = 0;
 	virtual void ChangeState(class State* pNextState) = 0;
 	virtual void Damage(float damage, bool isMelee) = 0;
+	virtual float GetHP() const = 0;
+	virtual bool IsDead() const = 0;
 	virtual bool IsAlerted() const = 0;
 	virtual const DirectX::XMFLOAT3& GetPosition() const = 0;
 	virtual void SetPosition(const DirectX::XMFLOAT3& pos) = 0;
