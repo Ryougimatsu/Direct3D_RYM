@@ -260,7 +260,10 @@ void EnemyTest::SetPosition(const DirectX::XMFLOAT3& pos)
 AABB EnemyTest::GetAABB()
 {
 	float hw = 0.5f; // 半宽
-	float h = 2.0f;  // 高度
+
+	// 如果敌人死了，高度变为 0.2f (变成地上的绊脚石)；活着则是 2.0f
+	float h = m_bIsDead ? 0.2f : 2.0f;
+
 	return {
 		{ m_position.x - hw, m_position.y,     m_position.z - hw },
 		{ m_position.x + hw, m_position.y + h, m_position.z + hw }

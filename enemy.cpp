@@ -275,8 +275,26 @@ void Enemy_Finalize()
 void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
 {
 	SkinningShader_3D_Begin();
+	XMFLOAT3 centerPos = { 0.0f, 0.0f, 0.0f };
+	if (PlayerCharacter* pPlayer = Player_GetInstance()) {
+		centerPos = pPlayer->GetPosition();
+	}
+	// 敌人的可视范围
+	const float CULL_RANGE_X = 35.0f;
+	const float CULL_RANGE_Z = 25.0f;
+
 	for (auto* e : g_Enemies) {
-		e->Draw(view,proj);
+		// ====================================================
+		// 2D 剔除检测
+		XMFLOAT3 ePos = e->GetPosition();
+		if (fabsf(ePos.x - centerPos.x) > CULL_RANGE_X ||
+			fabsf(ePos.z - centerPos.z) > CULL_RANGE_Z)
+		{
+			continue; // 敌人在屏幕外，跳过骨骼矩阵计算和渲染
+		}
+		// ====================================================
+
+		e->Draw(view, proj);
 	}
 	if (m_pBleedSystem) {
 		Direct3D_SetBlendState(BLEND_MODE_ALPHA);

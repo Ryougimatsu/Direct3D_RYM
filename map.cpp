@@ -105,26 +105,34 @@ void Map_Draw(const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* 
 {
 	XMMATRIX mtxWorld;
 
+	XMFLOAT3 camPos = Player_Camera_GetPosition();
+
+	const float CULL_RANGE_X = 35.0f; // 左右范围
+	const float CULL_RANGE_Z = 25.0f; // 上下范围
+
 	for (const MapObject& o : g_MapObjects) {
 		switch (o.KindId) {
-		case 0: // 仅渲染地面
+		case 0: // 仅渲染地面 (地面是一整个大网格，不能在这里剔除)
 			mtxWorld = XMMatrixIdentity();
-			// 设置地面反光属性
 			Light_SetSpecularWorld(Player_Camera_GetPosition(), 1.0f, { 0.1f, 0.1f, 0.1f, 1.0f });
 			MeshField_Draw(mtxWorld, lightViewProj, shadowSRV);
-			// 恢复默认反光强度
 			Light_SetSpecularWorld(Player_Camera_GetPosition(), 10.0f, { 0.8f, 0.8f, 0.8f, 1.0f });
 			break;
-		case MAP_KIND_WALL:
-			// 绘制墙壁 (Cube)
-			// 计算世界矩阵：平移
-			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
 
-			// 如果想把墙变红，可以在这里 SetColor，画完再 SetColor(White)
+		case MAP_KIND_WALL:
+
+			if (fabsf(o.Position.x - camPos.x) > CULL_RANGE_X ||
+				fabsf(o.Position.z - camPos.z) > CULL_RANGE_Z)
+			{
+				continue; // 终止当前循环，不提交 Draw Call
+			}
+			// ====================================================
+
+			mtxWorld = XMMatrixTranslation(o.Position.x, o.Position.y, o.Position.z);
 			Shader_3D_SetColor({ 1.0f, 0.5f, 0.5f, 1.0f });
 			Shader_3D_SetLightData(lightViewProj, shadowSRV);
 			Cube_Draw(g_WallTextureID, mtxWorld);
-			Shader_3D_SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 恢复白色
+			Shader_3D_SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 			break;
 		default:
 			break;

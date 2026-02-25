@@ -36,7 +36,7 @@ public:
 		{
 			m_deleteFlag = true; // 标记销毁
 
-			// 【修改】这里不要调用 BulletHitEffect_Create，
+			// 这里不要调用 BulletHitEffect_Create，
 			// 因为 Bullet_Destroy 中已经统一调用了。
 			// BulletHitEffect_Create(m_position); 
 			return;
@@ -120,6 +120,7 @@ void Bullet_CheckCollisionWithEnemies()
 		{
 			Enemy* pEnemy = Enemy_GetEnemy(j);
 			if (!pEnemy) continue;
+			if (pEnemy->IsDead()) continue;
 
 			// 检测子弹球体与敌人 AABB 是否碰撞
 			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))

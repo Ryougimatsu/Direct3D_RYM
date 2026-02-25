@@ -292,14 +292,18 @@ void Game_Update(double elapsed_time)
 	if (g_SmokeTimer > 0.2f) {
 		g_SmokeTimer = 0.0f;
 
-		// 在地图范围内随机选一个点
-		// 假设地图大小是 -20 到 20
-		float randX = RandomFloat(-20.0f, 20.0f);
-		float randZ = RandomFloat(-20.0f, 20.0f);
+		// 只在玩家周围的可见范围内生成烟雾！
+		DirectX::XMFLOAT3 pPos = { 0.0f, 0.0f, 0.0f };
+		if (g_Player) {
+			pPos = g_Player->GetPosition();
+		}
 
-		// 在地面 (Y=0) 生成 1 个烟雾粒子
-		// 如果想看起来更浓，可以一次生成 3-5 个
-		g_SmokeSystem->EmitSmoke({ randX, 0.0f, randZ }, 2);
+		// 在玩家坐标的基础上，加上一个偏移范围 (例如半径 40 米内的屏幕可视区域)
+		float randX = pPos.x + RandomFloat(-40.0f, 40.0f);
+		float randZ = pPos.z + RandomFloat(-30.0f, 30.0f);
+
+		// 每次生成 3 个粒子，保证屏幕内的战场硝烟感
+		g_SmokeSystem->EmitSmoke({ randX, 0.0f, randZ }, 3);
 	}
 }
 
@@ -320,10 +324,19 @@ void Game_Draw()
 	// ----------------------------------------------------------------
 	Shader_Shadow_Begin(lightView, lightProj);
 	{
+		DirectX::XMFLOAT3 pPos = (g_Player) ? g_Player->GetPosition() : DirectX::XMFLOAT3{ 0,0,0 };
 		// 1. 绘制静态场景阴影 (墙壁)
 		const std::vector<MapObject>& mapObjs = Map_GetObjects();
 		for (const auto& obj : mapObjs) {
 			if (obj.KindId == MAP_KIND_WALL) {
+
+				// 阴影专属的大范围剔除 (范围放宽到 60 米，防止远处的影子被切断)
+				if (fabsf(obj.Position.x - pPos.x) > 60.0f ||
+					fabsf(obj.Position.z - pPos.z) > 60.0f)
+				{
+					continue;
+				}
+
 				XMMATRIX world = XMMatrixTranslation(obj.Position.x, obj.Position.y, obj.Position.z);
 				Cube_DrawShadow(world);
 			}
