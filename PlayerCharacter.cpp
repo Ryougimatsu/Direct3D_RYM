@@ -533,7 +533,7 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
 	SkinningShader_3D_SetBoneTransforms(bones);
 
-	// 【关键】手动将骨骼 Buffer 绑定到 Vertex Shader 的槽位 1 (对应 hlsl 里的 register(b1))
+	// 手动将骨骼 Buffer 绑定到 Vertex Shader 的槽位 1 (对应 hlsl 里的 register(b1))
 	ID3D11Buffer* pBoneBuffer = SkinningShader_3D_GetBoneBuffer();
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &pBoneBuffer);
 

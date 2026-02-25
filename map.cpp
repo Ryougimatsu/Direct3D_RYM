@@ -61,9 +61,9 @@ void Map_Initialize(const DirectX::XMFLOAT3& goalPos)
 	// 3. 随机生成障碍物
 	srand((unsigned int)time(NULL)); // 设置随机种子
 
-	int obstacleCount = 60;   // 障碍物数量
-	float range = 25.0f;      // 分布范围
-	float safeRadius = 3.0f;  // 出生点保护半径
+	int obstacleCount = 150;   // 障碍物数量
+	float range = 45.0f;      // 分布范围
+	float safeRadius = 5.0f;  // 出生点保护半径
 	float goalRadius = 4.0f;
 	for (int i = 0; i < obstacleCount; i++)
 	{

@@ -17,9 +17,10 @@ using namespace DirectX;
 namespace {
 	std::vector<Enemy*> g_Enemies;
 
-	const int MAX_ENEMIES_ON_SCREEN = 10; // 场上最多同时存在多少个敌人
-	const float SPAWN_INTERVAL = 3.0f;    // 每几秒生成一只
+	int g_MaxEnemiesOnScreen = 10;        // 改为可变变量
+	float g_CurrentSpawnInterval = 3.0f;  // 改为可变变量
 	float g_SpawnTimer = 0.0f;            // 计时器
+	float g_TotalEnemyTime = 0.0f;        // 记录战斗总时间
 
 	const float MAP_RANGE = 20.0f;        // 地图大小 (假设是 -20 到 20)
 	const float SAFE_DISTANCE = 5.0f;     // 安全距离 (玩家周围 5 米内不刷怪)
@@ -160,6 +161,9 @@ void Enemy_Initialize()
 
 	g_EnemyCount = 0;
 	g_SpawnTimer = 0.0f;
+	g_TotalEnemyTime = 0.0f;
+	g_MaxEnemiesOnScreen = 10;
+	g_CurrentSpawnInterval = 3.0f;
 }
 
 void Enemy_Update(double elapsed_time)
@@ -189,8 +193,33 @@ void Enemy_Update(double elapsed_time)
 	// 随机生成逻辑
 	// ==========================================
 	g_SpawnTimer += (float)elapsed_time;
+
+	g_TotalEnemyTime += (float)elapsed_time;
+
+	if (g_TotalEnemyTime < 45.0f) {
+		// 45秒内：保持初始设定
+		g_MaxEnemiesOnScreen = 10;
+		g_CurrentSpawnInterval = 3.0f;
+	}
+	else if (g_TotalEnemyTime <= 180.0f) {
+		// 45秒 到 180秒(3分钟)：线性增加难度
+		// 进度 t 的范围是 0.0 到 1.0
+		float t = (g_TotalEnemyTime - 45.0f) / (180.0f - 45.0f);
+
+		// 数量从 10 增加到 40 (原先的4倍)
+		g_MaxEnemiesOnScreen = 10 + (int)(t * 30.0f);
+
+		// 刷新间隔从 3.0秒 缩短到 0.5秒 (刷新越来越快)
+		g_CurrentSpawnInterval = 3.0f - (t * 2.5f);
+	}
+	else {
+		// 3分钟以后：维持最高难度
+		g_MaxEnemiesOnScreen = 40;
+		g_CurrentSpawnInterval = 0.5f;
+	}
+
 	// 只有当敌人数量未达上限时，才开始计时
-	if (g_SpawnTimer > SPAWN_INTERVAL && g_Enemies.size() < MAX_ENEMIES_ON_SCREEN)
+	if (g_SpawnTimer > g_CurrentSpawnInterval && g_Enemies.size() < g_MaxEnemiesOnScreen)
 	{
 		// 尝试生成敌人 (尝试 10 次，如果都找不到合适的位置就放弃，等下一帧)
 		for (int i = 0; i < 10; i++)

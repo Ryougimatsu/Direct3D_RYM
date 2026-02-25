@@ -65,7 +65,7 @@ namespace
 	// 关键对象
 	PlayerCharacter* g_Player = nullptr;
 	MODEL* g_DoorModel = nullptr;
-	const DirectX::XMFLOAT3 g_GoalPos = { 20.0f, 1.0f, 10.0f };
+	DirectX::XMFLOAT3 g_GoalPos = { 20.0f, 1.0f, 10.0f };
 
 	// 光源参数 (阴影生成用)
 	// 位置设高一点以覆盖更广的区域
@@ -102,16 +102,16 @@ void Game_LoadContent()
 	g_DoorModel = ModelLoad("resource/Model/Door.fbx", 0.05f);
 
 	// 2. 初始化子系统
-	Map_Initialize(g_GoalPos);
+	//Map_Initialize(g_GoalPos);
 	Sky_Initialize();
 	Bullet_Initialize();
 	Pathfinder::Initialize();
 	NavigationSystem::Initialize();
 
 	// 构建导航网格
-	if (!NavigationSystem::GetInstance()->Build()) {
-		OutputDebugStringA("[Game] Navigation Build Failed!\n");
-	}
+	//if (!NavigationSystem::GetInstance()->Build()) {
+	//	OutputDebugStringA("[Game] Navigation Build Failed!\n");
+	//}
 
 	// 3. 初始化摄像机与UI
 	Player_Camera_Initialize();
@@ -150,6 +150,20 @@ void Game_Initialize()
 	// 重置玩家位置
 	if (g_Player) {
 		g_Player->SetPosition({ 0.0f, 0.0f, 0.0f });
+	}
+
+	float minDistance = 35.0f; // 最小距离 (保证不会开局就碰到门)
+	float maxDistance = 50.0f; // 最大距离 (根据你扩大的地图网格调整)
+	float angle = RandomFloat(0.0f, 3.1415926f * 2.0f);
+	float dist = RandomFloat(minDistance, maxDistance);
+
+	g_GoalPos.x = cosf(angle) * dist;
+	g_GoalPos.z = sinf(angle) * dist;
+	g_GoalPos.y = 1.0f; // 保持门的高度不变
+	Map_Initialize(g_GoalPos);
+
+	if (!NavigationSystem::GetInstance()->Build()) {
+		OutputDebugStringA("[Game] Navigation Build Failed!\n");
 	}
 
 	// 初始化分数显示位置
@@ -298,7 +312,7 @@ void Game_Draw()
 	// 0. 准备光源矩阵 (用于阴影和光照)
 	// ----------------------------------------------------------------
 	XMMATRIX lightView = XMMatrixLookAtLH(g_LightPos, g_LightTarget, g_LightUp);
-	XMMATRIX lightProj = XMMatrixOrthographicLH(300.0f, 300.0f, 1.0f, 200.0f);
+	XMMATRIX lightProj = XMMatrixOrthographicLH(450.0f, 450.0f, 1.0f, 200.0f);
 	XMMATRIX lightVP = lightView * lightProj;
 
 	// ----------------------------------------------------------------
@@ -406,7 +420,7 @@ void Game_Draw()
 		Inventory_Draw();
 		UI_DrawHUD();
 		Player_DrawDamageFlash();
-		if (g_Player && g_TexArrow != -1 && !g_IsDebugCameraMode)
+		if (g_Player && g_TexArrow != -1 && !g_IsDebugCameraMode && g_CurrentGameTime >= 60.0)
 		{
 			// 1. 获取视口信息
 			D3D11_VIEWPORT vp;
