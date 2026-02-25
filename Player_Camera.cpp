@@ -23,6 +23,10 @@ namespace {
 	const float CAM_HEIGHT = 14.0f;       // 相机高度 (Y)
 	const float CAM_DISTANCE = -11.0f;    // 相机后退距离 (Z)
 	const float CAM_LERP_SPEED = 0.1f;    // 跟随平滑度 (0.1 表示每帧向玩家靠近 10%)
+	float g_ShakeIntensity = 0.0f;
+	float RandomFloatCam(float min, float max) {
+		return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+	}
 }
 
 
@@ -37,29 +41,37 @@ void Player_Camera_Finalize()
 
 void Player_Camera_Update(double elapsed_time, const DirectX::XMFLOAT3& playerPos)
 {
-	// 1. 计算理想的相机位置 (Target Position)
-	// 这个偏移量决定了“暗黑”视角的角度
+	if (g_ShakeIntensity > 0.0f) {
+		g_ShakeIntensity -= (float)elapsed_time * 3.0f; // 震动衰减速度，越大停得越快
+		if (g_ShakeIntensity < 0.0f) g_ShakeIntensity = 0.0f;
+	}
+
 	XMVECTOR targetPlayer = XMLoadFloat3(&playerPos);
 	XMVECTOR offset = { 0.0f, CAM_HEIGHT, CAM_DISTANCE };
 	XMVECTOR idealPos = XMVectorAdd(targetPlayer, offset);
 
-	// 2. 平滑跟随逻辑 (Lerp)
-	// 让相机当前位置向理想位置平滑插值
 	XMVECTOR currentPos = XMLoadFloat3(&g_CameraPosition);
 	XMVECTOR newPos = XMVectorLerp(currentPos, idealPos, CAM_LERP_SPEED);
 
-	// 3. 存储位置和方向
 	XMStoreFloat3(&g_CameraPosition, newPos);
 	XMVECTOR front = XMVector3Normalize(targetPlayer - newPos);
 	XMStoreFloat3(&g_CameraFront, front);
 
-	// 4. 生成观察矩阵
-	// 注视点可以是玩家位置稍微往前半米（Diablo 常用技巧，让前方视野更大）
 	XMVECTOR lookAtPoint = XMVectorAdd(targetPlayer, { 0.0f, 0.0f, 1.0f });
+
+	// --- 新增：将震动偏移应用到注视点 ---
+	if (g_ShakeIntensity > 0.0f) {
+		float rx = RandomFloatCam(-1.0f, 1.0f) * g_ShakeIntensity;
+		float ry = RandomFloatCam(-1.0f, 1.0f) * g_ShakeIntensity;
+		float rz = RandomFloatCam(-1.0f, 1.0f) * g_ShakeIntensity;
+		XMVECTOR shakeOffset = XMVectorSet(rx, ry, rz, 0.0f);
+		lookAtPoint = XMVectorAdd(lookAtPoint, shakeOffset);
+	}
+	// -----------------------------------
+
 	XMMATRIX mtxView = XMMatrixLookAtLH(newPos, lookAtPoint, { 0.0f, 1.0f, 0.0f });
 	XMStoreFloat4x4(&g_ViewMatrix, mtxView);
 
-	// 5. 生成投影矩阵 (关键：较小的 FOV)
 	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
 
 
@@ -72,6 +84,15 @@ void Player_Camera_Update(double elapsed_time, const DirectX::XMFLOAT3& playerPo
 	XMStoreFloat4x4(&g_ProjectionMatrix, mtxPerspective);
 	XMMATRIX mtxCamera = XMMatrixInverse(nullptr, mtxView);
 	XMStoreFloat4x4(&g_CameraMatrix, mtxCamera);
+}
+
+void Player_Camera_AddShake(float intensity)
+{
+	// 累加震动强度，并设置一个上限防止震得太夸张
+	g_ShakeIntensity += intensity;
+	if (g_ShakeIntensity > 1.5f) {
+		g_ShakeIntensity = 1.5f;
+	}
 }
 
 const DirectX::XMFLOAT3& Player_Camera_GetFront()

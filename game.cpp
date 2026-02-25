@@ -405,6 +405,7 @@ void Game_Draw()
 		Score_Draw();
 		Inventory_Draw();
 		UI_DrawHUD();
+		Player_DrawDamageFlash();
 		if (g_Player && g_TexArrow != -1 && !g_IsDebugCameraMode)
 		{
 			// 1. 获取视口信息

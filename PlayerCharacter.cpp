@@ -13,7 +13,7 @@
 #include "model.h"
 #include "shader_billboard.h"
 #include "map.h"
-
+#include "sprite.h"
 using namespace DirectX;
 
 // 全局单例指针
@@ -30,6 +30,9 @@ namespace {
 
 	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f }; // 手心里的偏移
 	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.8f, 0.05f, 0.0f };
+
+	float g_DamageFlashAlpha = 0.0f;
+	int   g_DamageTexID = -1;
 
 
 	float m_LaserLength = 20.0f;
@@ -112,6 +115,48 @@ namespace {
 		}
 
 		return closestDist;
+	}
+
+	DirectX::XMMATRIX FixGunMatrix(DirectX::XMMATRIX gunWorld) {
+		using namespace DirectX;
+
+		// 1. 提取当前的枪管朝向 (X轴方向)
+		XMVECTOR currentFwd = XMVector3Normalize(gunWorld.r[0]);
+
+		// 2. 计算目标朝向：把当前朝向压平到 XZ 水平面
+		XMVECTOR targetFwd = XMVectorSetY(currentFwd, 0.0f);
+
+		// 如果枪几乎垂直朝天或朝地，直接返回原样防止数学错误
+		if (XMVectorGetX(XMVector3LengthSq(targetFwd)) < 0.0001f) {
+			return gunWorld;
+		}
+		targetFwd = XMVector3Normalize(targetFwd);
+
+		// 3. 计算从 currentFwd 旋转到 targetFwd 所需的“旋转轴”和“角度”
+		XMVECTOR rotAxis = XMVector3Cross(currentFwd, targetFwd);
+		float axisLen = XMVectorGetX(XMVector3Length(rotAxis));
+
+		// 只有当枪管不在水平面时，才需要进行修正
+		if (axisLen > 0.0001f) {
+			rotAxis = XMVector3Normalize(rotAxis);
+			float dotVal = XMVectorGetX(XMVector3Dot(currentFwd, targetFwd));
+
+			// 限制范围，防止浮点误差导致 acosf 崩溃
+			if (dotVal < -1.0f) dotVal = -1.0f;
+			if (dotVal > 1.0f) dotVal = 1.0f;
+			float angle = acosf(dotVal);
+
+			// 构建修正旋转矩阵
+			XMMATRIX rotMat = XMMatrixRotationAxis(rotAxis, angle);
+
+			// 4. 将旋转应用到整把枪上（只旋转姿态，不改变位置）
+			XMVECTOR pos = gunWorld.r[3];             // 暂存枪的位置
+			gunWorld.r[3] = XMVectorSet(0, 0, 0, 1);  // 消除位置影响
+			gunWorld = gunWorld * rotMat;             // 整体应用旋转
+			gunWorld.r[3] = pos;                      // 恢复枪的位置
+		}
+
+		return gunWorld;
 	}
 }
 
@@ -196,6 +241,8 @@ bool PlayerCharacter::Initialize() {
 	m_pMuzzleFireSystem = new ParticleSystem();
 	m_pMuzzleFireSystem->Initialize(500, m_MuzzleFireTexID);
 
+	g_DamageTexID = Texture_LoadFromFile(L"resource/texture/white.png");
+
 	return true;
 }
 
@@ -258,6 +305,11 @@ void PlayerCharacter::Update(double dt) {
 	if (m_InvincibleTimer > 0.0f) {
 		m_InvincibleTimer -= (float)dt;
 		if (m_InvincibleTimer < 0.0f) m_InvincibleTimer = 0.0f;
+	}
+
+	if (g_DamageFlashAlpha > 0.0f) {
+		g_DamageFlashAlpha -= (float)dt * 1.5f; // 衰减速度，越大消失越快
+		if (g_DamageFlashAlpha < 0.0f) g_DamageFlashAlpha = 0.0f;
 	}
 
 	// --- 换弹逻辑 (R键) ---
@@ -344,7 +396,7 @@ void PlayerCharacter::Update(double dt) {
 				XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 				XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) * XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) * XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 				XMMATRIX gunWorld = gunLocal * handMat * world;
-
+				gunWorld = FixGunMatrix(gunWorld);
 				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
 				XMVECTOR basePos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
 
@@ -366,6 +418,8 @@ void PlayerCharacter::Update(double dt) {
 				flashPos.y += 0.2f;
 				// 发射枪口火焰粒子：使用实际计算的枪口位置
 				m_pMuzzleFireSystem->EmitMuzzleFire(flashPos, v, 15);
+
+				Player_Camera_AddShake(0.1f);
 
 				Player_EmitSound(m_Position, 25.0f);
 				m_ShootTimer = m_FireRate;
@@ -403,7 +457,7 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	m_pModel->Draw();
 
 	// 5. 绘制武器与激光 (如果非近战状态)
-	if (m_MeleeTimer <= 0.2f)
+	if (m_MeleeTimer <= 0.2f && m_CurrentState != CharacterState::Dead)
 	{
 		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
 		if (nameMap.count("mixamorig:RightHand")) {
@@ -416,7 +470,7 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 
 			XMMATRIX gunWorld = gunLocal * handMat * world;
-
+			gunWorld = FixGunMatrix(gunWorld);
 			// 画枪
 			ModelDraw(m_pGunModel, gunWorld);
 
@@ -489,7 +543,7 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 	// ==========================================================
 	// 2. 绘制枪械 (恢复静态阴影 Shader)
 	// ==========================================================
-	if (m_MeleeTimer <= 0.2f && m_pGunModel)
+	if (m_MeleeTimer <= 0.2f && m_pGunModel && m_CurrentState != CharacterState::Dead)
 	{
 		// 切换回静态物体的 Shadow Shader
 		Shader_Shadow_Apply();
@@ -505,6 +559,7 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 				DirectX::XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 
 			DirectX::XMMATRIX gunWorld = gunLocal * handMat * world;
+			gunWorld = FixGunMatrix(gunWorld);
 			// 静态模型画阴影
 			ModelDrawShadow(m_pGunModel, gunWorld);
 		}
@@ -520,6 +575,9 @@ void PlayerCharacter::ApplyDamage(float damage)
 
 	m_HP -= damage;
 	m_InvincibleTimer = m_InvincibleDuration;
+
+	Player_Camera_AddShake(0.3f); // 受伤震动稍微大一点
+	g_DamageFlashAlpha = 0.5f;    // 屏幕闪红初始透明度 (0.5 表示半透明)
 }
 
 void PlayerCharacter::Heal(float amount)
@@ -564,6 +622,16 @@ bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius) {
 		return true;
 	}
 	return false;
+}
+
+void Player_DrawDamageFlash() {
+	if (g_DamageFlashAlpha > 0.0f && g_DamageTexID != -1) {
+		float sw = (float)Direct3D_GetBackBufferWidth();
+		float sh = (float)Direct3D_GetBackBufferHeight();
+
+
+		Sprite_Draw(g_DamageTexID, 0.0f, 0.0f, sw, sh, { 1.0f, 0.0f, 0.0f, g_DamageFlashAlpha });
+	}
 }
 
 DirectX::XMFLOAT3 Player_GetPosition() {

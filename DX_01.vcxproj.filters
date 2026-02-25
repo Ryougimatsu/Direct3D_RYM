@@ -132,9 +132,6 @@
     <ClCompile Include="bullet_hit_effect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Trajectory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="sky.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -381,9 +378,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="bullet_hit_effect.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Trajectory3d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sky.h">

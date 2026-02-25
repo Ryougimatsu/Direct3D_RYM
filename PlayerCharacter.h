@@ -148,3 +148,4 @@ void Player_Heal(float amount);
 void Player_AddAmmo(int count);
 PlayerCharacter* Player_GetInstance();
 bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius);
+void Player_DrawDamageFlash();
