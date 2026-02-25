@@ -331,8 +331,6 @@ void PlayerCharacter::Update(double dt) {
 				flashPos.y += 0.2f;
 				// 发射枪口火焰粒子：使用实际计算的枪口位置
 				m_pMuzzleFireSystem->EmitMuzzleFire(flashPos, v, 15);
-				// 【关键修复结束】
-
 
 				Player_EmitSound(m_Position, 25.0f);
 				m_ShootTimer = m_FireRate;

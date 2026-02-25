@@ -127,6 +127,10 @@ void Bullet_CheckCollisionWithEnemies()
 				// 1. 敌人受伤/死亡逻辑
 				pEnemy->Damage(10.0f, false); // 假设每次命中造成 10 点伤害
 
+				XMFLOAT3 hitPos = g_Bullets[i]->GetPosition();
+				hitPos.y -= 1.5f;
+				Enemy_EmitBlood(hitPos, 5);
+
 				// 2. 销毁子弹
 				Bullet_Destroy(i);
 

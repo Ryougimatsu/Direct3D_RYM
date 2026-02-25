@@ -10,6 +10,7 @@
 #include "NavigationSystem.h"
 #include "Shader_Shadow.h"
 #include "direct3d.h"
+#include "texture.h"
 using namespace DirectX;
 
 
@@ -27,7 +28,11 @@ namespace {
 	// -- - 辅助函数：生成随机浮点数-- -
 		float RandomFloat(float min, float max) {
 		return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+
 	}
+
+		ParticleSystem* m_pBleedSystem = nullptr;
+		int m_BleedTexID = -1;
 }
 
 
@@ -117,6 +122,10 @@ void Enemy_ResolveCollisions() {
 
 void Enemy_Initialize()
 {
+
+	m_BleedTexID = Texture_LoadFromFile(L"resource/texture/kenney_particle-pack/PNG (Transparent)/smoke_04.png");
+	m_pBleedSystem = new ParticleSystem();
+	m_pBleedSystem->Initialize(500, m_BleedTexID);
 	for (auto* e : g_Enemies) delete e;
 	g_Enemies.clear();
 	srand(static_cast<unsigned int>(time(nullptr)));
@@ -155,6 +164,9 @@ void Enemy_Initialize()
 
 void Enemy_Update(double elapsed_time)
 {
+	if (m_pBleedSystem) {
+		m_pBleedSystem->Update(elapsed_time);
+	}
 	// 1. 更新现有敌人
 	for (auto it = g_Enemies.begin(); it != g_Enemies.end(); )
 	{
@@ -224,6 +236,11 @@ void Enemy_Finalize()
 	for (auto* e : g_Enemies) delete e;
 	g_Enemies.clear();
 	//EnemyTest::UnloadAssets();
+	if (m_pBleedSystem) {
+		m_pBleedSystem->Finalize(); // 清空内部粒子池
+		delete m_pBleedSystem;      // 释放指针内存
+		m_pBleedSystem = nullptr;
+	}
 }
 
 void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
@@ -231,6 +248,14 @@ void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
 	SkinningShader_3D_Begin();
 	for (auto* e : g_Enemies) {
 		e->Draw(view,proj);
+	}
+	if (m_pBleedSystem) {
+		Direct3D_SetBlendState(BLEND_MODE_ALPHA);
+
+		Direct3D_SetDepthStencilStateDepthWriteDisable(false);
+		m_pBleedSystem->Draw();
+		Direct3D_SetDepthStencilStateDepthWriteDisable(true);
+		Direct3D_SetBlendState(BLEND_MODE_NONE);
 	}
 }
 
@@ -340,7 +365,7 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 				if (isBackstab && !isAlerted) {
 					// --- 潜行击杀 ---
 					finalDamage = 100.0f; // 致命一击
-					// PlaySound("Stab.wav"); 
+					m_pBleedSystem->EmitBlood(enemy->GetPosition(), 20); // 产生血液粒子效果
 				}
 				else {
 					// --- 正面/警觉攻击 ---
@@ -348,6 +373,7 @@ void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, flo
 
 					// 施加击退
 					enemy->ApplyKnockback(dirToEnemy, 2.0f);
+					m_pBleedSystem->EmitBlood(enemy->GetPosition(), 10); // 产生较少的血液粒子效果
 				}
 
 				// 应用伤害
@@ -369,4 +395,9 @@ void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRI
 		// 鉴于虚函数接口已经定义为传 View/Proj，我们直接调用接口
 		e->DrawShadow(lightView, lightProj);
 	}
+}
+
+void Enemy_EmitBlood(const DirectX::XMFLOAT3& pos, int count)
+{
+	m_pBleedSystem->EmitBlood(pos, count);
 }

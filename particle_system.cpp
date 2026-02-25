@@ -26,25 +26,26 @@ void ParticleSystem::Update(double dt) {
 	for (auto& p : m_Particles) {
 		if (!p.Active) continue;
 
-		// 1. ������������
 		p.Age += (float)dt;
 		if (p.Age >= p.LifeTime) {
-			p.Active = false; // ����
+			p.Active = false;
 			continue;
 		}
 
-		// 2. ������� (λ�� += �ٶ� * ʱ��)
+		// 【新增】应用重力（每一帧让Y轴速度减小）
+		p.Velocity.y -= p.Gravity * (float)dt;
+
+		// 计算位置 (位置 += 速度 * 时间)
 		p.Position.x += p.Velocity.x * (float)dt;
 		p.Position.y += p.Velocity.y * (float)dt;
 		p.Position.z += p.Velocity.z * (float)dt;
 
-		// 3. �򵥵�����Ч�� (��ѡ)
-		//p.Velocity.y -= 9.8f * (float)dt * 0.5f; 
-		p.Size += 1.5f * (float)dt;
+		// 尺寸稍微变大一点点即可，不需要像烟雾扩散那么快
+		p.Size += 0.5f * (float)dt;
 
-		// 4. ��ɫ����Ч�� (Alpha ��ʱ��� 1 �䵽 0)
+		// 颜色渐变效果 (Alpha 随时间从 1 变到 0)
 		float lifeRatio = p.Age / p.LifeTime;
-		p.Color.w = 1.0f - lifeRatio; // Alpha
+		p.Color.w = 1.0f - lifeRatio;
 	}
 }
 
@@ -66,23 +67,26 @@ void ParticleSystem::Draw() {
 void ParticleSystem::Emit(DirectX::XMFLOAT3 pos, int count) {
 	int emittedCount = 0;
 
-	// Ѱ�ҿ��е����ӽ��з���
+	// 寻找空闲的粒子进行发射
 	for (auto& p : m_Particles) {
 		if (emittedCount >= count) break;
 		if (p.Active) continue;
 
-		// ��������
+		// 基础属性
 		p.Active = true;
 		p.Position = pos;
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(0.5f, 1.5f); // ������ 0.5~1.5��
-		p.Size = RandomFloat(0.5f, 1.0f);     // �����С
-		p.Color = { 1.0f, 0.5f, 0.2f, 1.0f }; // ��ɫ (��)
+		p.LifeTime = RandomFloat(0.5f, 1.5f);
+		p.Size = RandomFloat(0.5f, 1.0f);
+		p.Color = { 1.0f, 0.5f, 0.2f, 1.0f };
 
-		// ����ٶ� (������ը��)
+		// 【新增】重置重力，防止被血液粒子污染
+		p.Gravity = 0.0f;
+
+		// 初始速度 (向四周爆炸)
 		p.Velocity = {
 			RandomFloat(-5.0f, 5.0f),
-			RandomFloat(2.0f, 8.0f),  // ��΢����
+			RandomFloat(2.0f, 8.0f),
 			RandomFloat(-5.0f, 5.0f)
 		};
 
@@ -97,31 +101,29 @@ void ParticleSystem::EmitSmoke(DirectX::XMFLOAT3 pos, int count) {
 		if (emittedCount >= count) break;
 		if (p.Active) continue;
 
-		// 1. ����
+		// 1. 激活
 		p.Active = true;
 		p.Position = pos;
 
-		// 2. ��ʼ���λ��ƫ�� (�������Ҫ������һ������������������һ�㷶Χ)
+		// 2. 初始化位置偏移
 		float offset = 0.5f;
 		p.Position.x += RandomFloat(-offset, offset);
 		p.Position.z += RandomFloat(-offset, offset);
-		p.Position.y += RandomFloat(0.0f, 0.5f); // ��΢���һ��
+		p.Position.y += RandomFloat(0.0f, 0.5f);
 
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(3.0f, 5.0f); // ������ʱ��ϳ� (3-5��)
-
-		// 3. ��ʼ��С (�� 2.0 �� 3.0���Ƚϴ�)
+		p.LifeTime = RandomFloat(3.0f, 5.0f);
 		p.Size = RandomFloat(2.0f, 3.0f);
-
-		// 4. ��ɫ���һ�ɫ (0.5, 0.5, 0.5)����͸�� (Alpha 0.6)
-		// ս������ͨ���Ƚϰ������Ǵ��׵�
 		p.Color = { 0.5f, 0.5f, 0.5f, 0.6f };
 
-		// 5. �ٶȣ���Ҫ�ǻ������ϣ���΢�����������
+		// 【新增】重置重力，烟雾不受重力影响而是向上飘
+		p.Gravity = 0.0f;
+
+		// 5. 速度：主要是向上飘
 		p.Velocity = {
-			RandomFloat(-0.5f, 0.5f), // X��΢��
-			RandomFloat(1.0f, 2.5f),  // Y������Ư��
-			RandomFloat(-0.5f, 0.5f)  // Z��΢��
+			RandomFloat(-0.5f, 0.5f),
+			RandomFloat(1.0f, 2.5f),
+			RandomFloat(-0.5f, 0.5f)
 		};
 
 		emittedCount++;
@@ -136,7 +138,6 @@ void ParticleSystem::EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 di
 		if (p.Active) continue;
 
 		p.Active = true;
-		// 稍微将粒子沿着子弹方向往前推一点，避免特效嵌在枪管里
 		p.Position = {
 			pos.x + dir.x * 0.2f,
 			pos.y + dir.y * 0.2f,
@@ -144,16 +145,13 @@ void ParticleSystem::EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 di
 		};
 
 		p.Age = 0.0f;
-		// 寿命极短，通常 0.05 秒到 0.1 秒即可
 		p.LifeTime = RandomFloat(0.05f, 0.1f);
-
-		// 根据你的图片大小调整，可以随机大小增加爆发感
 		p.Size = RandomFloat(1.5f, 2.5f);
-
-		// 颜色保持原图颜色 (设为纯白，Alpha 1.0)
 		p.Color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-		// 枪口火焰不需要大幅度移动，给一个极小的初速度甚至 0 都可以
+		// 【新增】重置重力
+		p.Gravity = 0.0f;
+
 		p.Velocity = { 0.0f, 0.0f, 0.0f };
 
 		emittedCount++;
@@ -163,7 +161,6 @@ void ParticleSystem::EmitMuzzleFlash(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 di
 void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir, int count) {
 	int emittedCount = 0;
 
-	// 构造枪管方向的正交基 (用于侧向扩散)
 	XMVECTOR vDir = XMVector3Normalize(XMLoadFloat3(&dir));
 	XMVECTOR vUp = XMVectorSet(0, 1, 0, 0);
 	if (fabsf(XMVectorGetY(vDir)) > 0.99f) vUp = XMVectorSet(1, 0, 0, 0);
@@ -175,9 +172,6 @@ void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir
 		if (p.Active) continue;
 
 		p.Active = true;
-
-		// 【关键修复 1】：取消之前加的 0.5f 的巨大偏移，让粒子贴回枪口！
-		// 只留极小的 0.05f 偏移防止嵌入枪管模型内部
 		p.Position = {
 			pos.x + dir.x * 0.05f,
 			pos.y + dir.y * 0.05f,
@@ -185,16 +179,15 @@ void ParticleSystem::EmitMuzzleFire(DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 dir
 		};
 
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(0.1f, 0.2f); // 保持寿命短促，体现火花的爆发力
-		p.Size = RandomFloat(1.0f, 2.0f);     // 保持粒子大尺寸
-
-		// 亮黄色
+		p.LifeTime = RandomFloat(0.1f, 0.2f);
+		p.Size = RandomFloat(1.0f, 2.0f);
 		p.Color = { 1.0f, 0.85f, 0.2f, 1.0f };
 
-		// 【关键修复 2】：速度大幅度降低！
-		// 之前给的 8~15 太快了，现在改成 2~6，让火花在枪口附近形成一团高亮的视觉残留
+		// 【新增】重置重力，让火花保持直线喷射
+		p.Gravity = 0.0f;
+
 		float forwardSpeed = RandomFloat(2.0f, 6.0f);
-		float sideSpread = RandomFloat(-1.5f, 1.5f);  // 缩小扩散范围，让光芒更聚集
+		float sideSpread = RandomFloat(-1.5f, 1.5f);
 		float upSpread = RandomFloat(-1.5f, 1.5f);
 
 		XMVECTOR vel = vDir * forwardSpeed + vRight * sideSpread + vActualUp * upSpread;
@@ -211,17 +204,19 @@ void ParticleSystem::EmitBlood(DirectX::XMFLOAT3 pos, int count) {
 		if (p.Active) continue;
 
 		p.Active = true;
-		p.Position = pos;
+		p.Position = { pos.x, pos.y + 1.0f, pos.z }; // 在敌人身体高度生成
 		p.Age = 0.0f;
-		p.LifeTime = RandomFloat(0.4f, 0.8f);
-		p.Size = RandomFloat(0.2f, 0.5f);
-		p.Color = { 0.6f, 0.0f, 0.0f, 1.0f }; // 暗红色代表血液
+		p.LifeTime = RandomFloat(0.5f, 1.0f);
+		p.Size = RandomFloat(0.8f, 1.5f);
 
-		// 向上四周喷溅
+		p.Color = { 0.45f, 0.0f, 0.0f, 0.9f };
+
+		p.Gravity = 9.8f;
+
 		p.Velocity = {
-			RandomFloat(-3.0f, 3.0f),
-			RandomFloat(2.0f, 6.0f),
-			RandomFloat(-3.0f, 3.0f)
+				RandomFloat(-0.3f, 0.3f), // 几乎没有水平扩散
+				RandomFloat(1.5f, 3.5f),  // 往上喷涌的初速度
+				RandomFloat(-0.3f, 0.3f)
 		};
 		emittedCount++;
 	}

@@ -2,6 +2,7 @@
 #include <DirectXMath.h>
 #include "collision.h"
 #include <vector>
+#include "particle_system.h"
 class Enemy {
 
 protected:
@@ -22,6 +23,8 @@ protected:
 private:
 	State* m_pState = {};
 	State* m_pNextState = {};
+
+
 public:
 	void MoveToTarget(const DirectX::XMFLOAT3& targetPos, double dt);
 
@@ -55,3 +58,4 @@ int Enemy_GetEnemyCount();
 Enemy* Enemy_GetEnemy(int index);
 void Enemy_ApplyMeleeDamage(const DirectX::XMFLOAT3& position, const DirectX::XMVECTOR& forward, float radius, float angle);
 void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);
+void Enemy_EmitBlood(const DirectX::XMFLOAT3& pos, int count);

@@ -2,15 +2,17 @@
 #include <DirectXMath.h>
 #include <vector>
 
+
 // �������ӵ����ݽṹ
 struct Particle {
-	DirectX::XMFLOAT3 Position;  // λ��
-	DirectX::XMFLOAT3 Velocity;  // �ٶ� (���� * ����)
-	DirectX::XMFLOAT4 Color;     // ��ɫ (���� Alpha)
-	float Age;                   // ��ǰ���ʱ��
-	float LifeTime;              // ����������
-	float Size;                  // ��С
-	bool Active;                 // �Ƿ񼤻�
+	DirectX::XMFLOAT3 Position;  // 位置
+	DirectX::XMFLOAT3 Velocity;  // 速度 
+	DirectX::XMFLOAT4 Color;     // 颜色
+	float Age;                   // 当前存活时间
+	float LifeTime;              // 最大生存期
+	float Size;                  // 大小
+	bool Active;                 // 是否激活
+	float Gravity;               // 该粒子受到的重力加速度
 };
 
 class ParticleSystem {
