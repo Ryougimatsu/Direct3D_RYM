@@ -87,19 +87,19 @@ private:
 	SkinningModel* m_pModel = nullptr;
 	Animator       m_Animator;
 	MODEL* m_pGunModel = nullptr; // 建议初始化为 nullptr
-	int m_MuzzleTexID = -1;           // 枪口特效贴图
-	float m_MuzzleFlashTimer = 0.0f;  // 枪口特效显示计时器
-	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统
-	int m_MuzzleFireTexID = -1;                    // 火焰纹理 ID
+	int m_MuzzleTexID = -1;           // 枪口闪光贴图 ID（备用，当前未激活使用）
+	float m_MuzzleFlashTimer = 0.0f;  // 枪口闪光显示计时器（备用）
+	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统（每次开枪时发射）
+	int m_MuzzleFireTexID = -1;                    // 枪口火焰粒子所用纹理 ID
 
 	// ==========================================
 	// 配置参数 (Configuration / Settings)
 	// ==========================================
 	// 基础属性
-	float m_MaxHP = 100.0f;
-	float m_Scale = 0.01f;       // 修正未识别的关键：定义缩放系数
-	float m_MoveSpeed = 2.0f;
-	float m_GunScale = 1.0f;
+	float m_MaxHP = 100.0f;      // 最大生命值上限
+	float m_Scale = 0.01f;       // 角色模型缩放系数（FBX 导出单位换算至游戏单位）
+	float m_MoveSpeed = 2.0f;    // 角色移动速度（单位/秒）
+	float m_GunScale = 1.0f;     // 枪械模型的独立缩放系数
 
 	// 战斗参数
 	const float m_InvincibleDuration = 1.0f; // 受到伤害后的无敌时长（秒）
@@ -113,15 +113,15 @@ private:
 	// 运行时状态 (Runtime State)
 	// ==========================================
 	// 状态机
-	CharacterState m_CurrentState = CharacterState::Idle;
-	float          m_StateTimer = 0.0f;      // 用于控制测试流程的计时器
+	CharacterState m_CurrentState = CharacterState::Idle; // 当前角色状态（Idle/Running/Dead）
+	float          m_StateTimer = 0.0f;      // 通用状态计时器（用于状态驻留时长控制）
 
 	// 空间属性
-	DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f };
-	float             m_RotationY = 0.0f;
+	DirectX::XMFLOAT3 m_Position = { 0.0f, 0.0f, 0.0f }; // 世界空间中的位置
+	float             m_RotationY = 0.0f;                  // 绕 Y 轴的旋转角度（弧度）
 
 	// 生命值
-	float m_HP = 100.0f;
+	float m_HP = 100.0f; // 当前生命值（降至 0 时触发死亡状态）
 
 	// 计时器与标志位
 	float m_ShootTimer = 0.0f;      // 开火计时器
@@ -130,22 +130,22 @@ private:
 	float m_ReloadTimer = 0.0f;     // 换弹计时器
 	float m_DeathTimer = 0.0f;      // 死亡逻辑计时器
 
-	bool  m_IsDeadFinished = false; // 标记：2秒倒计时是否结束
-	bool  m_IsReloading = false;
+	bool  m_IsDeadFinished = false; // 标记：死亡动画+计时器是否已全部结束（供场景判断是否切 GameOver）
+	bool  m_IsReloading = false;   // 标记：当前是否正在换弹
 
 	// 弹药数据
-	int m_CurrentAmmo = 30;  // 当前弹匣内的子弹
-	int m_TotalAmmo = 120;   // 备弹 (身上携带的总数，不含弹匣)
+	int m_CurrentAmmo = 30;  // 当前弹匣内的子弹数
+	int m_TotalAmmo = 120;   // 身上携带的备弹总数（不含弹匣内）
 };
 
 // ----------------------------------------------------------------
-// Global Helper Functions
+// 全局 C 风格接口函数（供其他模块访问玩家状态）
 // ----------------------------------------------------------------
-DirectX::XMFLOAT3 Player_GetPosition();
-void Player_SetPosition(const DirectX::XMFLOAT3& pos);
-void Player_Damage(float damage);
-void Player_Heal(float amount);
-void Player_AddAmmo(int count);
-PlayerCharacter* Player_GetInstance();
-bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius);
-void Player_DrawDamageFlash();
+DirectX::XMFLOAT3 Player_GetPosition();                          // 获取玩家世界坐标
+void Player_SetPosition(const DirectX::XMFLOAT3& pos);           // 强制设置玩家位置（传送等）
+void Player_Damage(float damage);                                 // 对玩家造成伤害
+void Player_Heal(float amount);                                   // 为玩家回血
+void Player_AddAmmo(int count);                                   // 拾取弹药
+PlayerCharacter* Player_GetInstance();                            // 获取单例指针（可为 nullptr）
+bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius); // 查询最新声音事件（供敌人 AI 侦听）
+void Player_DrawDamageFlash();                                    // 在屏幕上绘制受伤红色闪光（由 HUD 调用）

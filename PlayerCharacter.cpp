@@ -23,29 +23,30 @@ PlayerCharacter* g_pPlayerInstance = nullptr;
 // 匿名命名空间：内部使用的常量、静态变量与辅助函数
 // ======================================================================================
 namespace {
-	// --- 枪械与瞄准配置 ---
-	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);   // 绕 X
-	float m_GunYaw = DirectX::XMConvertToRadians(-90.0f); // 绕 Y
-	float m_GunRoll = DirectX::XMConvertToRadians(90.0f);  // 绕 Z
+	// --- 枪械姿态配置（枪附着在手骨时的初始角度修正）---
+	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);   // 绕 X 轴旋转（上下抬头）
+	float m_GunYaw   = DirectX::XMConvertToRadians(-90.0f); // 绕 Y 轴旋转（左右偏航）
+	float m_GunRoll  = DirectX::XMConvertToRadians(90.0f);  // 绕 Z 轴旋转（枪身横滚）
 
-	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f }; // 手心里的偏移
-	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.8f, 0.05f, 0.0f };
+	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };       // 枪相对于手骨的本地位移偏移（手心微调）
+	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.8f, 0.05f, 0.0f }; // 枪口相对于枪根的本地坐标偏移
 
-	float g_DamageFlashAlpha = 0.0f;
-	int   g_DamageTexID = -1;
+	// --- 受伤闪红效果 ---
+	float g_DamageFlashAlpha = 0.0f; // 受伤红屏的当前透明度（每帧自动衰减）
+	int   g_DamageTexID = -1;        // 红屏全屏 Sprite 所用纹理 ID
 
+	// --- 激光瞄准线配置 ---
+	float m_LaserLength = 20.0f; // 激光最大射程（单位：游戏米），超出此距离截断
+	int   m_LaserTexID = -1;     // 激光线条所用纹理 ID
 
-	float m_LaserLength = 20.0f;
-	int   m_LaserTexID = -1;
+	// --- 共享资源（同一场景内所有 PlayerCharacter 实例共享）---
+	SkinningModel* g_pSharedPlayerModel = nullptr; // 角色骨骼蒙皮模型（含所有动作剪辑）
+	MODEL*         g_pSharedGunModel    = nullptr; // 枪械静态模型
 
-	// --- 资源共享 ---
-	SkinningModel* g_pSharedPlayerModel = nullptr;
-	MODEL* g_pSharedGunModel = nullptr;
-
-	// --- 声音系统变量 ---
-	DirectX::XMFLOAT3 g_LastSoundPos = { 0, 0, 0 }; // 声音位置
-	float g_SoundIntensity = 0.0f;                  // 声音强度（半径）
-	float g_SoundTimer = 0.0f;                      // 声音持续时间（秒）
+	// --- 声音事件系统（供敌人 AI 侦听枪声）---
+	DirectX::XMFLOAT3 g_LastSoundPos = { 0, 0, 0 }; // 最近一次声音事件的世界坐标
+	float g_SoundIntensity = 0.0f;                   // 声音强度（等效侦测半径，越大越容易被发现）
+	float g_SoundTimer     = 0.0f;                   // 声音事件剩余有效时间（倒计时至 0 后失效）
 
 	// --- 输入辅助函数 ---
 	DirectX::XMVECTOR GetInputVector() {
@@ -67,28 +68,33 @@ namespace {
 	}
 
 	// --- 动画选择辅助函数 ---
+	// 根据移动向量与角色朝向之间的夹角，选择对应的 8 向战术移动动画。
+	// angle 为移动方向相对于角色正前方的偏角（弧度），范围 [-π, π]。
+	// 将圆周均分为 8 个 45° 扇区，每个扇区对应一个方向性移动动画。
 	std::string SelectTacticalAnim(float angle) {
 		using namespace DirectX;
-		float degrees = XMConvertToDegrees(angle); // 范围: -180 到 180
+		float degrees = XMConvertToDegrees(angle); // 转换为角度，范围: -180 到 180
 
-		if (degrees >= -22.5f && degrees < 22.5f)   return "Walk Forward";
-		if (degrees >= 22.5f && degrees < 67.5f)    return "Walk Forward Right";
-		if (degrees >= 67.5f && degrees < 112.5f)   return "Walk Right";
-		if (degrees >= 112.5f && degrees < 157.5f)  return "Walk Backward Right";
-		if (degrees >= 157.5f || degrees < -157.5f) return "Walk Backward";
-		if (degrees >= -157.5f && degrees < -112.5f) return "Walk Backward Left";
-		if (degrees >= -112.5f && degrees < -67.5f)  return "Walk Left";
-		if (degrees >= -67.5f && degrees < -22.5f)   return "Walk Forward Left";
+		if (degrees >= -22.5f && degrees < 22.5f)    return "Walk Forward";        // 正前方 ±22.5°
+		if (degrees >= 22.5f && degrees < 67.5f)     return "Walk Forward Right";  // 右前方
+		if (degrees >= 67.5f && degrees < 112.5f)    return "Walk Right";           // 正右方
+		if (degrees >= 112.5f && degrees < 157.5f)   return "Walk Backward Right"; // 右后方
+		if (degrees >= 157.5f || degrees < -157.5f)  return "Walk Backward";       // 正后方 ±22.5°
+		if (degrees >= -157.5f && degrees < -112.5f) return "Walk Backward Left";  // 左后方
+		if (degrees >= -112.5f && degrees < -67.5f)  return "Walk Left";            // 正左方
+		if (degrees >= -67.5f && degrees < -22.5f)   return "Walk Forward Left";   // 左前方
 
-		return "Rifle Aiming Idle";
+		return "Rifle Aiming Idle"; // 兜底：保持持枪待机
 	}
 
+	// 从枪口出发，沿枪管方向发射射线，检测最近的碰撞点。
+	// 依次测试地图墙壁和敌人 AABB，返回实际截断距离（≤ maxDistance）。
 	float CalculateLaserDistance(const DirectX::XMFLOAT3& startPos, const DirectX::XMFLOAT3& direction, float maxDistance) {
 		Ray laserRay;
-		laserRay.origin = startPos;
+		laserRay.origin    = startPos;
 		laserRay.direction = direction;
 
-		float closestDist = maxDistance;
+		float closestDist = maxDistance; // 默认射到最大射程
 
 		// 1. 检测地图障碍物 (墙壁等)
 		const auto& mapObjects = Map_GetObjects();
@@ -176,10 +182,16 @@ void Player_EmitSound(const DirectX::XMFLOAT3& pos, float radius) {
 // 1. 生命周期 (Lifecycle)
 // ----------------------------------------------------------------
 PlayerCharacter::~PlayerCharacter() {
+	// 释放枪口粒子系统
 	if (m_pMuzzleFireSystem) {
 		m_pMuzzleFireSystem->Finalize();
 		delete m_pMuzzleFireSystem;
 		m_pMuzzleFireSystem = nullptr;
+	}
+
+	// 清除全局单例指针，防止其他模块访问已销毁的实例（悬空指针）
+	if (g_pPlayerInstance == this) {
+		g_pPlayerInstance = nullptr;
 	}
 }
 
@@ -189,9 +201,9 @@ void PlayerCharacter::LoadAssets()
 	if (g_pSharedPlayerModel) return;
 
 	g_pSharedPlayerModel = new SkinningModel();
-	g_pSharedPlayerModel->Load("resource/model/Idle.fbx", 1.0f);
+	g_pSharedPlayerModel->Load("resource/model/Idle.fbx", 1.0f); // 基础模型（T-Pose，含骨骼信息）
 
-	// 加载所有动作
+	// 加载所有战术移动与战斗动作剪辑
 	g_pSharedPlayerModel->LoadAnimation("Walk Forward", "resource/model/Character_Model/Walk Forward.fbx", 1.0f);
 	g_pSharedPlayerModel->LoadAnimation("Walk Backward", "resource/model/Character_Model/Walk Backward.fbx", 1.0f);
 	g_pSharedPlayerModel->LoadAnimation("Walk Left", "resource/model/Character_Model/Walk Left.fbx", 1.0f);
@@ -387,42 +399,45 @@ void PlayerCharacter::Update(double dt) {
 		m_Position.z += moveDelta.z;
 		if (Game_CheckCollisionWithWalls(this->GetAABB())) m_Position.z = oldZ;
 
-		// C. 开火逻辑
+		// C. 开火逻辑（条件：鼠标左键按住 + 射速冷却结束 + 未换弹 + 有子弹）
 		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && m_CurrentAmmo > 0) {
 			const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
 			if (nameMap.count("mixamorig:RightHand")) {
 				int handIdx = nameMap.at("mixamorig:RightHand");
-				XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
-				XMMATRIX world = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+				XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx); // 从 Animator 取当前帧的右手骨世界矩阵
+
+				// 重新构造与 Draw 完全一致的枪世界矩阵（gunLocal × handMat × worldMatrix）
+				XMMATRIX world    = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
 				XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) * XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) * XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 				XMMATRIX gunWorld = gunLocal * handMat * world;
-				gunWorld = FixGunMatrix(gunWorld);
-				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-				XMVECTOR basePos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+				gunWorld = FixGunMatrix(gunWorld); // 修正枪管俯仰，保持水平
 
-				// 1. 必须 Normalize，剔除 m_Scale 带来的 0.01 倍缩放影响
+				// 将枪口本地偏移变换到世界空间，得到枪口基础位置
+				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
+				XMVECTOR basePos      = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+
+				// 必须 Normalize：gunWorld.r[0] 因 m_Scale(0.01) 而长度约 0.01，不归一化偏移量极小
 				XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
 
-				// 2. 使用与 Draw 函数中画激光完全一致的 1.0f 偏移量
+				// 再向枪管方向前进 1.0f，使子弹/粒子从真正的枪口发出（与 Draw 中激光起点保持一致）
 				XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.0f);
 
 				XMFLOAT3 p, v;
 				XMStoreFloat3(&p, actualMuzzlePos);
 				XMStoreFloat3(&v, gunForwardDir);
 
-				// 生成子弹：子弹也从真正的枪口射出
+				// 生成子弹：从枪口位置沿枪管方向飞出
 				Bullet_Create(p, v);
 				m_CurrentAmmo--;
 
+				// 粒子发射位置在枪口上方微调（视觉修正）
 				XMFLOAT3 flashPos = p;
 				flashPos.y += 0.2f;
-				// 发射枪口火焰粒子：使用实际计算的枪口位置
-				m_pMuzzleFireSystem->EmitMuzzleFire(flashPos, v, 15);
+				m_pMuzzleFireSystem->EmitMuzzleFire(flashPos, v, 15); // 发射 15 个枪口火焰粒子
 
-				Player_Camera_AddShake(0.1f);
-
-				Player_EmitSound(m_Position, 25.0f);
-				m_ShootTimer = m_FireRate;
+				Player_Camera_AddShake(0.1f);       // 开枪轻微震屏
+				Player_EmitSound(m_Position, 25.0f); // 广播声音事件（半径 25 米，供敌人 AI 侦听）
+				m_ShootTimer = m_FireRate;           // 重置射速冷却
 			}
 		}
 	}
@@ -456,59 +471,54 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	SkinningShader_3D_Begin();
 	m_pModel->Draw();
 
-	// 5. 绘制武器与激光 (如果非近战状态)
+	// 5. 绘制武器与激光（近战动画期间隐藏武器，死亡后也隐藏）
 	if (m_MeleeTimer <= 0.2f && m_CurrentState != CharacterState::Dead)
 	{
 		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
 		if (nameMap.count("mixamorig:RightHand")) {
 			int handIdx = nameMap.at("mixamorig:RightHand");
-			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
+			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx); // 取当前帧右手骨世界矩阵
 
+			// 构造枪的世界矩阵：gunLocal（姿态修正）× handMat（骨骼动画）× world（角色变换）
 			XMMATRIX gunLocal =
 				XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
 				XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
 				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
 
 			XMMATRIX gunWorld = gunLocal * handMat * world;
-			gunWorld = FixGunMatrix(gunWorld);
-			// 画枪
+			gunWorld = FixGunMatrix(gunWorld); // 修正枪管俯仰角，始终保持枪管水平
+
+			// 绘制枪械静态模型
 			ModelDraw(m_pGunModel, gunWorld);
 
-			XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-			XMVECTOR basePos = XMVector3TransformCoord(muzzleLocalV, gunWorld);
-			XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
+			// 计算枪口世界坐标（枪口本地偏移 → 世界空间）
+			XMVECTOR muzzleLocalV  = XMLoadFloat3(&m_MuzzleLocalOffset);
+			XMVECTOR basePos       = XMVector3TransformCoord(muzzleLocalV, gunWorld);
+			XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]); // 归一化枪管方向
 
-			// 【修改 1】：直接用 basePos 作为枪口起点，不要再额外 + 1.0f 了
+			// 激光起点直接从枪口出发（basePos），不额外前移
 			XMVECTOR actualMuzzlePos = basePos;
-			//XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * m_LaserLength);
 			DirectX::XMFLOAT3 startF3, dirF3;
 			DirectX::XMStoreFloat3(&startF3, actualMuzzlePos);
 			DirectX::XMStoreFloat3(&dirF3, gunForwardDir);
 
-			// 计算截断后的真实长度
-			float actualLength = CalculateLaserDistance(startF3, dirF3, m_LaserLength);
-
-			// 算出真实的终点位置
+			// 射线检测截断：遇到墙壁或敌人时缩短激光
+			float actualLength   = CalculateLaserDistance(startF3, dirF3, m_LaserLength);
 			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * actualLength);
 
+			// 切换到加法混合（ADD）：让激光/粒子叠加发光而非遮挡背景
 			Direct3D_SetBlendState(BLEND_MODE_ADD);
-
-			// 必须开启深度测试！否则激光会透视画在人物后背上
+			// 保持深度测试（防止激光透视穿模），但关闭深度写入（透明物体不写深度）
 			Direct3D_SetDepthEnable(true);
-
-			// 关闭深度写入
 			Direct3D_SetDepthStencilStateDepthWriteDisable(false);
 
-
-
-
-			// 画激光 
+			// 绘制激光线（Billboard 渲染，宽度 1.5f，白色）
 			Laser_Billboard_Draw(m_LaserTexID, actualMuzzlePos, laserEndPos, 1.5f, view, { 1.0f, 1.0f, 1.0f, 1.0f });
 
-			// 绘制枪口火焰粒子
+			// 绘制枪口火焰粒子（与激光同一混合状态下绘制）
 			m_pMuzzleFireSystem->Draw();
 
-			// 恢复默认状态
+			// 恢复默认渲染状态
 			Direct3D_SetDepthStencilStateDepthWriteDisable(true); // 恢复深度写入
 			Direct3D_SetDepthEnable(true);
 			Direct3D_SetBlendState(BLEND_MODE_NONE);
@@ -608,32 +618,34 @@ AABB PlayerCharacter::GetAABB() const {
 
 
 // ======================================================================================
-// 全局 API 包装函数 (C-Style Wrappers)
+// 全局 C 风格接口（供其他模块通过单例访问玩家功能，内部均做空指针检查）
 // ======================================================================================
 
+// 返回当前存活的 PlayerCharacter 单例（场景切换或玩家死亡析构后返回 nullptr）
 PlayerCharacter* Player_GetInstance() {
 	return g_pPlayerInstance;
 }
 
+// 查询最近一次枪声事件：返回 true 时写入位置和范围，供敌人 AI 侦听
 bool Sound_GetLatest(DirectX::XMFLOAT3& outPos, float& outRadius) {
 	if (g_SoundTimer > 0.0f) {
-		outPos = g_LastSoundPos;
+		outPos    = g_LastSoundPos;
 		outRadius = g_SoundIntensity;
 		return true;
 	}
 	return false;
 }
 
+// 在屏幕上绘制受伤红色半透明全屏覆盖（每帧由 HUD 调用，Alpha 由 Update 自动衰减）
 void Player_DrawDamageFlash() {
 	if (g_DamageFlashAlpha > 0.0f && g_DamageTexID != -1) {
 		float sw = (float)Direct3D_GetBackBufferWidth();
 		float sh = (float)Direct3D_GetBackBufferHeight();
-
-
 		Sprite_Draw(g_DamageTexID, 0.0f, 0.0f, sw, sh, { 1.0f, 0.0f, 0.0f, g_DamageFlashAlpha });
 	}
 }
 
+// 获取玩家世界坐标（单例不存在时返回原点）
 DirectX::XMFLOAT3 Player_GetPosition() {
 	if (g_pPlayerInstance) {
 		return g_pPlayerInstance->GetPosition();
@@ -641,24 +653,28 @@ DirectX::XMFLOAT3 Player_GetPosition() {
 	return { 0.0f, 0.0f, 0.0f };
 }
 
+// 强制设置玩家位置（用于传送、出生点重置等）
 void Player_SetPosition(const DirectX::XMFLOAT3& pos) {
 	if (g_pPlayerInstance) {
 		g_pPlayerInstance->SetPosition(pos);
 	}
 }
 
+// 对玩家造成指定伤害（内部有无敌帧判断）
 void Player_Damage(float damage) {
 	if (g_pPlayerInstance) {
 		g_pPlayerInstance->ApplyDamage(damage);
 	}
 }
 
+// 为玩家增加备弹（超过上限 300 时截断）
 void Player_AddAmmo(int count) {
 	if (g_pPlayerInstance) {
 		g_pPlayerInstance->AddAmmo(count);
 	}
 }
 
+// 为玩家回血（死亡状态下无效，不超过最大血量）
 void Player_Heal(float amount) {
 	if (g_pPlayerInstance) {
 		g_pPlayerInstance->Heal(amount);
