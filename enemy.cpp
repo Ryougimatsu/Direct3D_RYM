@@ -198,8 +198,8 @@ void Enemy_Update(double elapsed_time)
 
 	if (g_TotalEnemyTime < 45.0f) {
 		// 45秒内：保持初始设定
-		g_MaxEnemiesOnScreen = 10;
-		g_CurrentSpawnInterval = 3.0f;
+		g_MaxEnemiesOnScreen = 15;
+		g_CurrentSpawnInterval = 2.0f;
 	}
 	else if (g_TotalEnemyTime <= 180.0f) {
 		// 45秒 到 180秒(3分钟)：线性增加难度
@@ -207,14 +207,14 @@ void Enemy_Update(double elapsed_time)
 		float t = (g_TotalEnemyTime - 45.0f) / (180.0f - 45.0f);
 
 		// 数量从 10 增加到 40 (原先的4倍)
-		g_MaxEnemiesOnScreen = 10 + (int)(t * 30.0f);
+		g_MaxEnemiesOnScreen = 15 + (int)(t * 30.0f);
 
 		// 刷新间隔从 3.0秒 缩短到 0.5秒 (刷新越来越快)
 		g_CurrentSpawnInterval = 3.0f - (t * 2.5f);
 	}
 	else {
 		// 3分钟以后：维持最高难度
-		g_MaxEnemiesOnScreen = 40;
+		g_MaxEnemiesOnScreen = 50;
 		g_CurrentSpawnInterval = 0.5f;
 	}
 

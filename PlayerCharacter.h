@@ -98,7 +98,7 @@ private:
 	// 基础属性
 	float m_MaxHP = 100.0f;      // 最大生命值上限
 	float m_Scale = 0.01f;       // 角色模型缩放系数（FBX 导出单位换算至游戏单位）
-	float m_MoveSpeed = 2.0f;    // 角色移动速度（单位/秒）
+	float m_MoveSpeed = 1.15f;    // 角色移动速度（单位/秒）
 	float m_GunScale = 1.0f;     // 枪械模型的独立缩放系数
 
 	// 战斗参数
@@ -135,7 +135,7 @@ private:
 
 	// 弹药数据
 	int m_CurrentAmmo = 30;  // 当前弹匣内的子弹数
-	int m_TotalAmmo = 120;   // 身上携带的备弹总数（不含弹匣内）
+	int m_TotalAmmo = 160;   // 身上携带的备弹总数（不含弹匣内）
 };
 
 // ----------------------------------------------------------------

@@ -2,7 +2,7 @@
 // Constant Buffers
 //-----------------------------------------------------------------------------
 
-// Slot: b0 - ²ÄÖÊÑÕÉ«
+// Slot: b0 - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
 cbuffer CB_MATERIAL : register(b0)
 {
     float4 g_MaterialColor;
@@ -12,12 +12,12 @@ cbuffer CB_MATERIAL : register(b0)
 // Resources
 //-----------------------------------------------------------------------------
 
-Texture2D g_Texture : register(t0); // Âþ·´ÉäÌùÍ¼
-SamplerState g_Sampler : register(s0); // ÎÆÀí²ÉÑùÆ÷
+Texture2D g_Texture : register(t0); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼
+SamplerState g_Sampler : register(s0); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-// [ÐÂÔö] ÒõÓ°×ÊÔ´
-Texture2D g_ShadowMap : register(t1); // ÒõÓ°Éî¶ÈÍ¼ (¶ÔÓ¦ C++ SetShaderResources(1, ...))
-SamplerComparisonState g_ShadowSampler : register(s1); // [ÖØÒª] ÒõÓ°±È½Ï²ÉÑùÆ÷ (ÐèÒª C++ ´´½¨²¢°ó¶¨µ½ slot 1)
+// [ï¿½ï¿½ï¿½ï¿½] ï¿½ï¿½Ó°ï¿½ï¿½Ô´
+Texture2D g_ShadowMap : register(t1); // ï¿½ï¿½Ó°ï¿½ï¿½ï¿½Í¼ (ï¿½ï¿½Ó¦ C++ SetShaderResources(1, ...))
+SamplerComparisonState g_ShadowSampler : register(s1); // [ï¿½ï¿½Òª] ï¿½ï¿½Ó°ï¿½È½Ï²ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½Òª C++ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ó¶¨µï¿½ slot 1)
 
 //-----------------------------------------------------------------------------
 // Input Structure
@@ -29,23 +29,23 @@ struct PS_IN
     float4 normalW : NORMAL0;
     float4 color : COLOR0;
     float2 uv : TEXCOORD0;
-    float4 ShadowPos : TEXCOORD1; // [ÐÂÔö] ±ØÐëÓë VS Êä³öÒ»ÖÂ
+    float4 ShadowPos : TEXCOORD1; // [ï¿½ï¿½ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ VS ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 };
 
 //-----------------------------------------------------------------------------
-// Helper Function: ¼ÆËãÒõÓ°Òò×Ó
-// ·µ»Ø 1.0 (ÎÞÒõÓ°) ~ 0.0 (È«ÒõÓ°)
+// Helper Function: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½
+// ï¿½ï¿½ï¿½ï¿½ 1.0 (ï¿½ï¿½ï¿½ï¿½Ó°) ~ 0.0 (È«ï¿½ï¿½Ó°)
 //-----------------------------------------------------------------------------
 float CalcShadowFactor(float4 shadowPos)
 {
-    // 1. Í¸ÊÓ³ý·¨ (½«×ø±ê¹éÒ»»¯µ½ [-1, 1])
+    // 1. Í¸ï¿½Ó³ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ [-1, 1])
     float3 projCoords = shadowPos.xyz / shadowPos.w;
 
-    // 2. ½« [-1, 1] Ó³Éäµ½ UV ¿Õ¼ä [0, 1]
+    // 2. ï¿½ï¿½ [-1, 1] Ó³ï¿½äµ½ UV ï¿½Õ¼ï¿½ [0, 1]
     projCoords.x = projCoords.x * 0.5f + 0.5f;
-    projCoords.y = -projCoords.y * 0.5f + 0.5f; // DX11 YÖáÏòÏÂ£¬ÐèÒª·­×ª
+    projCoords.y = -projCoords.y * 0.5f + 0.5f; // DX11 Yï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½ï¿½ï¿½Òªï¿½ï¿½×ª
 
-    // 3. ±ß½ç¼ì²é£ºÈç¹û³¬³öÒõÓ°Í¼·¶Î§£¬ÊÓÎªÎ´±»ÕÚµ²
+    // 3. ï¿½ß½ï¿½ï¿½é£ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°Í¼ï¿½ï¿½Î§ï¿½ï¿½ï¿½ï¿½ÎªÎ´ï¿½ï¿½ï¿½Úµï¿½
     if (projCoords.x < 0.0f || projCoords.x > 1.0f ||
         projCoords.y < 0.0f || projCoords.y > 1.0f ||
         projCoords.z > 1.0f)
@@ -53,13 +53,13 @@ float CalcShadowFactor(float4 shadowPos)
         return 1.0f;
     }
 
-    // 4. Éî¶ÈÆ«ÒÆ (Bias) ·ÀÖ¹ÒõÓ°²¨ÎÆ (Shadow Acne)
+    // 4. ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ (Bias) ï¿½ï¿½Ö¹ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½ (Shadow Acne)
     float bias = 0.0f;
     float currentDepth = projCoords.z - bias;
 
-    // 5. PCF ²ÉÑù (Ê¹ÓÃ SampleCmpLevelZero ½øÐÐÓ²¼þ±È½Ï¹ýÂË)
-    // ±È½ÏÂß¼­£ºÈç¹û ShadowMap.depth >= currentDepth£¬Ôò·µ»Ø 1£¬·ñÔò·µ»Ø 0
-    // ½á¹û»á±»ÏßÐÔ²åÖµ£¬²úÉúÈáºÍ±ßÔµ
+    // 5. PCF ï¿½ï¿½ï¿½ï¿½ (Ê¹ï¿½ï¿½ SampleCmpLevelZero ï¿½ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½È½Ï¹ï¿½ï¿½ï¿½)
+    // ï¿½È½ï¿½ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ShadowMap.depth >= currentDepthï¿½ï¿½ï¿½ò·µ»ï¿½ 1ï¿½ï¿½ï¿½ï¿½ï¿½ò·µ»ï¿½ 0
+    // ï¿½ï¿½ï¿½ï¿½á±»ï¿½ï¿½ï¿½Ô²ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í±ï¿½Ôµ
     return g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, projCoords.xy, currentDepth);
 }
 
@@ -68,10 +68,10 @@ float CalcShadowFactor(float4 shadowPos)
 //-----------------------------------------------------------------------------
 float4 main(PS_IN pin) : SV_TARGET
 {
-    // 1. ²ÉÑù»ù´¡ÎÆÀí
+    // 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     float4 texColor = g_Texture.Sample(g_Sampler, pin.uv);
     
-    // Ô­Ê¼Âß¼­±£Áô£º´¦ÀíÍ¸Ã÷/¶ªÊ§²ÄÖÊ
+    // Ô­Ê¼ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½/ï¿½ï¿½Ê§ï¿½ï¿½ï¿½ï¿½
     if (texColor.a < 0.01f)
     {
         texColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -81,22 +81,22 @@ float4 main(PS_IN pin) : SV_TARGET
         clip(texColor.a - 0.1f);
     }
 
-    // 2. ×¼±¸¹âÕÕÏòÁ¿
+    // 2. ×¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     float3 normal = normalize(pin.normalW.xyz);
-    // [×¢Òâ] ÕâÀïµÄÓ²±àÂë¹âÕÕ·½ÏòÓ¦¸ÃÓëÉú³ÉÒõÓ°µÄ¹âÔ´·½ÏòÒ»ÖÂ£¬·ñÔòÒõÓ°»á¡°´íÎ»¡±
+    // [×¢ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ·ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½Ä¹ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Â£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½á¡°ï¿½ï¿½Î»ï¿½ï¿½
     float3 lightDir = normalize(float3(-10.0f, -25.0f, 5.0f));
 
-    // 3. ¼ÆËã»ù´¡Âþ·´Éä (Half Lambert)
+    // 3. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (Half Lambert)
     float NdotL = saturate(dot(normal, -lightDir));
     float halfLambert = NdotL * 0.5f + 0.5f;
 
-    // 4. [ÐÂÔö] ¼ÆËãÒõÓ°ÕÚµ²
+    // 4. [ï¿½ï¿½ï¿½ï¿½] ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½Úµï¿½
     float shadowFactor = CalcShadowFactor(pin.ShadowPos);
 
-    // 5. ºÏ³É×îÖÕÑÕÉ«
-    // ¹«Ê½²ßÂÔ£ºAmbient + (Diffuse * Shadow)
-    // ÄãµÄ´úÂëÊ¹ÓÃÁË 0.2f ×÷Îª»·¾³¹âµ×É«£¬halfLambert ×÷ÎªÂþ·´Éä
-    // ÎÒÃÇÖ»ÈÃÒõÓ°Ó°Ïì halfLambert ²¿·Ö£¬±£Áô 0.2f µÄ»·¾³ÁÁ¶È£¬±ÜÃâÒõÓ°´¦ËÀºÚ
+    // 5. ï¿½Ï³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
+    // ï¿½ï¿½Ê½ï¿½ï¿½ï¿½Ô£ï¿½Ambient + (Diffuse * Shadow)
+    // ï¿½ï¿½Ä´ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½ 0.2f ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½halfLambert ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    // ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½Ó°Ó°ï¿½ï¿½ halfLambert ï¿½ï¿½ï¿½Ö£ï¿½ï¿½ï¿½ï¿½ï¿½ 0.2f ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     float3 lighting = (0.2f + halfLambert * shadowFactor);
 
     float4 finalColor;

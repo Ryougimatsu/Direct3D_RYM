@@ -14,7 +14,7 @@ namespace {
 
 void GameOver_Initialize()
 {
-	// ¡¾ÇëÈ·ÈÏÍ¼Æ¬Â·¾¶¡¿
+	// ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½Í¼Æ¬Â·ï¿½ï¿½ï¿½ï¿½
 	g_TexGameOver = Texture_LoadFromFile(L"resource/texture/GAMEOVER.png");
 	Fade_Start(0.5, false, { 0.0f, 0.0f, 0.0f });
 }
@@ -26,10 +26,10 @@ void GameOver_Finalize()
 
 void GameOver_Update(double elapsed_time)
 {
-	// °´ÏÂ»Ø³µ¼ü£¬·µ»Ø±êÌâ»­Ãæ
+	// ï¿½ï¿½ï¿½Â»Ø³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½ï¿½â»­ï¿½ï¿½
 	if (KeyLogger_IsTrigger(KK_ENTER))
 	{
-		// Ò²¿ÉÒÔÖ±½ÓÈ¥ SCENE_GAME (ÖØÍæ)£¬¿´ÄãÏ²ºÃ
+		// Ò²ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½È¥ SCENE_GAME (ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï²ï¿½ï¿½
 		Scene_Change(SCENE_TITLE);
 	}
 }
@@ -39,12 +39,12 @@ void GameOver_Draw()
 	float w = (float)Direct3D_GetBackBufferWidth();
 	float h = (float)Direct3D_GetBackBufferHeight();
 
-	// »æÖÆÈ«ÆÁ±³¾°
+	// ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	Sprite_Draw(g_TexGameOver, 0.0f, 0.0f, w, h, { 1.0f, 1.0f, 1.0f, 1.0f });
 	Direct3D_SetDepthEnable(false);
 	static float timer = 0.0f;
 	timer += 0.05f;
-	float alpha = fabsf(sinf(timer)); // ÈÃÍ¸Ã÷¶ÈÔÚ 0~1 Ö®¼ä°Ú¶¯
+	float alpha = fabsf(sinf(timer)); // ï¿½ï¿½Í¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0~1 Ö®ï¿½ï¿½Ú¶ï¿½
 
 	float centerX = w / 2.0f;
 	Font_Draw(L"PRESS [ENTER] TO TITLE", centerX - 220.0f, h - 150.0f, { 1.0f, 0.0f, 0.0f, alpha });

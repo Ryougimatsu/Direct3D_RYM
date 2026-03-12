@@ -7,7 +7,7 @@
 #include "mouse.h"
 #include "score.h"
 #include "fade.h"
-#include "scene.h"=
+#include "scene.h"
 #include <DirectXMath.h>
 #include <memory>
 #include <string>
@@ -272,8 +272,8 @@ void Game_Update(double elapsed_time)
 		// 死亡检测：死亡动画 + 倒计时结束后切换到 GameOver 场景
 		if (g_Player->IsDeathAnimationFinished())
 		{
-			delete g_Player;
-			g_Player = nullptr;
+			//delete g_Player;
+			//g_Player = nullptr;
 			Scene_Change(SCENE_GAMEOVER);
 			return;
 		}

@@ -3,7 +3,7 @@ cbuffer ConstantBuffer : register(b0)
     matrix WorldLightViewProj;
 }
 
-// ±ØÐë°üº¬ÆÕÍ¨ÃÉÆ¤×ÅÉ«Æ÷ÖÐµÄ¹Ç÷À¾ØÕó
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½Æ¤ï¿½ï¿½É«ï¿½ï¿½ï¿½ÐµÄ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 cbuffer BoneBuffer : register(b1)
 {
     matrix BoneTransforms[256];
@@ -13,23 +13,23 @@ struct VS_INPUT
 {
     float4 Pos : POSITION;
     float3 Normal : NORMAL;
-    float4 Color : COLOR; // ¼ÓÉÏ Color
+    float4 Color : COLOR; // ï¿½ï¿½ï¿½ï¿½ Color
     float2 TexCoord : TEXCOORD;
-    uint4 BoneIndices : BLENDINDICES; // ×¢ÒâÕâÀï×îºÃÓÃ uint4 »ò int4
+    uint4 BoneIndices : BLENDINDICES; // ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ uint4 ï¿½ï¿½ int4
     float4 BoneWeights : BLENDWEIGHT;
 };
 
 float4 main(VS_INPUT input) : SV_POSITION
 {
-    // 1. ½øÐÐÃÉÆ¤¾ØÕó¼ÆËã
+    // 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     matrix boneTransform = BoneTransforms[input.BoneIndices[0]] * input.BoneWeights[0];
     boneTransform += BoneTransforms[input.BoneIndices[1]] * input.BoneWeights[1];
     boneTransform += BoneTransforms[input.BoneIndices[2]] * input.BoneWeights[2];
     boneTransform += BoneTransforms[input.BoneIndices[3]] * input.BoneWeights[3];
 
-    // 2. ¼ÆËãÃÉÆ¤ºóµÄ±¾µØ×ø±ê
+    // 2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¤ï¿½ï¿½Ä±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     float4 skinnedPos = mul(input.Pos, boneTransform);
 
-    // 3. ×ª»»µ½¹âÕÕ²Ã¼ô¿Õ¼ä
+    // 3. ×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ²Ã¼ï¿½Õ¼ï¿½
     return mul(skinnedPos, WorldLightViewProj);
 }
