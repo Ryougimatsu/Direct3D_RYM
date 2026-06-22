@@ -31,7 +31,6 @@
 #include "Pathfinder.h"
 #include "NavigationSystem.h"
 #include "Player_Camera.h"
-#include "MapCamera.h"
 #include "DebugCamera.h"
 #include "GameUI.h"
 
@@ -43,7 +42,6 @@
 #include "enemy.h"
 #include "enemy_test.h"
 #include "bullet.h"
-#include "bullet_hit_effect.h"
 #include "DropItem.h"
 #include "Inventory.h"
 #include "sprite.h"
@@ -546,6 +544,7 @@ void Game_Finalize()
 	NavigationSystem::Finalize();   // Recast/Detour 导航网格
 	Map_Finalize();                 // 地图与墙壁
 	Bullet_Finalize();              // 子弹池
+	Camera_Finalize();              // 相机常量缓冲
 	Player_Camera_Finalize();       // 玩家摄像机
 
 	// 注意：纹理 ID（g_TexSmoke / g_TexArrow / g_TexWhite）由全局纹理管理器统一释放，

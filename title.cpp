@@ -19,34 +19,18 @@ enum TitleMenuState {
 namespace
 {
 	int g_TitleBG = -1;       // 标题背景图
-	int g_TitleLogo = -1;     // Logo
 	int g_TexWhite = -1;      // 纯白图片
-	int g_InstructionBG = -1; // 【新增】操作说明背景图
 
 	// 状态控制
 	TitleMenuState g_CurrentState = MENU_MAIN;
 	int g_MainCursor = 0;      // 主菜单光标
-	int g_SettingsCursor = 0;  // 设置光标
-
-	// 音量数据
-	float g_VolumeBGM = 1.0f;
-	float g_VolumeSE = 1.0f;
 }
 
 void Title_Initialize()
 {
 	Score_Reset();
 	g_TitleBG = Texture_LoadFromFile(L"resource/texture/Title.png");
-	g_TitleLogo = Texture_LoadFromFile(L"resource/texture/Title.png");
 	g_TexWhite = Texture_LoadFromFile(L"resource/texture/white.png");
-
-	// 【新增】加载操作说明背景图
-	// 请确保有一张图叫 instructions.png，或者暂时用 bg_v.png 代替
-	g_InstructionBG = Texture_LoadFromFile(L"resource/texture/Title.png");
-	if (g_InstructionBG == -1) {
-		g_InstructionBG = g_TitleBG; // 如果没找到，就复用标题背景
-	}
-
 
 	g_CurrentState = MENU_MAIN;
 	g_MainCursor = 0;
@@ -55,12 +39,10 @@ void Title_Initialize()
 void Title_Finalize()
 {
 	Texture_Release(g_TitleBG);
-	Texture_Release(g_TitleLogo);
 	Texture_Release(g_TexWhite);
-	Texture_Release(g_InstructionBG); // 【新增】释放资源
 }
 
-void Title_Update(double elapsed_time)
+void Title_Update(double)
 {
 	if (Fade_GetState() != FADE_STATE_NONE) {
 		if (Fade_GetState() == FADE_STATE_FINISHED_OUT) {
@@ -88,7 +70,6 @@ void Title_Update(double elapsed_time)
 			}
 			else if (g_MainCursor == 1) {
 				g_CurrentState = MENU_SETTINGS;
-				g_SettingsCursor = 2; // 【修改】默认光标直接放在 BACK 上，因为上面两个被禁用了
 			}
 		}
 	}
@@ -97,27 +78,7 @@ void Title_Update(double elapsed_time)
 	// ====================================================
 	else if (g_CurrentState == MENU_SETTINGS)
 	{
-		/* 【注释】暂时禁用音量调节逻辑
-		if (KeyLogger_IsTrigger(KK_UP))   g_SettingsCursor--;
-		if (KeyLogger_IsTrigger(KK_DOWN)) g_SettingsCursor++;
-		if (g_SettingsCursor < 0) g_SettingsCursor = 2;
-		if (g_SettingsCursor > 2) g_SettingsCursor = 0;
-
-		float step = 0.05f;
-		if (g_SettingsCursor == 0) { // BGM
-			if (KeyLogger_IsTrigger(KK_LEFT))  GameSettings::VolumeBGM -= step;
-			if (KeyLogger_IsTrigger(KK_RIGHT)) GameSettings::VolumeBGM += step;
-		}
-		else if (g_SettingsCursor == 1) { // SE
-			if (KeyLogger_IsTrigger(KK_LEFT))  GameSettings::VolumeSE -= step;
-			if (KeyLogger_IsTrigger(KK_RIGHT)) GameSettings::VolumeSE += step;
-		}
-
-		if (GameSettings::VolumeBGM < 0.0f) GameSettings::VolumeBGM = 0.0f; if (GameSettings::VolumeBGM > 1.0f) GameSettings::VolumeBGM = 1.0f;
-		if (GameSettings::VolumeSE < 0.0f)  GameSettings::VolumeSE = 0.0f;  if (GameSettings::VolumeSE > 1.0f)  GameSettings::VolumeSE = 1.0f;
-		*/
-
-		//只检测退出键 (因为没有选项可选了)
+		// 当前设置页没有可调选项，只处理返回。
 		if (KeyLogger_IsTrigger(KK_ENTER) || KeyLogger_IsTrigger(KK_ESCAPE)) {
 			g_CurrentState = MENU_MAIN;
 		}
@@ -172,11 +133,6 @@ void Title_Draw()
 	Sprite_Draw(g_TitleBG, destX, destY, destW, destH, 0, 0, texW, texH);
 
 	Direct3D_SetDepthEnable(false);
-	/*float logoW = 540.0f;
-	float logoH = 150.0f;
-	float logoX = (screenW - logoW) / 2.0f;
-	float logoY = 100.0f;
-	Sprite_Draw(g_TitleLogo, logoX, logoY, logoW, logoH, 0, 0, 1514, 123);*/
 
 	DirectX::XMFLOAT4 colSelected = { 1.0f, 1.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT4 colNormal = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -205,30 +161,8 @@ void Title_Draw()
 	{
 		float baseX = (screenW / 2.0f) - 200.0f;
 		float baseY = 400.0f;
-		float barW = 400.0f;
-		float barH = 24.0f;
-
 		// 提示信息
 		Font_Draw(L"SETTINGS UNAVAILABLE", baseX + 50, baseY + 100, colGray);
-
-		/* 【注释】暂时隐藏音量条绘制
-		// BGM
-		Font_Draw(L"BGM VOLUME", baseX, baseY, (g_SettingsCursor == 0) ? colSelected : colNormal);
-		int bgmPercent = (int)(GameSettings::VolumeBGM * 100);
-		std::wstring bgmText = std::to_wstring(bgmPercent) + L"%";
-		Font_Draw(bgmText.c_str(), baseX + 550, baseY, (g_SettingsCursor == 0) ? colSelected : colNormal);
-		Sprite_Draw(g_TexWhite, baseX, baseY + 40, barW, barH, colGray);
-		Sprite_Draw(g_TexWhite, baseX, baseY + 40, barW * GameSettings::VolumeBGM, barH, colSelected);
-
-		// SE
-		baseY += 120.0f;
-		Font_Draw(L"SE VOLUME", baseX, baseY, (g_SettingsCursor == 1) ? colSelected : colNormal);
-		int sePercent = (int)(GameSettings::VolumeSE * 100);
-		std::wstring seText = std::to_wstring(sePercent) + L"%";
-		Font_Draw(seText.c_str(), baseX + 550, baseY, (g_SettingsCursor == 1) ? colSelected : colNormal);
-		Sprite_Draw(g_TexWhite, baseX, baseY + 40, barW, barH, colGray);
-		Sprite_Draw(g_TexWhite, baseX, baseY + 40, barW * GameSettings::VolumeSE, barH, colSelected);
-		*/
 
 		// Back
 		baseY += 150.0f;
@@ -240,7 +174,7 @@ void Title_Draw()
 	// ====================================================
 	else if (g_CurrentState == MENU_INSTRUCTIONS)
 	{
-		Sprite_Draw(g_InstructionBG, 0, 0, screenW, screenH, 1.0f, 1.0f, 1.0f, 1.0f);
+		Sprite_Draw(g_TitleBG, 0, 0, screenW, screenH, 1.0f, 1.0f, 1.0f, 1.0f);
 		Sprite_Draw(g_TexWhite, 0, 0, screenW, screenH, { 0.0f, 0.0f, 0.0f, 0.7f });
 
 		Font_Draw(L"HOW TO PLAY", (screenW / 2.0f) - 100.0f, 150, colSelected);

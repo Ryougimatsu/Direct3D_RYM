@@ -135,14 +135,6 @@ void Shader3DUnilt_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 	Direct3D_GetDeviceContext()->UpdateSubresource(g_pVSConstantBuffer0, 0, nullptr, &transpose, 0, 0);
 }
 
-void Shader3DUnilt_SetViewMatrix(const DirectX::XMMATRIX& matrix)
-{							
-}
-
-void Shader3DUnilt_SetProjectMatrix(const DirectX::XMMATRIX& matrix)
-{
-}
-
 void Shader3DUnilt_SetColor(const DirectX::XMFLOAT4& color)
 {
 	Direct3D_GetDeviceContext()->UpdateSubresource(g_pPSConstantBuffer0, 0, nullptr, &color, 0, 0);

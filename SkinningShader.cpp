@@ -18,11 +18,9 @@ namespace
 	ID3D11Buffer* g_pCBProj = nullptr; // b2
 	ID3D11Buffer* g_pCBBones = nullptr; // b3 (动态更新优化)
 	ID3D11Buffer* g_pCBLightViewProj = nullptr;
-	ID3D11ShaderResourceView* g_pShadowSRV_Bound = nullptr;
 	ID3D11Buffer* g_pCBColor = nullptr; // PS b0
 	ID3D11SamplerState* pShadowSampler = nullptr;
 	ID3D11SamplerState* g_pSamplerState = nullptr;
-	ID3D11RasterizerState* g_pSkinShadowRasterizer = nullptr;
 	ID3D11Device* g_pDevice = nullptr;
 	ID3D11DeviceContext* g_pContext = nullptr;
 }
@@ -102,18 +100,6 @@ bool SkinningShader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pC
 	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL; // 关键：深度比较函数
 
 	g_pDevice->CreateSamplerState(&shadowSampDesc, &pShadowSampler);
-	D3D11_RASTERIZER_DESC rsDesc = {};
-	rsDesc.FillMode = D3D11_FILL_SOLID;
-	rsDesc.CullMode = D3D11_CULL_NONE; // 阴影建议双面渲染，腿部更实
-	rsDesc.FrontCounterClockwise = FALSE;
-	rsDesc.DepthBias = 0;              // 强制为 0
-	rsDesc.DepthBiasClamp = 0.0f;
-	rsDesc.SlopeScaledDepthBias = 0.0f; // 强制为 0
-	rsDesc.DepthClipEnable = TRUE;
-
-	HRESULT hrRS = g_pDevice->CreateRasterizerState(&rsDesc, &g_pSkinShadowRasterizer);
-	if (FAILED(hrRS)) return false;
-
 	return true;
 }
 
@@ -147,14 +133,6 @@ void SkinningShader_3D_SetBoneTransforms(const std::vector<XMMATRIX>& boneMatric
 		// 3) 一次 Unmap，结束本次写入
 		g_pContext->Unmap(g_pCBBones, 0);
 	}
-}
-
-// 兼容旧接口
-void SkinningShader_3D_SetBoneTransforms(const XMFLOAT4X4* bones, int count)
-{
-	std::vector<XMMATRIX> matrices;
-	for (int i = 0; i < count; ++i) matrices.push_back(XMLoadFloat4x4(&bones[i]));
-	SkinningShader_3D_SetBoneTransforms(matrices);
 }
 
 void SkinningShader_3D_Begin()
@@ -194,22 +172,6 @@ void SkinningShader_3D_SetMaterialColor(const DirectX::XMFLOAT4& color)
 	g_pContext->UpdateSubresource(g_pCBColor, 0, nullptr, &color, 0, 0);
 }
 
-void SkinningShader_3D_BeginDepthOnly()
-{
-	// 1. 绑定 VS 和 InputLayout (复用蒙皮逻辑)
-	g_pContext->VSSetShader(g_pVertexShader, nullptr, 0);
-	g_pContext->IASetInputLayout(g_pInputLayout);
-
-	// 2. 绑定骨骼变换等 VS 常量
-	ID3D11Buffer* vsBuffers[] = { g_pCBWorld, g_pCBView, g_pCBProj, g_pCBBones };
-	g_pContext->VSSetConstantBuffers(0, 4, vsBuffers);
-
-	// 3. 解绑 PS，因为生成阴影只需要深度
-	g_pContext->PSSetShader(nullptr, nullptr, 0);
-
-	g_pContext->RSSetState(g_pSkinShadowRasterizer);
-}
-
 void SkinningShader_3D_SetShadowResources(ID3D11ShaderResourceView* pShadowSRV, const DirectX::XMMATRIX& lightViewProj)
 {
 	// 传入阴影图到 PS (假设在 slot 1, slot 0 是漫反射贴图)
@@ -237,7 +199,6 @@ void SkinningShader_3D_Finalize()
 	if (g_pInputLayout) g_pInputLayout->Release();
 	if (g_pPixelShader) g_pPixelShader->Release();
 	if (g_pVertexShader) g_pVertexShader->Release();
-	if (g_pSkinShadowRasterizer) g_pSkinShadowRasterizer->Release();
 	if (g_pSamplerState) g_pSamplerState->Release();
 	if (pShadowSampler) pShadowSampler->Release();
 }

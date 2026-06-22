@@ -19,15 +19,11 @@
 #include "key_logger.h"
 #include "mouse.h"
 #include "collision.h"
-#include <Xinput.h>
-#pragma comment(lib, "xinput.lib")
 #include "game.h"
 #include "Sampler.h"
-#include "Audio.h"
 #include "cube.h"
 #include "fade.h"
 #include "scene.h"
-#include "Grid.h"
 #include "camera.h"
 #include "Meshfield.h"
 #include "Light.h"
@@ -65,8 +61,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 
 	Mouse_Initialize(hWnd);
 
-	InitAudio();
-
 	Shader_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Shader_3D_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
@@ -90,8 +84,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	Font_Initialize();
 
 	Scene_Initialize();
-
-	//Grid_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
 	Cube_Initialize(Direct3D_GetDevice(), Direct3D_GetDeviceContext());
 
@@ -210,8 +202,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 
 #endif
 
-	Grid_Finalize();
-
 	Cube_Finalize();
 
 	Light_Finalize();
@@ -247,8 +237,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	Polygon_Finalize();
 
 	Sampler_Finalize();
-
-	UninitAudio();
 
 	Direct3D_Finalize();
 

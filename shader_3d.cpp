@@ -137,13 +137,6 @@ void Shader_3D_Finalize()
 	SAFE_RELEASE(g_pVertexShader);
 }
 
-void Shader_3D_SetMatrix(const DirectX::XMMATRIX& matrix)
-{
-	XMFLOAT4X4 transpose;
-	XMStoreFloat4x4(&transpose, XMMatrixTranspose(matrix));
-	g_pContext->UpdateSubresource(g_pVSConstantBuffer0, 0, nullptr, &transpose, 0, 0);
-}
-
 void Shader_3D_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 {
 	XMFLOAT4X4 transpose;
@@ -151,15 +144,10 @@ void Shader_3D_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 	g_pContext->UpdateSubresource(g_pVSConstantBuffer0, 0, nullptr, &transpose, 0, 0);
 }
 
-void Shader_3D_SetViewMatrix(const DirectX::XMMATRIX& matrix) {}
-void Shader_3D_SetProjectMatrix(const DirectX::XMMATRIX& matrix) {}
-
 void Shader_3D_SetColor(const XMFLOAT4& color)
 {
 	g_pContext->UpdateSubresource(g_pPSConstantBuffer0, 0, nullptr, &color, 0, 0);
 }
-
-void Shader_3D_SetBoneTransforms(const DirectX::XMFLOAT4X4* bones, int count) {}
 
 void Shader_3D_Begin()
 {

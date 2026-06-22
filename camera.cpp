@@ -1,260 +1,59 @@
 #include "camera.h"
-#include <DirectXMath.h>
-using namespace DirectX;
 #include "direct3d.h"
-#include "shader_3d.h"
-#include "key_logger.h"
-#include "debug_text.h"
-#include <sstream>      
-#include <iomanip>
-#include <memory>
 
+using namespace DirectX;
 
-
-static XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, -5.0f };
-static XMFLOAT3 g_CameraFront= { 0.0f, 0.0f, 1.0f };
-static XMFLOAT3 g_CameraUp = { 0.0f, 1.0f,0.0f };
-static XMFLOAT3 g_CameraRight = { 1.0f, 0.0f, 0.0f };
-static constexpr float CAMERA_MOVE_SPEED = 4.5f;
-static constexpr float CAMERA_UP_SPEED = 0.5f;
-static constexpr float CAMERA_ROTATION_SPEED = XMConvertToRadians(30);
-static XMFLOAT4X4 g_CameraMatrix = {};
-static XMFLOAT4X4 g_PerspectiveMatrix = {};
-static ID3D11Buffer* g_pViewBuffer = nullptr;
-static ID3D11Buffer* g_pProjectionBuffer = nullptr;
-
-static hal::DebugText* g_DebugText = nullptr;
-
+namespace
+{
+	ID3D11Buffer* g_pViewBuffer = nullptr;
+	ID3D11Buffer* g_pProjectionBuffer = nullptr;
+}
 
 void Camera_Initialize()
 {
-	g_CameraPosition = { 0.0f, 0.0f, -5.0f };
+	if (g_pViewBuffer && g_pProjectionBuffer)
+		return;
 
-	g_CameraFront = { 0.0f, 0.0f, 1.0f };
+	Camera_Finalize();
 
-	g_CameraUp = { 0.0f, 1.0f,0.0f };
+	D3D11_BUFFER_DESC bufferDesc{};
+	bufferDesc.ByteWidth = sizeof(XMFLOAT4X4);
+	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 
-	g_CameraRight = { 1.0f, 0.0f, 0.0f };
+	ID3D11Device* device = Direct3D_GetDevice();
+	if (!device)
+		return;
 
-	//XMStoreFloat4x4(&g_CameraMatrix, XMMatrixIdentity());
-
-	//XMStoreFloat4x4(&g_PerspectiveMatrix, XMMatrixIdentity());
-
-#if defined(_DEBUG) || defined(DEBUG)
-
-	g_DebugText = new hal::DebugText(Direct3D_GetDevice(), Direct3D_GetDeviceContext(),
-		L"resource/texture/consolab_ascii_512.png",
-		Direct3D_GetBackBufferWidth(), Direct3D_GetBackBufferHeight(),
-		0.0f, 25.0f,
-		0, 0,
-		0.0f, 16.0f
-	);
-
-#endif
-
-	// Create Constant Buffers
-	D3D11_BUFFER_DESC buffer_desc{};
-	buffer_desc.ByteWidth = sizeof(XMFLOAT4X4);
-	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-	buffer_desc.CPUAccessFlags = 0;
-
-	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pViewBuffer);
-	Direct3D_GetDevice()->CreateBuffer(&buffer_desc, nullptr, &g_pProjectionBuffer);
+	if (FAILED(device->CreateBuffer(&bufferDesc, nullptr, &g_pViewBuffer)) ||
+		FAILED(device->CreateBuffer(&bufferDesc, nullptr, &g_pProjectionBuffer)))
+	{
+		Camera_Finalize();
+	}
 }
 
-void Camera_Initialize(const DirectX::XMFLOAT3& Position,
-	const DirectX::XMFLOAT3& Front,
-	const DirectX::XMFLOAT3& Right,
-	const DirectX::XMFLOAT3& Up)
-{
-	Camera_Initialize();
-	g_CameraPosition = Position;
-	XMStoreFloat3(&g_CameraFront, XMVector3Normalize(XMLoadFloat3(&Front)));
-	XMStoreFloat3(&g_CameraRight, XMVector3Normalize(XMLoadFloat3(&Right)));
-	XMStoreFloat3(&g_CameraUp, XMVector3Normalize(XMLoadFloat3(&Up)));
-}
 void Camera_Finalize()
 {
-	delete g_DebugText;
-	if (g_pViewBuffer) g_pViewBuffer->Release();
-	if (g_pProjectionBuffer) g_pProjectionBuffer->Release();
+	SAFE_RELEASE(g_pViewBuffer);
+	SAFE_RELEASE(g_pProjectionBuffer);
 }
 
-void Camera_Update(double elapsed_time)
+void Camera_SetMatrixToShader(const XMMATRIX& view, const XMMATRIX& proj)
 {
-	XMVECTOR Front = XMLoadFloat3(&g_CameraFront);
-	XMVECTOR Right = XMLoadFloat3(&g_CameraRight);
-	XMVECTOR Up = XMLoadFloat3(&g_CameraUp);
-	XMVECTOR Position = XMLoadFloat3(&g_CameraPosition);
-	
+	if (!g_pViewBuffer || !g_pProjectionBuffer)
+		return;
 
+	ID3D11DeviceContext* context = Direct3D_GetDeviceContext();
+	if (!context)
+		return;
 
-	//向下
-	if (KeyLogger_IsPressed(KK_DOWN))
-	{
-		XMMATRIX Rotation = XMMatrixRotationAxis(Right, CAMERA_UP_SPEED * elapsed_time);
-		Front = XMVector3TransformNormal(Front, Rotation);
-		Front = XMVector3Normalize(Front);
-		Up = XMVector3Cross(Front, Right);
-	}
-
-	if (KeyLogger_IsPressed(KK_UP))
-	{
-		XMMATRIX Rotation = XMMatrixRotationAxis(Right, -CAMERA_UP_SPEED * elapsed_time);
-		Front = XMVector3TransformNormal(Front, Rotation);
-		Front = XMVector3Normalize(Front);
-		Up = XMVector3Cross(Front, Right);
-	}
-
-	if(KeyLogger_IsPressed(KK_RIGHT)) {
-		// XMMATRIX rotation = XMMatrixRotationAxis(up, CAMERA_ROTATION_SPEED * elapsed_time);
-		XMMATRIX Rotation = XMMatrixRotationY(CAMERA_ROTATION_SPEED * elapsed_time); //
-		Up = XMVector3Normalize(XMVector3TransformNormal(Up, Rotation)); //
-		Front = XMVector3TransformNormal(Front, Rotation);
-		Front = XMVector3Normalize(Front);
-		Right = XMVector3Cross(Up, Front);
-	}
-
-	if (KeyLogger_IsPressed(KK_LEFT)) {
-		// XMMATRIX rotation = XMMatrixRotationAxis(up, -CAMERA_ROTATION_SPEED * elapsed_time);
-		XMMATRIX Rotation = XMMatrixRotationY(-CAMERA_ROTATION_SPEED * elapsed_time); //
-		Up = XMVector3Normalize(XMVector3TransformNormal(Up, Rotation)); //
-		Front = XMVector3TransformNormal(Front, Rotation);
-		Front = XMVector3Normalize(Front);
-		Right = XMVector3Cross(Up, Front);
-	}
-
-
-	if (KeyLogger_IsPressed(KK_W))
-	{
-		Position += Front * CAMERA_MOVE_SPEED * elapsed_time;
-		//Position += XMVector3Normalize(Front * XMVECTOR{ 1.0f, 0.0f, 1.0f }) * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-
-	if (KeyLogger_IsPressed(KK_A))
-	{
-		Position += -Right * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-
-	if (KeyLogger_IsPressed(KK_S))
-	{
-		Position += -Front * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-
-	if (KeyLogger_IsPressed(KK_D))
-	{
-		Position += Right * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-	//向上
-	if (KeyLogger_IsPressed(KK_J))
-	{
-		Position += Up * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-
-	if (KeyLogger_IsPressed(KK_K))
-	{
-		Position += -Up * CAMERA_MOVE_SPEED * elapsed_time;
-	}
-
-	//结果保存
-	XMStoreFloat3(&g_CameraPosition, Position);
-	XMStoreFloat3(&g_CameraFront, Front);
-	XMStoreFloat3(&g_CameraUp, Up);
-	XMStoreFloat3(&g_CameraRight, Right);
-
-	XMMATRIX mtxView = XMMatrixLookAtLH(
-		Position,// 視点座標
-		Position + Front, // 注視点座標
-		Up // 上方向ベクトル
-	);
-	
-	XMStoreFloat4x4(&g_CameraMatrix, mtxView);
-
-	constexpr float fovAngleY = XMConvertToRadians(60.0f);
-	float aspectRatio = static_cast<float>(Direct3D_GetBackBufferWidth()) / static_cast<float>(Direct3D_GetBackBufferHeight());
-	float nearZ = 0.1f;
-	float farZ = 100.0f;
-
-	XMMATRIX mtxPerspective = XMMatrixPerspectiveFovLH(
-		fovAngleY,
-		aspectRatio,
-		nearZ,
-		farZ
-	);
-
-	XMStoreFloat4x4(&g_PerspectiveMatrix, mtxPerspective);
-}
-
-const DirectX::XMFLOAT4X4& Camera_GetMatrix()
-{
-	return g_CameraMatrix;
-}
-
-const DirectX::XMFLOAT4X4& Camera_GetPerspectiveMatrix()
-{
-	return g_PerspectiveMatrix;
-}
-
-const DirectX::XMFLOAT3& Camera_GetPosition()
-{
-	return g_CameraPosition;
-}
-
-const DirectX::XMFLOAT3& Camera_GetFront()
-{
-	return g_CameraFront;
-}
-
-const DirectX::XMFLOAT3& Camera_GetUp()
-{
-	return g_CameraUp;
-}
-
-const DirectX::XMFLOAT3& Camera_GetRight()
-{
-	return g_CameraRight;
-}
-
-void Camera_SetMatrixToShader(const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj)
-{
 	XMFLOAT4X4 transpose;
-
-	// View Matrix
 	XMStoreFloat4x4(&transpose, XMMatrixTranspose(view));
-	Direct3D_GetDeviceContext()->UpdateSubresource(g_pViewBuffer, 0, nullptr, &transpose, 0, 0);
+	context->UpdateSubresource(g_pViewBuffer, 0, nullptr, &transpose, 0, 0);
 
-	// Projection Matrix
 	XMStoreFloat4x4(&transpose, XMMatrixTranspose(proj));
-	Direct3D_GetDeviceContext()->UpdateSubresource(g_pProjectionBuffer, 0, nullptr, &transpose, 0, 0);
+	context->UpdateSubresource(g_pProjectionBuffer, 0, nullptr, &transpose, 0, 0);
 
-	// Bind to Slots 1 and 2
-	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &g_pViewBuffer);
-	Direct3D_GetDeviceContext()->VSSetConstantBuffers(2, 1, &g_pProjectionBuffer);
-}
-
-void Debug_Draw()
-{
-#if defined(DEBUG) || defined(_DEBUG)
-	// 1. 通过 Getter 函数从 camera.cpp 获取最新的摄像机数据
-	const DirectX::XMFLOAT3& pos = Camera_GetPosition();
-	const DirectX::XMFLOAT3& front = Camera_GetFront();
-	const DirectX::XMFLOAT3& up = Camera_GetUp();
-	const DirectX::XMFLOAT3& right = Camera_GetRight();
-
-	std::stringstream ss;
-	// 设置浮点数精度，让输出更整齐
-	ss << std::fixed << std::setprecision(2);
-
-	// 3. 将各个向量信息添加到 stringstream
-	ss << "Cam Pos  : [" << pos.x << ", " << pos.y << ", " << pos.z << "]" << std::endl;
-	ss << "Cam Front: [" << front.x << ", " << front.y << ", " << front.z << "]" << std::endl;
-	ss << "Cam Up   : [" << up.x << ", " << up.y << ", " << up.z << "]" << std::endl;
-	ss << "Cam Right: [" << right.x << ", " << right.y << ", " << right.z << "]" << std::endl;
-
-	// 4. 设置文本、绘制并清空，与你的示例代码保持一致
-	g_DebugText ->SetText(ss.str().c_str());
-	g_DebugText ->Draw();
-	g_DebugText ->Clear();
-#endif
+	context->VSSetConstantBuffers(1, 1, &g_pViewBuffer);
+	context->VSSetConstantBuffers(2, 1, &g_pProjectionBuffer);
 }

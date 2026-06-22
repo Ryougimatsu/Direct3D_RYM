@@ -1,7 +1,6 @@
 #include "bullet.h"
 #include "model.h"
 using namespace DirectX;
-#include "bullet_hit_effect.h"
 #include "collision.h"
 #include "enemy.h"
 #include "map.h" // 确保包含地图检测
@@ -36,9 +35,6 @@ public:
 		{
 			m_deleteFlag = true; // 标记销毁
 
-			// 这里不要调用 BulletHitEffect_Create，
-			// 因为 Bullet_Destroy 中已经统一调用了。
-			// BulletHitEffect_Create(m_position); 
 			return;
 		}
 
@@ -207,10 +203,6 @@ void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& v
 void Bullet_Destroy(int index)
 {
 	if (index < 0 || index >= g_BulletCount) return;
-
-	// 这里统一生成击中特效 (无论是撞墙、撞人还是超时)
-	// 如果希望超时不生成特效，可以在这里加判断
-	BulletHitEffect_Create(g_Bullets[index]->GetPosition());
 
 	delete g_Bullets[index];
 	g_Bullets[index] = g_Bullets[g_BulletCount - 1];

@@ -43,22 +43,7 @@ void Direct3D_SetBlendState(bool enable);
 void Direct3D_SetBlendState(BLEND_MODE mode);
 void Direct3D_SetDepthStencilStateDepthWriteDisable(bool enalbe);
 
-DirectX::XMMATRIX Direct3D_MatrixViewport();
-
-DirectX::XMFLOAT3 Direct3D_ScreenToWorld(int x, int y, float depth, const DirectX::XMFLOAT4X4& view, const DirectX::XMFLOAT4X4& projection);
-
-
-DirectX::XMFLOAT2 Direct3D_WorldToScreen(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& view, const DirectX::XMFLOAT4X4& projection);
-
 void Direct3D_ClearBackBuffer();
 
 void Direct3D_SetOffBackBuffer();
-
-void Direct3D_ClearOffScreen();
-
-void Direct3D_SetOffscreen();
-
-void Direct3D_SetOffscreenTexture(int slot);
-
-ID3D11ShaderResourceView* Direct3D_GetOffscreenSRV();
 #endif // DIRECT3D_H
