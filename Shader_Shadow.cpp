@@ -23,7 +23,9 @@ namespace {
 
 	// 视口
 	D3D11_VIEWPORT g_ShadowViewport;
-	const float SHADOW_MAP_SIZE = 8192.0f;
+	// Player-centered projection keeps 4096 texels precise enough while
+	// reducing shadow-map pixel cost to one quarter of the old 8192 map.
+	constexpr float SHADOW_MAP_SIZE = 4096.0f;
 
 	// 缓存的光源矩阵
 	DirectX::XMFLOAT4X4 g_LightViewProj;
@@ -74,9 +76,10 @@ bool Shader_Shadow_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pConte
 	D3D11_RASTERIZER_DESC rasterDesc = {};
 	rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.CullMode = D3D11_CULL_NONE;
-	rasterDesc.DepthBias = 32;
-	rasterDesc.DepthBiasClamp = 0.0001f;
-	rasterDesc.SlopeScaledDepthBias = 0.25f;
+	// Fixed bias handles D24 quantization; slope bias handles grazing surfaces.
+	rasterDesc.DepthBias = 768;
+	rasterDesc.DepthBiasClamp = 0.01f;
+	rasterDesc.SlopeScaledDepthBias = 1.5f;
 	rasterDesc.DepthClipEnable = TRUE;
 	hr = g_pDevice->CreateRasterizerState(&rasterDesc, &g_pShadowRasterizer);
 
@@ -208,6 +211,11 @@ void Shader_Shadow_End()
 ID3D11ShaderResourceView* Shader_Shadow_GetSRV()
 {
 	return g_pShadowSRV;
+}
+
+float Shader_Shadow_GetMapSize()
+{
+	return SHADOW_MAP_SIZE;
 }
 
 void Shader_Shadow_Apply()

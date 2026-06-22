@@ -60,6 +60,44 @@ float CalculateShadow(float4 posLight)
 }
 
 
+float CalculateShadowPCF(
+    float4 posLight,
+    float3 normalW,
+    float3 lightDirection)
+{
+    float3 projCoords = posLight.xyz / posLight.w;
+    projCoords.x = projCoords.x * 0.5f + 0.5f;
+    projCoords.y = -projCoords.y * 0.5f + 0.5f;
+
+    bool outsideShadowMap =
+        projCoords.z < 0.0f || projCoords.z > 1.0f ||
+        projCoords.x < 0.0f || projCoords.x > 1.0f ||
+        projCoords.y < 0.0f || projCoords.y > 1.0f;
+
+    float NdotL = saturate(dot(normalize(normalW), -normalize(lightDirection)));
+    float bias = max(0.00008f, 0.00060f * (1.0f - NdotL));
+    float currentDepth = projCoords.z - bias;
+
+    uint shadowWidth = 1;
+    uint shadowHeight = 1;
+    shadowMap.GetDimensions(shadowWidth, shadowHeight);
+    float2 texelSize = 1.0f / float2(shadowWidth, shadowHeight);
+
+    float2 uv = projCoords.xy;
+    float shadow =
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2(-1, -1) * texelSize, currentDepth) +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2( 0, -1) * texelSize, currentDepth) * 2.0f +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2( 1, -1) * texelSize, currentDepth) +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2(-1,  0) * texelSize, currentDepth) * 2.0f +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv, currentDepth) * 4.0f +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2( 1,  0) * texelSize, currentDepth) * 2.0f +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2(-1,  1) * texelSize, currentDepth) +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2( 0,  1) * texelSize, currentDepth) * 2.0f +
+        shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2( 1,  1) * texelSize, currentDepth);
+
+    return outsideShadowMap ? 1.0f : shadow / 16.0f;
+}
+
 float4 main(PS_IN pi) : SV_TARGET
 {
     float2 uv;
@@ -72,7 +110,10 @@ float4 main(PS_IN pi) : SV_TARGET
 
     // 材質の色
     float3 material_color = tex_color.rgb * diffuse_color.rgb;
-    float shadowFactor = CalculateShadow(pi.posLight);
+    float shadowFactor = CalculateShadowPCF(
+        pi.posLight,
+        normalize(pi.normalW.xyz),
+        directional_vector.xyz);
 
     // 並行光源 (ディフューズライト)
     float4 normalW = normalize(pi.normalW);

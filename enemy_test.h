@@ -4,6 +4,7 @@
 // Includes
 // ----------------------------------------------------------------
 #include <vector>
+#include <cstdint>
 #include <DirectXMath.h>
 #include "enemy.h"
 #include "model.h"
@@ -24,7 +25,10 @@ public:
 	// ==========================================
 	// 1. 生命周期 (Lifecycle)
 	// ==========================================
-	EnemyTest(const DirectX::XMFLOAT3& position);
+	EnemyTest(
+		const DirectX::XMFLOAT3& position,
+		std::uint32_t level = 1,
+		std::uint64_t baseExperience = 25);
 	~EnemyTest() override;
 
 	static void LoadAssets();
@@ -56,6 +60,8 @@ public:
 	float GetHP() const override;
 	bool IsDead() const override;
 	bool IsDestroyed() const override;
+	std::uint32_t GetLevel() const override { return m_Level; }
+	std::uint64_t GetBaseExperience() const override { return m_BaseExperience; }
 
 	void ChangeState(State* pNextState) override;
 
@@ -110,6 +116,8 @@ private:
 
 	// 战斗属性
 	float m_HP = 100.0f;
+	std::uint32_t m_Level = 1;
+	std::uint64_t m_BaseExperience = 25;
 	float m_AttackRadius = 1.2f;      // 攻击半径
 	float m_AttackCooldown = 1.0f;    // 攻击间隔（秒）
 	double m_LastAttackTimer = 0.0;   // 攻击计时器

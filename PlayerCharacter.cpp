@@ -14,6 +14,7 @@
 #include "shader_billboard.h"
 #include "map.h"
 #include "sprite.h"
+#include <utility>
 using namespace DirectX;
 
 // 全局单例指针
@@ -181,6 +182,11 @@ void Player_EmitSound(const DirectX::XMFLOAT3& pos, float radius) {
 // ----------------------------------------------------------------
 // 1. 生命周期 (Lifecycle)
 // ----------------------------------------------------------------
+PlayerCharacter::PlayerCharacter(ExperienceConfig experienceConfig)
+	: m_Experience(std::move(experienceConfig))
+{
+}
+
 PlayerCharacter::~PlayerCharacter() {
 	// 释放枪口粒子系统
 	if (m_pMuzzleFireSystem) {
@@ -604,6 +610,13 @@ void PlayerCharacter::AddAmmo(int amount)
 {
 	m_TotalAmmo += amount;
 	if (m_TotalAmmo > 300) m_TotalAmmo = 300;
+}
+
+ExperienceGainResult PlayerCharacter::AddExperience(
+	std::uint64_t enemyBaseExperience,
+	std::uint32_t enemyLevel)
+{
+	return m_Experience.AddExperience(enemyBaseExperience, enemyLevel);
 }
 
 AABB PlayerCharacter::GetAABB() const {

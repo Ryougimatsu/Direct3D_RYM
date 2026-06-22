@@ -177,6 +177,7 @@
     <ClCompile Include="DropItem.cpp" />
     <ClCompile Include="enemy.cpp" />
     <ClCompile Include="enemy_test.cpp" />
+    <ClCompile Include="ExperienceComponent.cpp" />
     <ClCompile Include="fade.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="game.cpp" />
@@ -246,6 +247,7 @@
     <ClInclude Include="DropItem.h" />
     <ClInclude Include="enemy.h" />
     <ClInclude Include="enemy_test.h" />
+    <ClInclude Include="ExperienceComponent.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="gameover.h" />
     <ClInclude Include="GameUI.h" />

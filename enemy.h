@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 #include "collision.h"
+#include <cstdint>
 #include <vector>
 #include "particle_system.h"
 class Enemy {
@@ -48,6 +49,8 @@ public:
 		};
 	}
 	virtual bool IsDestroyed() const = 0;
+	virtual std::uint32_t GetLevel() const = 0;
+	virtual std::uint64_t GetBaseExperience() const = 0;
 	virtual Sphere GetCollisionSphere() const { return {}; }
 };
 void Enemy_ResolveCollisions();
@@ -55,7 +58,10 @@ void Enemy_Initialize();
 void Enemy_Finalize();
 void Enemy_Update(double elapsed_time);
 void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj);
-void Enemy_Create(const DirectX::XMFLOAT3& position);
+void Enemy_Create(
+	const DirectX::XMFLOAT3& position,
+	std::uint32_t level = 1,
+	std::uint64_t baseExperience = 25);
 int Enemy_GetEnemyCount();
 Enemy* Enemy_GetEnemy(int index);
 void Enemy_ApplyMeleeDamage(const DirectX::XMFLOAT3& position, const DirectX::XMVECTOR& forward, float radius, float angle);

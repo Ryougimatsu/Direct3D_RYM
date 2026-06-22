@@ -67,8 +67,10 @@ namespace
 	DirectX::XMFLOAT3 g_GoalPos   = { 20.0f, 1.0f, 10.0f };     // 出口门的世界坐标（每局随机生成）
 
 	// --- 光源参数（用于阴影贴图生成）---
-	XMVECTOR g_LightPos    = XMVectorSet(10.0f, 25.0f, -5.0f, 1.0f); // 平行光源位置（高位以覆盖更广阴影范围）
-	XMVECTOR g_LightTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);    // 光源注视目标（场景中心）
+	// Direction from the light toward the scene. The shadow camera follows
+	// the player because a directional light has no real world-space position.
+	XMVECTOR g_LightDirection = XMVector3Normalize(
+		XMVectorSet(-10.0f, -25.0f, 5.0f, 0.0f));
 	XMVECTOR g_LightUp     = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);    // 光源视角的上方向
 
 	// --- 战场硝烟粒子系统 ---
@@ -254,6 +256,7 @@ void Game_Update(double elapsed_time)
 	Sky_SetPosition(Player_Camera_GetPosition()); // 天空盒始终跟随摄像机（无限远效果）
 
 	// --- 3. 游戏实体逐一更新 ---
+	GameUI_Update(elapsed_time);            // HUD 提示动画
 	Enemy_Update(elapsed_time);             // 敌人 AI 状态机 + 移动 + 攻击
 	Bullet_Update(elapsed_time);            // 子弹飞行 + 生命周期
 	Bullet_CheckCollisionWithEnemies();     // 子弹与敌人的碰撞检测
@@ -324,8 +327,32 @@ void Game_Draw()
 	// ----------------------------------------------------------------
 	// Pass 0：计算光源视角矩阵（后续阴影贴图和光照计算共用）
 	// ----------------------------------------------------------------
-	XMMATRIX lightView = XMMatrixLookAtLH(g_LightPos, g_LightTarget, g_LightUp);
-	XMMATRIX lightProj = XMMatrixOrthographicLH(450.0f, 450.0f, 1.0f, 200.0f); // 正交投影（覆盖整个地图）
+	XMFLOAT3 shadowCenter =
+		(g_Player) ? g_Player->GetPosition() : XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+	XMVECTOR lightTarget = XMVectorSet(
+		shadowCenter.x,
+		0.0f,
+		shadowCenter.z,
+		1.0f);
+	XMVECTOR lightPosition = lightTarget - g_LightDirection * 100.0f;
+
+	XMMATRIX lightView = XMMatrixLookAtLH(lightPosition, lightTarget, g_LightUp);
+	XMMATRIX lightProj = XMMatrixOrthographicLH(120.0f, 120.0f, 1.0f, 220.0f);
+
+	// Snap the directional-light projection to shadow texels. This prevents
+	// shadow edges from swimming while the player/camera moves slowly.
+	const float shadowMapSize = Shader_Shadow_GetMapSize();
+	XMVECTOR shadowOrigin = XMVector3TransformCoord(
+		XMVectorZero(),
+		lightView * lightProj);
+	shadowOrigin *= shadowMapSize * 0.5f;
+	XMVECTOR roundedOrigin = XMVectorRound(shadowOrigin);
+	XMVECTOR roundOffset =
+		(roundedOrigin - shadowOrigin) * (2.0f / shadowMapSize);
+	roundOffset = XMVectorSetZ(roundOffset, 0.0f);
+	roundOffset = XMVectorSetW(roundOffset, 0.0f);
+	lightProj.r[3] += roundOffset;
+
 	XMMATRIX lightVP   = lightView * lightProj;
 
 	// ----------------------------------------------------------------
@@ -394,9 +421,8 @@ void Game_Draw()
 
 	// 设置全局光照参数：环境光 + 平行光方向与颜色
 	Light_SetAmbient({ 0.4f, 0.4f, 0.4f });
-	XMVECTOR dirVec = XMVector3Normalize(g_LightTarget - g_LightPos);
 	XMFLOAT4 lightDirF4;
-	XMStoreFloat4(&lightDirF4, dirVec);
+	XMStoreFloat4(&lightDirF4, g_LightDirection);
 	Light_SetDirectionalWorld(lightDirF4, { 0.8f, 0.8f, 0.8f, 1.0f });
 
 	// 绘制地图墙壁与掉落物（带阴影采样）

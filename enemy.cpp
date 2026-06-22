@@ -306,9 +306,12 @@ void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
 	}
 }
 
-void Enemy_Create(const XMFLOAT3& position)
+void Enemy_Create(
+	const XMFLOAT3& position,
+	std::uint32_t level,
+	std::uint64_t baseExperience)
 {
-	Enemy* newEnemy = new EnemyTest(position);
+	Enemy* newEnemy = new EnemyTest(position, level, baseExperience);
 	g_Enemies.push_back(newEnemy);
 }
 

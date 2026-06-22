@@ -109,7 +109,7 @@ bool Shader_3D_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
-	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS; // 深度比较：如果 当前深度 < 阴影图深度，则照亮
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
 
 	// 【关键调试点】
 	// 如果设为 1.0f (白色)，采样到贴图外时是“无阴影”。

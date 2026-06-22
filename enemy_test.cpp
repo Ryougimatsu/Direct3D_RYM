@@ -4,6 +4,8 @@
 #include "shader_3d.h"
 #include "Meshfield.h"
 #include "PlayerCharacter.h"
+#include "GameUI.h"
+#include <algorithm>
 #include <cmath> 
 #include <cstdlib>
 #include <ctime>
@@ -47,8 +49,13 @@ namespace
 // ======================================================================================
 // 1. 生命周期 (Lifecycle)
 // ======================================================================================
-EnemyTest::EnemyTest(const DirectX::XMFLOAT3& position)
-	: m_position(position)
+EnemyTest::EnemyTest(
+	const DirectX::XMFLOAT3& position,
+	std::uint32_t level,
+	std::uint64_t baseExperience)
+	: m_position(position),
+	  m_Level(std::max<std::uint32_t>(1, level)),
+	  m_BaseExperience(baseExperience)
 {
 	g_AllEnemies.push_back(this);
 
@@ -344,6 +351,14 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		Score_AddScore(100);
 		m_HP = 0.0f;
 		m_bIsDead = true;
+
+		// This death transition runs only once, so EXP cannot be granted twice.
+		if (PlayerCharacter* player = Player_GetInstance()) {
+			const ExperienceGainResult result =
+				player->AddExperience(m_BaseExperience, m_Level);
+			GameUI_ShowExperienceGain(result.awardedExperience);
+		}
+
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.2f);
 		m_DeathTimer = 3.5f;
 		m_KnockbackVelocity = { 0,0,0 }; // 死亡时消除所有速度

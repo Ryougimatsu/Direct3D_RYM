@@ -9,6 +9,7 @@
 #include "model.h"
 #include "collision.h"
 #include "particle_system.h"
+#include "ExperienceComponent.h"
 // ----------------------------------------------------------------
 // Enums
 // ----------------------------------------------------------------
@@ -26,7 +27,7 @@ public:
 	// ==========================================
 	// 1. 生命周期 (Lifecycle)
 	// ==========================================
-	PlayerCharacter() = default;
+	explicit PlayerCharacter(ExperienceConfig experienceConfig = {});
 	~PlayerCharacter();
 
 	static void LoadAssets();
@@ -80,6 +81,15 @@ public:
 	int GetTotalAmmo() const { return m_TotalAmmo; }
 	bool IsReloading() const { return m_IsReloading; }
 
+	// ==========================================
+	// 6. 成长系统 (Roguelike Growth)
+	// ==========================================
+	ExperienceGainResult AddExperience(
+		std::uint64_t enemyBaseExperience,
+		std::uint32_t enemyLevel);
+	ExperienceComponent& GetExperienceComponent() { return m_Experience; }
+	const ExperienceComponent& GetExperienceComponent() const { return m_Experience; }
+
 private:
 	// ==========================================
 	// 资源与组件 (Components)
@@ -91,6 +101,7 @@ private:
 	float m_MuzzleFlashTimer = 0.0f;  // 枪口闪光显示计时器（备用）
 	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统（每次开枪时发射）
 	int m_MuzzleFireTexID = -1;                    // 枪口火焰粒子所用纹理 ID
+	ExperienceComponent m_Experience;              // 等级、经验和经验倍率
 
 	// ==========================================
 	// 配置参数 (Configuration / Settings)

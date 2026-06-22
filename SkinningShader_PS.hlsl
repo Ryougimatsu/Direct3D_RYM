@@ -66,6 +66,44 @@ float CalcShadowFactor(float4 shadowPos)
 //-----------------------------------------------------------------------------
 // Main Function
 //-----------------------------------------------------------------------------
+float CalcShadowFactorPCF(
+    float4 shadowPos,
+    float3 normalW,
+    float3 lightDirection)
+{
+    float3 projCoords = shadowPos.xyz / shadowPos.w;
+    projCoords.x = projCoords.x * 0.5f + 0.5f;
+    projCoords.y = -projCoords.y * 0.5f + 0.5f;
+
+    bool outsideShadowMap =
+        projCoords.x < 0.0f || projCoords.x > 1.0f ||
+        projCoords.y < 0.0f || projCoords.y > 1.0f ||
+        projCoords.z < 0.0f || projCoords.z > 1.0f;
+
+    float NdotL = saturate(dot(normalize(normalW), -normalize(lightDirection)));
+    float bias = max(0.00008f, 0.00060f * (1.0f - NdotL));
+    float currentDepth = projCoords.z - bias;
+
+    uint shadowWidth = 1;
+    uint shadowHeight = 1;
+    g_ShadowMap.GetDimensions(shadowWidth, shadowHeight);
+    float2 texelSize = 1.0f / float2(shadowWidth, shadowHeight);
+
+    float2 uv = projCoords.xy;
+    float shadow =
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2(-1, -1) * texelSize, currentDepth) +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2( 0, -1) * texelSize, currentDepth) * 2.0f +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2( 1, -1) * texelSize, currentDepth) +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2(-1,  0) * texelSize, currentDepth) * 2.0f +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv, currentDepth) * 4.0f +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2( 1,  0) * texelSize, currentDepth) * 2.0f +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2(-1,  1) * texelSize, currentDepth) +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2( 0,  1) * texelSize, currentDepth) * 2.0f +
+        g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, uv + float2( 1,  1) * texelSize, currentDepth);
+
+    return outsideShadowMap ? 1.0f : shadow / 16.0f;
+}
+
 float4 main(PS_IN pin) : SV_TARGET
 {
     // 1. ������������
@@ -91,7 +129,10 @@ float4 main(PS_IN pin) : SV_TARGET
     float halfLambert = NdotL * 0.5f + 0.5f;
 
     // 4. [����] ������Ӱ�ڵ�
-    float shadowFactor = CalcShadowFactor(pin.ShadowPos);
+    float shadowFactor = CalcShadowFactorPCF(
+        pin.ShadowPos,
+        normal,
+        lightDir);
 
     // 5. �ϳ�������ɫ
     // ��ʽ���ԣ�Ambient + (Diffuse * Shadow)
