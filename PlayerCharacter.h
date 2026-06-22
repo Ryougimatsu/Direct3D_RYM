@@ -10,6 +10,9 @@
 #include "collision.h"
 #include "particle_system.h"
 #include "ExperienceComponent.h"
+#include "Weapon.h"
+#include "WeaponAttachmentComponent.h"
+#include <vector>
 // ----------------------------------------------------------------
 // Enums
 // ----------------------------------------------------------------
@@ -91,12 +94,19 @@ public:
 	const ExperienceComponent& GetExperienceComponent() const { return m_Experience; }
 
 private:
+	DirectX::XMMATRIX GetCharacterWorldMatrix() const;
+	void UpdateWeaponAttachment();
+	DirectX::XMVECTOR GetWeaponAimDirection() const;
+	void DrawWeaponAttachmentDebug(const DirectX::XMMATRIX& view);
+
 	// ==========================================
 	// 资源与组件 (Components)
 	// ==========================================
 	SkinningModel* m_pModel = nullptr;
 	Animator       m_Animator;
-	MODEL* m_pGunModel = nullptr; // 建议初始化为 nullptr
+	std::vector<DirectX::XMMATRIX> m_FinalBoneMatrices;
+	Weapon m_Weapon;
+	WeaponAttachmentComponent m_WeaponAttachment;
 	int m_MuzzleTexID = -1;           // 枪口闪光贴图 ID（备用，当前未激活使用）
 	float m_MuzzleFlashTimer = 0.0f;  // 枪口闪光显示计时器（备用）
 	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统（每次开枪时发射）
@@ -110,7 +120,6 @@ private:
 	float m_MaxHP = 100.0f;      // 最大生命值上限
 	float m_Scale = 0.01f;       // 角色模型缩放系数（FBX 导出单位换算至游戏单位）
 	float m_MoveSpeed = 1.15f;    // 角色移动速度（单位/秒）
-	float m_GunScale = 1.0f;     // 枪械模型的独立缩放系数
 
 	// 战斗参数
 	const float m_InvincibleDuration = 1.0f; // 受到伤害后的无敌时长（秒）
@@ -143,6 +152,9 @@ private:
 
 	bool  m_IsDeadFinished = false; // 标记：死亡动画+计时器是否已全部结束（供场景判断是否切 GameOver）
 	bool  m_IsReloading = false;   // 标记：当前是否正在换弹
+	bool  m_DebugLaserHit = false;
+	DirectX::XMFLOAT3 m_DebugLaserStart = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT3 m_DebugLaserEnd = { 0.0f, 0.0f, 0.0f };
 
 	// 弹药数据
 	int m_CurrentAmmo = 30;  // 当前弹匣内的子弹数

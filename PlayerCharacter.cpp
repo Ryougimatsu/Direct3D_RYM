@@ -24,14 +24,6 @@ PlayerCharacter* g_pPlayerInstance = nullptr;
 // 匿名命名空间：内部使用的常量、静态变量与辅助函数
 // ======================================================================================
 namespace {
-	// --- 枪械姿态配置（枪附着在手骨时的初始角度修正）---
-	float m_GunPitch = DirectX::XMConvertToRadians(5.0f);   // 绕 X 轴旋转（上下抬头）
-	float m_GunYaw   = DirectX::XMConvertToRadians(-90.0f); // 绕 Y 轴旋转（左右偏航）
-	float m_GunRoll  = DirectX::XMConvertToRadians(90.0f);  // 绕 Z 轴旋转（枪身横滚）
-
-	DirectX::XMFLOAT3 m_GunOffset = { 0.05f, 0.05f, 0.0f };       // 枪相对于手骨的本地位移偏移（手心微调）
-	DirectX::XMFLOAT3 m_MuzzleLocalOffset = { 0.8f, 0.05f, 0.0f }; // 枪口相对于枪根的本地坐标偏移
-
 	// --- 受伤闪红效果 ---
 	float g_DamageFlashAlpha = 0.0f; // 受伤红屏的当前透明度（每帧自动衰减）
 	int   g_DamageTexID = -1;        // 红屏全屏 Sprite 所用纹理 ID
@@ -124,46 +116,54 @@ namespace {
 		return closestDist;
 	}
 
-	DirectX::XMMATRIX FixGunMatrix(DirectX::XMMATRIX gunWorld) {
+	void DrawDebugAxis(
+		int textureId,
+		const DirectX::XMMATRIX& matrix,
+		const DirectX::XMMATRIX& view,
+		float length,
+		float width)
+	{
 		using namespace DirectX;
+		const XMVECTOR origin = matrix.r[3];
+		const XMVECTOR xAxis = XMVector3Normalize(matrix.r[0]);
+		const XMVECTOR yAxis = XMVector3Normalize(matrix.r[1]);
+		const XMVECTOR zAxis = XMVector3Normalize(matrix.r[2]);
 
-		// 1. 提取当前的枪管朝向 (X轴方向)
-		XMVECTOR currentFwd = XMVector3Normalize(gunWorld.r[0]);
+		Laser_Billboard_Draw(
+			textureId, origin, origin + xAxis * length, width, view,
+			{ 1.0f, 0.1f, 0.1f, 1.0f });
+		Laser_Billboard_Draw(
+			textureId, origin, origin + yAxis * length, width, view,
+			{ 0.1f, 1.0f, 0.1f, 1.0f });
+		Laser_Billboard_Draw(
+			textureId, origin, origin + zAxis * length, width, view,
+			{ 0.1f, 0.4f, 1.0f, 1.0f });
+	}
 
-		// 2. 计算目标朝向：把当前朝向压平到 XZ 水平面
-		XMVECTOR targetFwd = XMVectorSetY(currentFwd, 0.0f);
-
-		// 如果枪几乎垂直朝天或朝地，直接返回原样防止数学错误
-		if (XMVectorGetX(XMVector3LengthSq(targetFwd)) < 0.0001f) {
-			return gunWorld;
-		}
-		targetFwd = XMVector3Normalize(targetFwd);
-
-		// 3. 计算从 currentFwd 旋转到 targetFwd 所需的“旋转轴”和“角度”
-		XMVECTOR rotAxis = XMVector3Cross(currentFwd, targetFwd);
-		float axisLen = XMVectorGetX(XMVector3Length(rotAxis));
-
-		// 只有当枪管不在水平面时，才需要进行修正
-		if (axisLen > 0.0001f) {
-			rotAxis = XMVector3Normalize(rotAxis);
-			float dotVal = XMVectorGetX(XMVector3Dot(currentFwd, targetFwd));
-
-			// 限制范围，防止浮点误差导致 acosf 崩溃
-			if (dotVal < -1.0f) dotVal = -1.0f;
-			if (dotVal > 1.0f) dotVal = 1.0f;
-			float angle = acosf(dotVal);
-
-			// 构建修正旋转矩阵
-			XMMATRIX rotMat = XMMatrixRotationAxis(rotAxis, angle);
-
-			// 4. 将旋转应用到整把枪上（只旋转姿态，不改变位置）
-			XMVECTOR pos = gunWorld.r[3];             // 暂存枪的位置
-			gunWorld.r[3] = XMVectorSet(0, 0, 0, 1);  // 消除位置影响
-			gunWorld = gunWorld * rotMat;             // 整体应用旋转
-			gunWorld.r[3] = pos;                      // 恢复枪的位置
-		}
-
-		return gunWorld;
+	void DrawDebugPoint(
+		int textureId,
+		DirectX::XMVECTOR position,
+		const DirectX::XMMATRIX& view,
+		const DirectX::XMFLOAT4& color)
+	{
+		using namespace DirectX;
+		constexpr float radius = 0.12f;
+		constexpr float width = 0.035f;
+		Laser_Billboard_Draw(
+			textureId,
+			position - XMVectorSet(radius, 0, 0, 0),
+			position + XMVectorSet(radius, 0, 0, 0),
+			width, view, color);
+		Laser_Billboard_Draw(
+			textureId,
+			position - XMVectorSet(0, radius, 0, 0),
+			position + XMVectorSet(0, radius, 0, 0),
+			width, view, color);
+		Laser_Billboard_Draw(
+			textureId,
+			position - XMVectorSet(0, 0, radius, 0),
+			position + XMVectorSet(0, 0, radius, 0),
+			width, view, color);
 	}
 }
 
@@ -185,6 +185,49 @@ void Player_EmitSound(const DirectX::XMFLOAT3& pos, float radius) {
 PlayerCharacter::PlayerCharacter(ExperienceConfig experienceConfig)
 	: m_Experience(std::move(experienceConfig))
 {
+}
+
+DirectX::XMMATRIX PlayerCharacter::GetCharacterWorldMatrix() const
+{
+	using namespace DirectX;
+	return XMMatrixScaling(m_Scale, m_Scale, m_Scale) *
+		XMMatrixRotationY(m_RotationY + XM_PI) *
+		XMMatrixTranslation(
+			m_Position.x,
+			m_Position.y,
+			m_Position.z);
+}
+
+void PlayerCharacter::UpdateWeaponAttachment()
+{
+	if (!m_pModel || m_WeaponAttachment.GetBoneIndex() < 0)
+	{
+		return;
+	}
+
+	const DirectX::XMMATRIX handModel =
+		m_Animator.GetBoneGlobalMatrix(
+			m_WeaponAttachment.GetBoneIndex());
+	m_WeaponAttachment.Update(handModel, GetCharacterWorldMatrix());
+}
+
+DirectX::XMVECTOR PlayerCharacter::GetWeaponAimDirection() const
+{
+	using namespace DirectX;
+
+	// Preserve the existing top-down aiming rule: the gun's local +X axis is
+	// projected onto the XZ plane before raycast/bullet use.
+	XMVECTOR direction = m_WeaponAttachment.GetMuzzleForward();
+	direction = XMVectorSetY(direction, 0.0f);
+	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.0001f)
+	{
+		return XMVectorSet(
+			sinf(m_RotationY),
+			0.0f,
+			cosf(m_RotationY),
+			0.0f);
+	}
+	return XMVector3Normalize(direction);
 }
 
 PlayerCharacter::~PlayerCharacter() {
@@ -247,10 +290,39 @@ bool PlayerCharacter::Initialize() {
 
 	// 直接指向共享资源
 	m_pModel = g_pSharedPlayerModel;
-	m_pGunModel = g_pSharedGunModel;
 
 	// 初始化组件
 	m_Animator.PlayAnimation(m_pModel->GetDefaultAnimation(), true);
+
+	// Weapon metadata and attachment points are independent from rendering.
+	m_Weapon.SetName("M4A4");
+	m_Weapon.SetModel(g_pSharedGunModel);
+	m_Weapon.GripPoint() = {};
+	m_Weapon.MuzzlePoint().position = { 0.8f, 0.05f, 0.0f };
+	m_Weapon.LaserPoint() = m_Weapon.MuzzlePoint();
+	m_Weapon.LeftHandPoint().position = { 0.0f, 0.0f, 0.0f };
+
+	WeaponSocketProfile socketProfile;
+	socketProfile.adjustment.position = { 0.05f, 0.05f, 0.0f };
+	socketProfile.adjustment.rotationDegrees = { 5.0f, -90.0f, 90.0f };
+	socketProfile.adjustment.scale = { 1.0f, 1.0f, 1.0f };
+	m_WeaponAttachment.SetSocketProfile(std::move(socketProfile));
+	m_WeaponAttachment.AttachWeapon(&m_Weapon);
+	m_WeaponAttachment.SetConfigPath(
+		"resource/config/M4A4_weapon_socket.txt");
+	m_WeaponAttachment.LoadConfig();
+	if (!m_WeaponAttachment.ResolveSocketBone(
+		m_pModel->GetSkeleton().nameToIndex))
+	{
+		OutputDebugStringA(
+			"[WeaponAttachment] No configured right-hand/socket bone found.\n");
+	}
+
+	// Prime Animator's model-space bone cache before the first frame.
+	m_FinalBoneMatrices =
+		m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
+	UpdateWeaponAttachment();
+
 	m_LaserTexID = Texture_LoadFromFile(L"resource/texture/Laser001.png");
 	Billboard_Initialize();
 
@@ -274,6 +346,9 @@ void PlayerCharacter::Update(double dt) {
 	{
 		m_DeathTimer += (float)dt;
 		m_Animator.Update(dt);
+		m_FinalBoneMatrices =
+			m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
+		UpdateWeaponAttachment();
 
 		if (m_DeathTimer >= 4.0f) {
 			m_IsDeadFinished = true; // 标记为“彻底死亡”
@@ -407,27 +482,10 @@ void PlayerCharacter::Update(double dt) {
 
 		// C. 开火逻辑（条件：鼠标左键按住 + 射速冷却结束 + 未换弹 + 有子弹）
 		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && m_CurrentAmmo > 0) {
-			const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
-			if (nameMap.count("mixamorig:RightHand")) {
-				int handIdx = nameMap.at("mixamorig:RightHand");
-				XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx); // 从 Animator 取当前帧的右手骨世界矩阵
-
-				// 重新构造与 Draw 完全一致的枪世界矩阵（gunLocal × handMat × worldMatrix）
-				XMMATRIX world    = XMMatrixScaling(m_Scale, m_Scale, m_Scale) * XMMatrixRotationY(m_RotationY + XM_PI) * XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
-				XMMATRIX gunLocal = XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) * XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) * XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
-				XMMATRIX gunWorld = gunLocal * handMat * world;
-				gunWorld = FixGunMatrix(gunWorld); // 修正枪管俯仰，保持水平
-
-				// 将枪口本地偏移变换到世界空间，得到枪口基础位置
-				XMVECTOR muzzleLocalV = XMLoadFloat3(&m_MuzzleLocalOffset);
-				XMVECTOR basePos      = XMVector3TransformCoord(muzzleLocalV, gunWorld);
-
-				// 必须 Normalize：gunWorld.r[0] 因 m_Scale(0.01) 而长度约 0.01，不归一化偏移量极小
-				XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]);
-
-				// 再向枪管方向前进 1.0f，使子弹/粒子从真正的枪口发出（与 Draw 中激光起点保持一致）
-				XMVECTOR actualMuzzlePos = basePos + (gunForwardDir * 1.0f);
-
+			if (m_WeaponAttachment.IsValid()) {
+				const XMVECTOR actualMuzzlePos =
+					m_WeaponAttachment.GetMuzzleWorldPosition();
+				const XMVECTOR gunForwardDir = GetWeaponAimDirection();
 				XMFLOAT3 p, v;
 				XMStoreFloat3(&p, actualMuzzlePos);
 				XMStoreFloat3(&v, gunForwardDir);
@@ -450,6 +508,15 @@ void PlayerCharacter::Update(double dt) {
 
 	// --- 5. 动画更新 ---
 	m_Animator.Update(dt);
+	m_FinalBoneMatrices =
+		m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
+	UpdateWeaponAttachment();
+	if (m_WeaponAttachment.UpdateRuntimeDebugControls(dt))
+	{
+		m_WeaponAttachment.ResolveSocketBone(
+			m_pModel->GetSkeleton().nameToIndex);
+		UpdateWeaponAttachment();
+	}
 
 	// --- 6. 粒子系统更新 ---
 	m_pMuzzleFireSystem->Update(dt);
@@ -466,12 +533,11 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	Shader_Billboard_SetProjectMatrix(proj);
 
 	// 2. 构造世界矩阵
-	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+	DirectX::XMMATRIX world = GetCharacterWorldMatrix();
 	SkinningShader_3D_SetWorldMatrix(world);
 
 	// 3. 骨骼传输
-	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
-	SkinningShader_3D_SetBoneTransforms(bones);
+	SkinningShader_3D_SetBoneTransforms(m_FinalBoneMatrices);
 
 	// 4. 绘制角色
 	SkinningShader_3D_Begin();
@@ -480,30 +546,14 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 	// 5. 绘制武器与激光（近战动画期间隐藏武器，死亡后也隐藏）
 	if (m_MeleeTimer <= 0.2f && m_CurrentState != CharacterState::Dead)
 	{
-		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
-		if (nameMap.count("mixamorig:RightHand")) {
-			int handIdx = nameMap.at("mixamorig:RightHand");
-			XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx); // 取当前帧右手骨世界矩阵
+		if (m_WeaponAttachment.IsValid()) {
+			m_Weapon.Draw(m_WeaponAttachment.GetWeaponWorldMatrix());
 
-			// 构造枪的世界矩阵：gunLocal（姿态修正）× handMat（骨骼动画）× world（角色变换）
-			XMMATRIX gunLocal =
-				XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
-				XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
-				XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
-
-			XMMATRIX gunWorld = gunLocal * handMat * world;
-			gunWorld = FixGunMatrix(gunWorld); // 修正枪管俯仰角，始终保持枪管水平
-
-			// 绘制枪械静态模型
-			ModelDraw(m_pGunModel, gunWorld);
-
-			// 计算枪口世界坐标（枪口本地偏移 → 世界空间）
-			XMVECTOR muzzleLocalV  = XMLoadFloat3(&m_MuzzleLocalOffset);
-			XMVECTOR basePos       = XMVector3TransformCoord(muzzleLocalV, gunWorld);
-			XMVECTOR gunForwardDir = XMVector3Normalize(gunWorld.r[0]); // 归一化枪管方向
-
-			// 激光起点直接从枪口出发（basePos），不额外前移
-			XMVECTOR actualMuzzlePos = basePos;
+			// Only the source transform changed. The existing ray/AABB
+			// truncation logic below remains unchanged.
+			XMVECTOR actualMuzzlePos =
+				m_WeaponAttachment.GetMuzzleWorldPosition();
+			XMVECTOR gunForwardDir = GetWeaponAimDirection();
 			DirectX::XMFLOAT3 startF3, dirF3;
 			DirectX::XMStoreFloat3(&startF3, actualMuzzlePos);
 			DirectX::XMStoreFloat3(&dirF3, gunForwardDir);
@@ -511,6 +561,9 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			// 射线检测截断：遇到墙壁或敌人时缩短激光
 			float actualLength   = CalculateLaserDistance(startF3, dirF3, m_LaserLength);
 			XMVECTOR laserEndPos = actualMuzzlePos + (gunForwardDir * actualLength);
+			XMStoreFloat3(&m_DebugLaserStart, actualMuzzlePos);
+			XMStoreFloat3(&m_DebugLaserEnd, laserEndPos);
+			m_DebugLaserHit = actualLength < (m_LaserLength - 0.001f);
 
 			// 切换到加法混合（ADD）：让激光/粒子叠加发光而非遮挡背景
 			Direct3D_SetBlendState(BLEND_MODE_ADD);
@@ -523,6 +576,7 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 
 			// 绘制枪口火焰粒子（与激光同一混合状态下绘制）
 			m_pMuzzleFireSystem->Draw();
+			DrawWeaponAttachmentDebug(view);
 
 			// 恢复默认渲染状态
 			Direct3D_SetDepthStencilStateDepthWriteDisable(true); // 恢复深度写入
@@ -530,6 +584,54 @@ void PlayerCharacter::Draw(const DirectX::XMMATRIX& view, const DirectX::XMMATRI
 			Direct3D_SetBlendState(BLEND_MODE_NONE);
 		}
 	}
+}
+
+void PlayerCharacter::DrawWeaponAttachmentDebug(
+	const DirectX::XMMATRIX& view)
+{
+	if (!m_WeaponAttachment.IsDebugVisible() ||
+		!m_WeaponAttachment.IsValid())
+	{
+		return;
+	}
+
+	DrawDebugAxis(
+		m_LaserTexID,
+		m_WeaponAttachment.GetHandWorldMatrix(),
+		view,
+		0.35f,
+		0.025f);
+	DrawDebugAxis(
+		m_LaserTexID,
+		m_WeaponAttachment.GetSocketWorldMatrix(),
+		view,
+		0.30f,
+		0.025f);
+	DrawDebugAxis(
+		m_LaserTexID,
+		m_WeaponAttachment.GetGripWorldMatrix(),
+		view,
+		0.25f,
+		0.02f);
+	DrawDebugAxis(
+		m_LaserTexID,
+		m_WeaponAttachment.GetMuzzleWorldMatrix(),
+		view,
+		0.30f,
+		0.02f);
+
+	DrawDebugPoint(
+		m_LaserTexID,
+		XMLoadFloat3(&m_DebugLaserStart),
+		view,
+		{ 0.0f, 1.0f, 1.0f, 1.0f });
+	DrawDebugPoint(
+		m_LaserTexID,
+		XMLoadFloat3(&m_DebugLaserEnd),
+		view,
+		m_DebugLaserHit
+			? XMFLOAT4{ 1.0f, 0.2f, 1.0f, 1.0f }
+			: XMFLOAT4{ 1.0f, 1.0f, 0.2f, 1.0f });
 }
 
 void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
@@ -542,12 +644,11 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 	Shader_Shadow_ApplySkinning();
 
 	// 传递并设置世界矩阵 (Shader_Shadow 会自动结合 LightView 和 LightProj 计算并更新 b0)
-	DirectX::XMMATRIX world = DirectX::XMMatrixScaling(m_Scale, m_Scale, m_Scale) * DirectX::XMMatrixRotationY(m_RotationY + DirectX::XM_PI) * DirectX::XMMatrixTranslation(m_Position.x, m_Position.y, m_Position.z);
+	DirectX::XMMATRIX world = GetCharacterWorldMatrix();
 	Shader_Shadow_SetWorldMatrix(world);
 
 	// 获取当前动画的骨骼矩阵并更新到显存 (这会更新 g_pCBBones)
-	auto bones = m_Animator.GetFinalBoneMatrices(m_pModel->GetSkeleton());
-	SkinningShader_3D_SetBoneTransforms(bones);
+	SkinningShader_3D_SetBoneTransforms(m_FinalBoneMatrices);
 
 	// 手动将骨骼 Buffer 绑定到 Vertex Shader 的槽位 1 (对应 hlsl 里的 register(b1))
 	ID3D11Buffer* pBoneBuffer = SkinningShader_3D_GetBoneBuffer();
@@ -559,26 +660,15 @@ void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const Direc
 	// ==========================================================
 	// 2. 绘制枪械 (恢复静态阴影 Shader)
 	// ==========================================================
-	if (m_MeleeTimer <= 0.2f && m_pGunModel && m_CurrentState != CharacterState::Dead)
+	if (m_MeleeTimer <= 0.2f &&
+		m_Weapon.GetModel() &&
+		m_WeaponAttachment.IsValid() &&
+		m_CurrentState != CharacterState::Dead)
 	{
 		// 切换回静态物体的 Shadow Shader
 		Shader_Shadow_Apply();
-
-		const auto& nameMap = m_pModel->GetSkeleton().nameToIndex;
-		if (nameMap.count("mixamorig:RightHand"))
-		{
-			int handIdx = nameMap.at("mixamorig:RightHand");
-			DirectX::XMMATRIX handMat = m_Animator.GetBoneGlobalMatrix(handIdx);
-			DirectX::XMMATRIX gunLocal =
-				DirectX::XMMatrixScaling(m_GunScale, m_GunScale, m_GunScale) *
-				DirectX::XMMatrixRotationRollPitchYaw(m_GunPitch, m_GunYaw, m_GunRoll) *
-				DirectX::XMMatrixTranslation(m_GunOffset.x, m_GunOffset.y, m_GunOffset.z);
-
-			DirectX::XMMATRIX gunWorld = gunLocal * handMat * world;
-			gunWorld = FixGunMatrix(gunWorld);
-			// 静态模型画阴影
-			ModelDrawShadow(m_pGunModel, gunWorld);
-		}
+		m_Weapon.DrawShadow(
+			m_WeaponAttachment.GetWeaponWorldMatrix());
 	}
 }
 

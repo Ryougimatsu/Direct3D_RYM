@@ -219,6 +219,9 @@
     <ClCompile Include="system_timer.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="title.cpp" />
+    <ClCompile Include="Weapon.cpp" />
+    <ClCompile Include="WeaponAttachmentComponent.cpp" />
+    <ClCompile Include="WeaponSocket.cpp" />
     <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAlloc.cpp" />
     <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourAssert.cpp" />
     <ClCompile Include="Vendor\RecastDetour\Detour\Source\DetourCommon.cpp" />
@@ -298,6 +301,9 @@
     <ClInclude Include="system_timer.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="title.h" />
+    <ClInclude Include="Weapon.h" />
+    <ClInclude Include="WeaponAttachmentComponent.h" />
+    <ClInclude Include="WeaponSocket.h" />
     <ClInclude Include="WICTextureLoader11.h" />
   </ItemGroup>
   <ItemGroup>
