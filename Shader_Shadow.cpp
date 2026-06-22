@@ -68,13 +68,16 @@ bool Shader_Shadow_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pConte
 	hr = g_pDevice->CreateShaderResourceView(g_pShadowMapTexture, &srvDesc, &g_pShadowSRV);
 	if (FAILED(hr)) return false;
 
-	// 4. 创建光栅化状态 (增加 Bias 防止波纹)
+	// 4. 创建光栅化状态
+	// Bias 过大会让阴影沿光线方向离开投影物体，形成明显的“悬浮/Peter Panning”。
+	// 阴影图分辨率较高，使用很小的常量偏移并限制斜率偏移即可。
 	D3D11_RASTERIZER_DESC rasterDesc = {};
 	rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.CullMode = D3D11_CULL_NONE;
-	rasterDesc.DepthBias = 500;
-	rasterDesc.DepthBiasClamp = 0.0f;
-	rasterDesc.SlopeScaledDepthBias = 1.0f;
+	rasterDesc.DepthBias = 32;
+	rasterDesc.DepthBiasClamp = 0.0001f;
+	rasterDesc.SlopeScaledDepthBias = 0.25f;
+	rasterDesc.DepthClipEnable = TRUE;
 	hr = g_pDevice->CreateRasterizerState(&rasterDesc, &g_pShadowRasterizer);
 
 	// 5. 设置阴影视口

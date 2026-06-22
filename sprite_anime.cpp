@@ -143,6 +143,9 @@ void SpriteAnime_Update(double elapsed_time)
 
 	int SpriteAnime_CreatePlayer(int anime_pattern_id)
 	{
+		if (anime_pattern_id < 0 || anime_pattern_id >= ANIM_PATTERN_MAX)
+			return -1;
+
 		for (int i = 0; i < ANIM_PLAY_MAX; i++) {
 			if (g_AnimePlayData[i].m_PatternId >= 0)continue; // 既に使用中のプレイヤーはスキップ
 			g_AnimePlayData[i].m_PatternId = anime_pattern_id; // アニメーションパターンIDを設定
@@ -181,6 +184,8 @@ void SpriteAnime_Update(double elapsed_time)
 
 	bool SpriteAnime_IsStopped(int index)
 	{
+		if (index < 0 || index >= ANIM_PLAY_MAX)
+			return true;
 		return g_AnimePlayData[index].m_isStopped; // 再生が停止しているかどうかを返す
 	}
 
@@ -220,6 +225,8 @@ void SpriteAnime_Update(double elapsed_time)
 
 	void SpriteAnime_DestroyPlayer(int index)
 	{
+		if (index < 0 || index >= ANIM_PLAY_MAX)
+			return;
 		g_AnimePlayData[index].m_PatternId = -1; // アニメーションパターンIDを無効化
 	}
 

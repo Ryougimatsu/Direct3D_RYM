@@ -132,7 +132,7 @@ bool Shader_field_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContex
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
-	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
 	sampDesc.BorderColor[0] = 1.0f;
 	sampDesc.BorderColor[1] = 1.0f;
 	sampDesc.BorderColor[2] = 1.0f;

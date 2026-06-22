@@ -19,21 +19,46 @@ struct Vertex3D
 };
 namespace {
 	int g_TextureWhite = -1;
+
+	void BindDiffuseTexture(MODEL* model, aiMaterial* material)
+	{
+		aiString texturePath;
+		if (material &&
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath) == AI_SUCCESS &&
+			texturePath.length != 0)
+		{
+			auto it = model->Texture.find(texturePath.C_Str());
+			if (it != model->Texture.end() && it->second)
+			{
+				Direct3D_GetDeviceContext()->PSSetShaderResources(0, 1, &it->second);
+				return;
+			}
+		}
+
+		Texture_Set(g_TextureWhite);
+	}
 }
 
 MODEL* ModelLoad(const char* FileName, float size)
 {
-	MODEL* model = new MODEL;
+	if (!FileName || !Direct3D_GetDevice())
+		return nullptr;
+
+	MODEL* model = new MODEL{};
 
 	model->AiScene = aiImportFile(
 		FileName,
 		aiProcessPreset_TargetRealtime_MaxQuality |
 		aiProcess_ConvertToLeftHanded
 	);
-	assert(model->AiScene);
+	if (!model->AiScene)
+	{
+		delete model;
+		return nullptr;
+	}
 
-	model->VertexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes];
-	model->IndexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes];
+	model->VertexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes]{};
+	model->IndexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes]{};
 
 	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++)
 	{
@@ -103,9 +128,14 @@ MODEL* ModelLoad(const char* FileName, float size)
 			D3D11_SUBRESOURCE_DATA sd{};
 			sd.pSysMem = vertex;
 
-			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
+			HRESULT hr = Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
 
 			delete[] vertex;
+			if (FAILED(hr))
+			{
+				ModelRelease(model);
+				return nullptr;
+			}
 		}
 
 		// -----------------------------
@@ -133,9 +163,14 @@ MODEL* ModelLoad(const char* FileName, float size)
 			D3D11_SUBRESOURCE_DATA sd{};
 			sd.pSysMem = index;
 
-			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->IndexBuffer[m]);
+			HRESULT hr = Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->IndexBuffer[m]);
 
 			delete[] index;
+			if (FAILED(hr))
+			{
+				ModelRelease(model);
+				return nullptr;
+			}
 		}
 	}
 
@@ -161,8 +196,12 @@ MODEL* ModelLoad(const char* FileName, float size)
 
 		if (texture)
 		{
-			resource->Release();
+			if (resource) resource->Release();
 			model->Texture[aitexture->mFilename.C_Str()] = texture;
+		}
+		else if (resource)
+		{
+			resource->Release();
 		}
 	}
 
@@ -205,11 +244,12 @@ MODEL* ModelLoad(const char* FileName, float size)
 
 		if (SUCCEEDED(hr) && texture)
 		{
-			resource->Release();
+			if (resource) resource->Release();
 			model->Texture[filename.C_Str()] = texture;
 		}
 		else
 		{
+			if (resource) resource->Release();
 			// 找不到贴图就用白色占位
 			model->Texture[filename.C_Str()] = nullptr;
 		}
@@ -221,17 +261,24 @@ MODEL* ModelLoad(const char* FileName, float size)
 
 MODEL* ModelLoadS(const char* FileName, float size)
 {
-	MODEL* model = new MODEL;
+	if (!FileName || !Direct3D_GetDevice())
+		return nullptr;
+
+	MODEL* model = new MODEL{};
 
 	model->AiScene = aiImportFile(
 		FileName,
 		aiProcessPreset_TargetRealtime_MaxQuality |
 		aiProcess_ConvertToLeftHanded
 	);
-	assert(model->AiScene);
+	if (!model->AiScene)
+	{
+		delete model;
+		return nullptr;
+	}
 
-	model->VertexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes];
-	model->IndexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes];
+	model->VertexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes]{};
+	model->IndexBuffer = new ID3D11Buffer * [model->AiScene->mNumMeshes]{};
 
 	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++)
 	{
@@ -269,9 +316,9 @@ MODEL* ModelLoadS(const char* FileName, float size)
 				if (hasNormals)
 				{
 					vertex[v].normal = XMFLOAT3(
-						mesh->mNormals[v].x * size,
-						-mesh->mNormals[v].z * size,
-						mesh->mNormals[v].y * size);
+						mesh->mNormals[v].x,
+						-mesh->mNormals[v].z,
+						mesh->mNormals[v].y);
 				}
 				else
 				{
@@ -293,9 +340,14 @@ MODEL* ModelLoadS(const char* FileName, float size)
 			D3D11_SUBRESOURCE_DATA sd{};
 			sd.pSysMem = vertex;
 
-			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
+			HRESULT hr = Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->VertexBuffer[m]);
 
 			delete[] vertex;
+			if (FAILED(hr))
+			{
+				ModelRelease(model);
+				return nullptr;
+			}
 		}
 
 		// 索引缓冲（和前面一样）
@@ -321,15 +373,21 @@ MODEL* ModelLoadS(const char* FileName, float size)
 			D3D11_SUBRESOURCE_DATA sd{};
 			sd.pSysMem = index;
 
-			Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->IndexBuffer[m]);
+			HRESULT hr = Direct3D_GetDevice()->CreateBuffer(&bd, &sd, &model->IndexBuffer[m]);
 
 			delete[] index;
+			if (FAILED(hr))
+			{
+				ModelRelease(model);
+				return nullptr;
+			}
 		}
 	}
 
 
 
-	g_TextureWhite = Texture_LoadFromFile(L"resource/texture/white.png");
+	if (g_TextureWhite < 0)
+		g_TextureWhite = Texture_LoadFromFile(L"resource/texture/white.png");
 
 
 
@@ -338,8 +396,8 @@ MODEL* ModelLoadS(const char* FileName, float size)
 	{
 		aiTexture* aitexture = model->AiScene->mTextures[i];
 
-		ID3D11ShaderResourceView* texture;
-		ID3D11Resource* resource;
+		ID3D11ShaderResourceView* texture = nullptr;
+		ID3D11Resource* resource = nullptr;
 
 
 		CreateWICTextureFromMemory(
@@ -350,11 +408,15 @@ MODEL* ModelLoadS(const char* FileName, float size)
 			&resource, // release!!!!
 			&texture);
 
-		assert(texture);
-
-		resource->Release();
-
-		model->Texture[aitexture->mFilename.data] = texture;
+		if (texture)
+		{
+			if (resource) resource->Release();
+			model->Texture[aitexture->mFilename.data] = texture;
+		}
+		else if (resource)
+		{
+			resource->Release();
+		}
 	}
 
 
@@ -386,8 +448,8 @@ MODEL* ModelLoadS(const char* FileName, float size)
 			continue;
 		}
 
-		ID3D11ShaderResourceView* texture;
-		ID3D11Resource* resource;
+		ID3D11ShaderResourceView* texture = nullptr;
+		ID3D11Resource* resource = nullptr;
 
 		std::string texfilename = directory + "/" + filename.C_Str();
 
@@ -395,7 +457,7 @@ MODEL* ModelLoadS(const char* FileName, float size)
 		wchar_t* pWideFilename = new wchar_t[len];
 		MultiByteToWideChar(CP_UTF8, 0, texfilename.c_str(), -1, pWideFilename, len);
 
-		CreateWICTextureFromFile(
+		HRESULT hr = CreateWICTextureFromFile(
 			Direct3D_GetDevice(),
 			Direct3D_GetDeviceContext(),
 			pWideFilename,
@@ -404,11 +466,16 @@ MODEL* ModelLoadS(const char* FileName, float size)
 
 		delete[] pWideFilename;
 
-		assert(texture);
-
-		resource->Release(); // !!!!!!!!!!!!!
-
-		model->Texture[filename.C_Str()] = texture;
+		if (SUCCEEDED(hr) && texture)
+		{
+			if (resource) resource->Release();
+			model->Texture[filename.C_Str()] = texture;
+		}
+		else
+		{
+			if (resource) resource->Release();
+			model->Texture[filename.C_Str()] = nullptr;
+		}
 	}
 
 
@@ -421,10 +488,14 @@ MODEL* ModelLoadS(const char* FileName, float size)
 
 void ModelRelease(MODEL* model)
 {
-	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++)
+	if (!model)
+		return;
+
+	const unsigned int meshCount = model->AiScene ? model->AiScene->mNumMeshes : 0;
+	for (unsigned int m = 0; m < meshCount; m++)
 	{
-		model->VertexBuffer[m]->Release();
-		model->IndexBuffer[m]->Release();
+		if (model->VertexBuffer && model->VertexBuffer[m]) model->VertexBuffer[m]->Release();
+		if (model->IndexBuffer && model->IndexBuffer[m]) model->IndexBuffer[m]->Release();
 	}
 
 	delete[] model->VertexBuffer;
@@ -441,13 +512,16 @@ void ModelRelease(MODEL* model)
 	}
 	// --- 修改结束 ---
 
-	aiReleaseImport(model->AiScene);
+	if (model->AiScene) aiReleaseImport(model->AiScene);
 
 	delete model;
 }
 
 void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 {
+	if (!model || !model->AiScene)
+		return;
+
 	// シェーダーを描画パイプラインに設定
 	Shader_3D_Begin();
 
@@ -458,24 +532,9 @@ void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++) {
 
-		if (model->AiScene->mNumTextures)
-		{
-			aiString texture;
-			aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
-			aimaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texture);
-			if (texture.length != 0)
-			{
-				Direct3D_GetDeviceContext()->PSSetShaderResources(0, 1, &model->Texture[texture.data]);
-			}
-		}
-		else
-		{
-			Texture_Set(g_TextureWhite);
-		}
-
-
 		aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
-		aiColor3D diffuse;
+		BindDiffuseTexture(model, aimaterial);
+		aiColor3D diffuse(1.0f, 1.0f, 1.0f);
 		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
 		Shader_3D_SetColor({ diffuse.r, diffuse.g, diffuse.b, 1.0f });
 		// 頂点バッファを描画パイプラインに設定
@@ -491,6 +550,9 @@ void ModelDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 void ModelUnlitDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 {
+	if (!model || !model->AiScene)
+		return;
+
 	// シェーダーを描画パイプラインに設定
 	Shader3DUnilt_Begin();
 
@@ -501,22 +563,9 @@ void ModelUnlitDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 	for (unsigned int m = 0; m < model->AiScene->mNumMeshes; m++) {
 
-		if (model->AiScene->mNumTextures)
-		{
-			aiString texture;
-			aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
-			aimaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texture);
-			if (texture.length != 0)
-			{
-				Direct3D_GetDeviceContext()->PSSetShaderResources(0, 1, &model->Texture[texture.data]);
-			}
-		}
-		else
-		{
-			Texture_Set(g_TextureWhite);
-		}
 		aiMaterial* aimaterial = model->AiScene->mMaterials[model->AiScene->mMeshes[m]->mMaterialIndex];
-		aiColor3D diffuse;
+		BindDiffuseTexture(model, aimaterial);
+		aiColor3D diffuse(1.0f, 1.0f, 1.0f);
 		aimaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
 		Shader3DUnilt_SetColor({ diffuse.r, diffuse.g, diffuse.b, 1.0f });
 		// 頂点バッファを描画パイプラインに設定
@@ -532,6 +581,9 @@ void ModelUnlitDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 void ModelWeaponDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 {
+	if (!model || !model->AiScene)
+		return;
+
 	Shader_3D_Begin();
 	Shader_3D_SetWorldMatrix(mtxWorld);
 
@@ -543,14 +595,15 @@ void ModelWeaponDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 		aiString texPath;
 		// 绑定颜色贴图到 t0
-		if (pMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-			context->PSSetShaderResources(0, 1, &model->Texture[texPath.C_Str()]);
-		}
+		BindDiffuseTexture(model, pMaterial);
 
 		// 绑定法线贴图到 t1 (如果你的 Shader 支持)
+		ID3D11ShaderResourceView* normalSRV = nullptr;
 		if (pMaterial->GetTexture(aiTextureType_NORMALS, 0, &texPath) == AI_SUCCESS) {
-			context->PSSetShaderResources(1, 1, &model->Texture[texPath.C_Str()]);
+			auto it = model->Texture.find(texPath.C_Str());
+			if (it != model->Texture.end()) normalSRV = it->second;
 		}
+		context->PSSetShaderResources(1, 1, &normalSRV);
 
 		// 设置顶点和索引缓冲
 		UINT stride = sizeof(Vertex3D);
@@ -565,6 +618,8 @@ void ModelWeaponDraw(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 void ModelDrawShadow(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 {
+	if (!model || !model->AiScene)
+		return;
 
 	// 1. 设置矩阵
 	Shader_Shadow_SetWorldMatrix(mtxWorld);
@@ -589,6 +644,9 @@ void ModelDrawShadow(MODEL* model, const DirectX::XMMATRIX& mtxWorld)
 
 AABB ModelGetAABB(MODEL* model, const DirectX::XMFLOAT3& position)
 {
+	if (!model || !model->AiScene || model->AiScene->mNumMeshes == 0)
+		return { position, position };
+
 	AABB aabb;
 	aiVector3D min = model->AiScene->mMeshes[0]->mAABB.mMin;
 	aiVector3D max = model->AiScene->mMeshes[0]->mAABB.mMax;

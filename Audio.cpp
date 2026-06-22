@@ -11,25 +11,18 @@ namespace{
 
 void InitAudio()
 {
-	
-	XAudio2Create(&g_Xaudio, 0);
-	
-	g_Xaudio->CreateMasteringVoice(&g_MasteringVoice);
+	if (FAILED(XAudio2Create(&g_Xaudio, 0)) || !g_Xaudio)
+	{
+		g_Xaudio = nullptr;
+		return;
+	}
+
+	if (FAILED(g_Xaudio->CreateMasteringVoice(&g_MasteringVoice)))
+	{
+		g_Xaudio->Release();
+		g_Xaudio = nullptr;
+	}
 }
-
-
-void UninitAudio()
-{
-	g_MasteringVoice->DestroyVoice();
-	g_Xaudio->Release();
-}
-
-
-
-
-
-
-
 
 
 struct AUDIO
@@ -44,10 +37,41 @@ struct AUDIO
 #define AUDIO_MAX 100
 static AUDIO g_Audio[AUDIO_MAX]{};
 
+void UninitAudio()
+{
+	for (AUDIO& audio : g_Audio)
+	{
+		if (audio.SourceVoice)
+		{
+			audio.SourceVoice->Stop();
+			audio.SourceVoice->DestroyVoice();
+			audio.SourceVoice = nullptr;
+		}
+		delete[] audio.SoundData;
+		audio.SoundData = nullptr;
+		audio.Length = 0;
+		audio.PlayLength = 0;
+	}
+
+	if (g_MasteringVoice)
+	{
+		g_MasteringVoice->DestroyVoice();
+		g_MasteringVoice = nullptr;
+	}
+	if (g_Xaudio)
+	{
+		g_Xaudio->Release();
+		g_Xaudio = nullptr;
+	}
+}
+
 
 
 int LoadAudio(const char *FileName)
 {
+	if (!g_Xaudio || !FileName)
+		return -1;
+
 	int index = -1;
 
 	for (int i = 0; i < AUDIO_MAX; i++)
@@ -79,7 +103,8 @@ int LoadAudio(const char *FileName)
 
 
 		hmmio = mmioOpen((LPSTR)FileName, &mmioinfo, MMIO_READ);
-		assert(hmmio);
+		if (!hmmio)
+			return -1;
 
 		riffchunkinfo.fccType = mmioFOURCC('W', 'A', 'V', 'E');
 		mmioDescend(hmmio, &riffchunkinfo, NULL, MMIO_FINDRIFF);
@@ -120,8 +145,12 @@ int LoadAudio(const char *FileName)
 
 
 	// �T�E���h�\�[�X����
-	g_Xaudio->CreateSourceVoice(&g_Audio[index].SourceVoice, &wfx);
-	assert(g_Audio[index].SourceVoice);
+	if (FAILED(g_Xaudio->CreateSourceVoice(&g_Audio[index].SourceVoice, &wfx)))
+	{
+		delete[] g_Audio[index].SoundData;
+		g_Audio[index] = {};
+		return -1;
+	}
 
 
 	return index;
@@ -132,11 +161,17 @@ int LoadAudio(const char *FileName)
 
 void UnloadAudio(int Index)
 {
+	if (Index < 0 || Index >= AUDIO_MAX || !g_Audio[Index].SourceVoice)
+		return;
+
 	g_Audio[Index].SourceVoice->Stop();
 	g_Audio[Index].SourceVoice->DestroyVoice();
+	g_Audio[Index].SourceVoice = nullptr;
 
 	delete[] g_Audio[Index].SoundData;
 	g_Audio[Index].SoundData = nullptr;
+	g_Audio[Index].Length = 0;
+	g_Audio[Index].PlayLength = 0;
 }
 
 
@@ -145,6 +180,9 @@ void UnloadAudio(int Index)
 
 void PlayAudio(int Index, bool Loop)
 {
+	if (Index < 0 || Index >= AUDIO_MAX || !g_Audio[Index].SourceVoice || !g_Audio[Index].SoundData)
+		return;
+
 	g_Audio[Index].SourceVoice->Stop();
 	g_Audio[Index].SourceVoice->FlushSourceBuffers();
 
@@ -176,7 +214,8 @@ void PlayAudio(int Index, bool Loop)
 
 void SetVolume(int Index, float Volume)
 {
-	assert(g_Audio[Index].SourceVoice);
+	if (Index < 0 || Index >= AUDIO_MAX || !g_Audio[Index].SourceVoice)
+		return;
 	g_Audio[Index].SourceVoice->SetVolume(Volume);
 };
 

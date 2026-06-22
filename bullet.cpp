@@ -86,6 +86,7 @@ void Bullet_Initialize()
 void Bullet_Finalize()
 {
 	ModelRelease(g_BulletModel);
+	g_BulletModel = nullptr;
 
 	for (int i = 0; i < g_BulletCount; i++)
 	{
@@ -191,6 +192,9 @@ void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& v
 	if (g_BulletCount >= MAX_BULLET) return;
 
 	XMVECTOR vDir = XMLoadFloat3(&velocity);
+	if (XMVectorGetX(XMVector3LengthSq(vDir)) < 0.000001f) {
+		return;
+	}
 	vDir = XMVector3Normalize(vDir);
 	vDir = vDir * BULLET_SPEED; // 修正了空格
 

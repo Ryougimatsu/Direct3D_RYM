@@ -19,8 +19,8 @@ struct MODEL
 {
 	const aiScene* AiScene = nullptr;
 
-	ID3D11Buffer** VertexBuffer;
-	ID3D11Buffer** IndexBuffer;
+	ID3D11Buffer** VertexBuffer = nullptr;
+	ID3D11Buffer** IndexBuffer = nullptr;
 
 	std::unordered_map<std::string, ID3D11ShaderResourceView*> Texture;
 };

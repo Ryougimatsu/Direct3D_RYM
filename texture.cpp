@@ -71,6 +71,13 @@ int Texture_LoadFromFile(const wchar_t* pFilename)
 
 		hr = DirectX::CreateShaderResourceView(
 			g_pDevice, image.GetImages(), image.GetImageCount(), metadata, &g_Textures[i].pTexture);
+		if (FAILED(hr))
+		{
+			g_Textures[i].filename.clear();
+			g_Textures[i].width = 0;
+			g_Textures[i].height = 0;
+			return -1;
+		}
 
 		return i;
 		
@@ -110,14 +117,14 @@ void Texture_Set(int texid,int slot)
 
 unsigned int Texture_GetWidth(int texid)
 {
-	if (texid < 0)return 0;
+	if (texid < 0 || texid >= MAX_TEXTURES)return 0;
 
 	return g_Textures[texid].width; // 幅を返す
 }
 
 unsigned int Texture_GetHeight(int texid)
 {
-	if (texid < 0)return 0;
+	if (texid < 0 || texid >= MAX_TEXTURES)return 0;
 
 	return g_Textures[texid].height; // 高さを返す
 }

@@ -47,7 +47,11 @@ float CalculateShadow(float4 posLight)
     if (projCoords.z > 1.0f || projCoords.x < 0.0f || projCoords.x > 1.0f || projCoords.y < 0.0f || projCoords.y > 1.0f)
         return 1.0f;
 
-    float bias = 0.005f;
+    // 旧值 0.005 在当前 1~200 的光源深度范围内接近 1 个世界单位，
+    // 会把角色脚下的阴影明显推开。生成阴影时已经施加了小幅光栅化偏移，
+    // 接收端只保留极小的数值误差补偿。
+    static const float RECEIVER_BIAS = 0.00002f;
+    float bias = RECEIVER_BIAS;
     float currentDepth = projCoords.z - bias;
     
     // PCF 采样

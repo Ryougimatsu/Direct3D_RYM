@@ -43,15 +43,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int nCmdShow)
 {
-	(void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
 	HWND hWnd = GameWindow_Generate(hInstance);
+	if (!hWnd) {
+		if (SUCCEEDED(comResult)) CoUninitialize();
+		return -1;
+	}
 
 	SystemTimer_Initialize();
 
-	Direct3D_Initialize(hWnd);
+	if (!Direct3D_Initialize(hWnd)) {
+		DestroyWindow(hWnd);
+		if (SUCCEEDED(comResult)) CoUninitialize();
+		return -1;
+	}
 
 	KeyLogger_Initialize();
 
@@ -128,7 +136,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 	double fps = 0.0;
 
 
-	MSG msg;
+	MSG msg{};
 
 
 	do {
@@ -163,7 +171,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 				KeyLogger_Update();
 
 				//Game_Update(elapsed_time);
-				Direct3D_SetOffscreen();
 				Scene_Update(elapsed_time);
 				Fade_Update(elapsed_time);
 
@@ -223,13 +230,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 
 	SpriteAnime_Finalize();
 
+	Sprite_Finalize();
+
 	Texture_Finalize();
-
-	Sprite_Finalize();
-
-	Texture_AllRelease();
-
-	Sprite_Finalize();
 
 	Shader_Finalize();
 
@@ -243,9 +246,15 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _
 
 	Polygon_Finalize();
 
+	Sampler_Finalize();
+
+	UninitAudio();
+
 	Direct3D_Finalize();
 
 	Mouse_Finalize();
+
+	if (SUCCEEDED(comResult)) CoUninitialize();
 
 	return static_cast<int>(msg.wParam);
 

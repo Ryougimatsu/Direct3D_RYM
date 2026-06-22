@@ -60,6 +60,8 @@ static D3D11_VIEWPORT g_Viewport{};
 
 bool Direct3D_Initialize(HWND hWnd)
 {
+	g_hWnd = hWnd;
+
     /* デバイス、スワップチェーン、コンテキスト生成 */
     DXGI_SWAP_CHAIN_DESC swap_chain_desc{};
     swap_chain_desc.Windowed = TRUE;
@@ -116,6 +118,7 @@ bool Direct3D_Initialize(HWND hWnd)
 
     if (FAILED(hr)) {
 		MessageBox(hWnd, "Direct3Dの初期化に失敗しました", "エラー", MB_OK);
+		Direct3D_Finalize();
         return false;
     }
 	ID3D10Multithread* pMultithread = nullptr;
@@ -127,11 +130,16 @@ bool Direct3D_Initialize(HWND hWnd)
 
 	if (!configureBackBuffer()) {
 		MessageBox(hWnd, "バックバッファの設定に失敗しました", "エラー", MB_OK);
+		Direct3D_Finalize();
 		return false;
 	}
 
 	// オフスクリーンバッファの設定・生成
-	configureOffscreenBuffer();
+	if (!configureOffscreenBuffer()) {
+		MessageBox(hWnd, "オフスクリーンバッファの設定に失敗しました", "エラー", MB_OK);
+		Direct3D_Finalize();
+		return false;
+	}
 
 	// ブレンドステート設定
 	D3D11_BLEND_DESC bd = {};
@@ -159,7 +167,11 @@ bool Direct3D_Initialize(HWND hWnd)
 	bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 	
 
-	g_pDevice->CreateBlendState(&bd, &g_pBlendStateMultiply);
+	hr = g_pDevice->CreateBlendState(&bd, &g_pBlendStateMultiply);
+	if (FAILED(hr)) {
+		Direct3D_Finalize();
+		return false;
+	}
 
 	// =========================================================
 	// 【新增】创建加法混合状态 (Additive Blending)
@@ -177,6 +189,7 @@ bool Direct3D_Initialize(HWND hWnd)
 
 	hr = g_pDevice->CreateBlendState(&bd, &g_pBlendStateAdd);
 	if (FAILED(hr)) {
+		Direct3D_Finalize();
 		return false;
 	}
 	// =========================================================
@@ -192,21 +205,32 @@ bool Direct3D_Initialize(HWND hWnd)
 	dsd.DepthEnable = FALSE; // 無効にする
 	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 
-	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthDisable);
+	hr = g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthDisable);
+	if (FAILED(hr)) {
+		Direct3D_Finalize();
+		return false;
+	}
 
 	dsd.DepthEnable = TRUE;
 	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthEnable);
+	hr = g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthEnable);
+	if (FAILED(hr)) {
+		Direct3D_Finalize();
+		return false;
+	}
 
 
 	dsd.DepthEnable = TRUE; // 【重要】仍然要进行深度测试(比对谁前谁后)
 	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // 【重要】但不写入深度值
 	dsd.DepthFunc = D3D11_COMPARISON_LESS; // 常规的比较函数
 	dsd.StencilEnable = FALSE;
-	g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthWriteDisable);
+	hr = g_pDevice->CreateDepthStencilState(&dsd, &g_pDepthStencilStateDepthWriteDisable);
+	if (FAILED(hr)) {
+		Direct3D_Finalize();
+		return false;
+	}
 	
 	Direct3D_SetDepthEnable(true);
-	g_hWnd = hWnd;
 	// ラスタライザステートの作成
 	D3D11_RASTERIZER_DESC rd = {};
 	rd.FillMode = D3D11_FILL_SOLID;
@@ -215,7 +239,11 @@ bool Direct3D_Initialize(HWND hWnd)
 	rd.CullMode = D3D11_CULL_NONE;
 	rd.DepthClipEnable = TRUE;
 	rd.MultisampleEnable = FALSE;
-	g_pDevice->CreateRasterizerState(&rd, &g_pRasterizerState);
+	hr = g_pDevice->CreateRasterizerState(&rd, &g_pRasterizerState);
+	if (FAILED(hr)) {
+		Direct3D_Finalize();
+		return false;
+	}
 
 	// デバイスコンテキストにラスタライザーステートを設定
 	g_pDeviceContext->RSSetState(g_pRasterizerState);
@@ -225,8 +253,14 @@ bool Direct3D_Initialize(HWND hWnd)
 
 void Direct3D_Finalize()
 {
+	if (g_pDeviceContext) {
+		g_pDeviceContext->ClearState();
+		g_pDeviceContext->Flush();
+	}
+
 	SAFE_RELEASE(g_pDepthStencilStateDepthDisable)
 	SAFE_RELEASE(g_pDepthStencilStateDepthEnable)
+	SAFE_RELEASE(g_pDepthStencilStateDepthWriteDisable)
 	SAFE_RELEASE(g_pBlendStateMultiply)
 	SAFE_RELEASE(g_pRasterizerState)
 	SAFE_RELEASE(g_pBlendStateAdd)
@@ -236,7 +270,7 @@ void Direct3D_Finalize()
 	SAFE_RELEASE(g_pSwapChain)
 	SAFE_RELEASE(g_pDeviceContext)
 	SAFE_RELEASE(g_pDevice)
-	
+	g_hWnd = NULL;
 
 }
 
@@ -515,6 +549,8 @@ void releaseBackBuffer()
 
 bool configureOffscreenBuffer()
 {
+	releaseOffscreenBuffer();
+
 	g_OffscreenDesc.Width = 512;
 	g_OffscreenDesc.Height = 512;
 	g_OffscreenDesc.MipLevels = 1;          // 必要なら後で自動生成
@@ -526,9 +562,21 @@ bool configureOffscreenBuffer()
 	g_OffscreenDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	g_OffscreenDesc.CPUAccessFlags = 0;
 	g_OffscreenDesc.MiscFlags = 0;
-	g_pDevice->CreateTexture2D(&g_OffscreenDesc, nullptr, &g_pOffscreenBuffer);
-	g_pDevice->CreateRenderTargetView(g_pOffscreenBuffer, nullptr, &g_pOffscreenRenderTargetView);
-	g_pDevice->CreateShaderResourceView(g_pOffscreenBuffer, nullptr, &g_pOffscreenShaderResourceView);
+	HRESULT hr = g_pDevice->CreateTexture2D(&g_OffscreenDesc, nullptr, &g_pOffscreenBuffer);
+	if (FAILED(hr)) {
+		releaseOffscreenBuffer();
+		return false;
+	}
+	hr = g_pDevice->CreateRenderTargetView(g_pOffscreenBuffer, nullptr, &g_pOffscreenRenderTargetView);
+	if (FAILED(hr)) {
+		releaseOffscreenBuffer();
+		return false;
+	}
+	hr = g_pDevice->CreateShaderResourceView(g_pOffscreenBuffer, nullptr, &g_pOffscreenShaderResourceView);
+	if (FAILED(hr)) {
+		releaseOffscreenBuffer();
+		return false;
+	}
 
 	// デプスステンシルバッファの生成
 	D3D11_TEXTURE2D_DESC depth_stencil_desc{};
@@ -543,14 +591,22 @@ bool configureOffscreenBuffer()
 	depth_stencil_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 	depth_stencil_desc.CPUAccessFlags = 0;
 	depth_stencil_desc.MiscFlags = 0;
-	g_pDevice->CreateTexture2D(&depth_stencil_desc, nullptr, &g_pOffscreenDepthStencilBuffer);
+	hr = g_pDevice->CreateTexture2D(&depth_stencil_desc, nullptr, &g_pOffscreenDepthStencilBuffer);
+	if (FAILED(hr)) {
+		releaseOffscreenBuffer();
+		return false;
+	}
 	// デプスステンシルビューの生成
 	D3D11_DEPTH_STENCIL_VIEW_DESC depth_stencil_view_desc{};
 	depth_stencil_view_desc.Format = depth_stencil_desc.Format;
 	depth_stencil_view_desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	depth_stencil_view_desc.Texture2D.MipSlice = 0;
 	depth_stencil_view_desc.Flags = 0;
-	g_pDevice->CreateDepthStencilView(g_pOffscreenDepthStencilBuffer, &depth_stencil_view_desc, &g_pOffscreenDepthStencilView);
+	hr = g_pDevice->CreateDepthStencilView(g_pOffscreenDepthStencilBuffer, &depth_stencil_view_desc, &g_pOffscreenDepthStencilView);
+	if (FAILED(hr)) {
+		releaseOffscreenBuffer();
+		return false;
+	}
 
 	// ビューポートの設定
 	g_OffscreenViewport.TopLeftX = 0.0f;

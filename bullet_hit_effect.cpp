@@ -54,12 +54,25 @@ void BulletHitEffect::Draw() const
 }
 
 static constexpr int MAX_BULLET_HIT_EFFECT = 256;
+static constexpr int MAX_ACTIVE_BULLET_HIT_EFFECT = 50;
 static BulletHitEffect* g_pEffects[MAX_BULLET_HIT_EFFECT]{ nullptr };
 static int g_EffectCount = 0;
 
 void BulletHitEffect_Initialize()
 {
+	for (int i = 0; i < g_EffectCount; i++)
+	{
+		delete g_pEffects[i];
+		g_pEffects[i] = nullptr;
+	}
+	g_EffectCount = 0;
+
 	g_TexID = Texture_LoadFromFile(L"resource/texture/enemy_aura.png");
+	if (g_TexID < 0)
+	{
+		g_AnimePatternID = -1;
+		return;
+	}
 	g_AnimePatternID = SpriteAnime_PatternRegister(
 		g_TexID,
 		8,				//パターン数
@@ -69,7 +82,6 @@ void BulletHitEffect_Initialize()
 		false,			//ループ設定
 		8				//パターンの列数
 	);
-	g_EffectCount = 0;
 }
 
 void BulletHitEffect_Finalize()
@@ -79,6 +91,7 @@ void BulletHitEffect_Finalize()
 		delete g_pEffects[i];
 		g_pEffects[i] = nullptr;
 	}
+	g_EffectCount = 0;
 }
 
 void BulletHitEffect_Update()
@@ -103,9 +116,10 @@ void BulletHitEffect_Update()
 
 void BulletHitEffect_Create(const DirectX::XMFLOAT3& position)
 {
-	if (g_EffectCount >= 50)
+	if (g_AnimePatternID < 0 ||
+		g_EffectCount >= MAX_ACTIVE_BULLET_HIT_EFFECT ||
+		g_EffectCount >= MAX_BULLET_HIT_EFFECT)
 	{
-		// 如果满了，直接返回，不创建新的特效，防止崩溃
 		return;
 	}
 	g_pEffects[g_EffectCount] = new BulletHitEffect(position);
