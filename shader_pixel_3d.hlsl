@@ -149,7 +149,7 @@ float4 main(PS_IN pi) : SV_TARGET
     float3 color = ambient + diffuse + specular; // 最終的な我々の目に届く色
     
     //边缘光
-    float lim = 1.0f - max(dot(normalW.xyz, toEye), 0.0f);
+    float lim = saturate(1.0f - max(dot(normalW.xyz, toEye), 0.0f));
     lim = pow(lim,3.2f);
     //color += float3(lim,lim,lim);
     for (int i = 0; i < Point_light_count; i++)

@@ -201,6 +201,7 @@ void SkinningModel::ProcessMesh(const aiScene* scene, float scale) {
 }
 
 void SkinningModel::ProcessMaterials(const struct aiScene* scene, const std::string& fileName) {
+	(void)fileName;
 	mMaterials.clear();
 	mMaterials.resize(scene->mNumMaterials);
 	for (uint32_t i = 0; i < scene->mNumMaterials; ++i) {

@@ -11,9 +11,9 @@
 
 namespace
 {
-	std::thread g_LoaderThread;       // ¼ÓÔØÏß³Ì
-	std::atomic<bool> g_IsFinished;   // ±ê¼ÇÊÇ·ñ¼ÓÔØÍê³É
-	float g_Timer = 0.0f;             // ÓÃÓÚÎÄ×ÖÉÁË¸¶¯»­
+	std::thread g_LoaderThread;       // åŠ è½½çº¿ç¨‹
+	std::atomic<bool> g_IsFinished;   // æ ‡è®°æ˜¯å¦åŠ è½½å®Œæˆ
+	float g_Timer = 0.0f;             // ç”¨äºæ–‡å­—é—ªçƒåŠ¨ç”»
 	int g_LoadingBG = -1;
 }
 
@@ -22,17 +22,17 @@ void Loading_Initialize()
 	g_IsFinished = false;
 	g_Timer = 0.0f;
 	g_LoadingBG = Texture_LoadFromFile(L"resource/texture/Loading.png");
-	// Æô¶¯Ò»¸öĞÂÏß³Ì£¬È¥Ö´ĞĞ Game_LoadContent
+	// å¯åŠ¨ä¸€ä¸ªæ–°çº¿ç¨‹ï¼Œå»æ‰§è¡Œ Game_LoadContent
 	g_LoaderThread = std::thread([]() {
 		CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-		Game_LoadContent(); // Ö´ĞĞ·±ÖØµÄ¼ÓÔØÈÎÎñ
-		g_IsFinished = true; // ÈÎÎñ×öÍêÁË£¬¾ÙÊÖÊ¾Òâ
+		Game_LoadContent(); // æ‰§è¡Œç¹é‡çš„åŠ è½½ä»»åŠ¡
+		g_IsFinished = true; // ä»»åŠ¡åšå®Œäº†ï¼Œä¸¾æ‰‹ç¤ºæ„
 		});
 }
 
 void Loading_Finalize()
 {
-	// È·±£Ïß³ÌÒÑ¾­»ãºÏ£¨Join£©£¬·ÀÖ¹±¨´í
+	// ç¡®ä¿çº¿ç¨‹å·²ç»æ±‡åˆï¼ˆJoinï¼‰ï¼Œé˜²æ­¢æŠ¥é”™
 	if (g_LoaderThread.joinable()) {
 		g_LoaderThread.join();
 	}
@@ -43,10 +43,10 @@ void Loading_Update(double elapsed_time)
 {
 	g_Timer += (float)elapsed_time;
 
-	// Èç¹ûÏß³Ì±¨¸æËµËü¸ÉÍê»îÁË
+	// å¦‚æœçº¿ç¨‹æŠ¥å‘Šè¯´å®ƒå¹²å®Œæ´»äº†
 	if (g_IsFinished)
 	{
-		// ÇĞ»»µ½ÓÎÏ·³¡¾°
+		// åˆ‡æ¢åˆ°æ¸¸æˆåœºæ™¯
 		Scene_Change(SCENE_GAME);
 	}
 }

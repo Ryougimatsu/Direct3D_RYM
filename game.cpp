@@ -535,13 +535,13 @@ void Game_Update(double elapsed_time)
 		g_SmokeTimer = 0.0f;
 
 		// 在玩家周围可见范围内随机生成烟雾（半径约 40 米）
-		DirectX::XMFLOAT3 pPos = { 0.0f, 0.0f, 0.0f };
+		DirectX::XMFLOAT3 smokePlayerPos = { 0.0f, 0.0f, 0.0f };
 		if (g_Player) {
-			pPos = g_Player->GetPosition();
+			smokePlayerPos = g_Player->GetPosition();
 		}
 
-		float randX = pPos.x + RandomFloat(-40.0f, 40.0f);
-		float randZ = pPos.z + RandomFloat(-30.0f, 30.0f);
+		float randX = smokePlayerPos.x + RandomFloat(-40.0f, 40.0f);
+		float randZ = smokePlayerPos.z + RandomFloat(-30.0f, 30.0f);
 
 		g_SmokeSystem->EmitSmoke({ randX, 0.0f, randZ }, 3); // 每波发射 3 个烟雾粒子
 	}
@@ -706,8 +706,8 @@ void Game_Draw()
 			Direct3D_GetDeviceContext()->RSGetViewports(&numVp, &vp);
 
 			// 获取当前摄像机矩阵
-			DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&Player_Camera_GetViewMatrix());
-			DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
+			DirectX::XMMATRIX arrowView = DirectX::XMLoadFloat4x4(&Player_Camera_GetViewMatrix());
+			DirectX::XMMATRIX arrowProj = DirectX::XMLoadFloat4x4(&Player_Camera_GetProjectionMatrix());
 			DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
 
 			// 获取玩家和目标的 3D 坐标
@@ -720,12 +720,12 @@ void Game_Draw()
 			vGoalPos = DirectX::XMVectorSetY(vGoalPos, pPos.y);
 
 			// 将 3D 世界坐标投影到 2D 屏幕像素坐标
-			DirectX::XMVECTOR vScreenPlayer = DirectX::XMVector3Project(vPlayerPos, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, proj, view, world);
+			DirectX::XMVECTOR vScreenPlayer = DirectX::XMVector3Project(vPlayerPos, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, arrowProj, arrowView, world);
 
 			// 用玩家前方 1 米处的投影点计算屏幕方向（避免目标在摄像机背后时投影翻转）
 			DirectX::XMVECTOR vDirToGoal  = DirectX::XMVector3Normalize(vGoalPos - vPlayerPos);
 			DirectX::XMVECTOR vPointAhead = vPlayerPos + vDirToGoal * 1.0f;
-			DirectX::XMVECTOR vScreenAhead = DirectX::XMVector3Project(vPointAhead, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, proj, view, world);
+			DirectX::XMVECTOR vScreenAhead = DirectX::XMVector3Project(vPointAhead, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height, vp.MinDepth, vp.MaxDepth, arrowProj, arrowView, world);
 
 			// 计算屏幕上的 2D 方向向量和旋转角度
 			DirectX::XMVECTOR vScreenDir = vScreenAhead - vScreenPlayer;

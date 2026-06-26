@@ -682,6 +682,8 @@ void PlayerCharacter::DrawWeaponAttachmentDebug(
 
 void PlayerCharacter::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
 {
+	(void)lightView;
+	(void)lightProj;
 	if (!m_pModel) return;
 
 	// ==========================================================

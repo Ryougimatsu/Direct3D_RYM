@@ -26,6 +26,7 @@ void GameOver_Finalize()
 
 void GameOver_Update(double elapsed_time)
 {
+	(void)elapsed_time;
 	// ���»س��������ر��⻭��
 	if (KeyLogger_IsTrigger(KK_ENTER))
 	{

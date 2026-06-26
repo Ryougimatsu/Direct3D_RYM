@@ -8,8 +8,8 @@
 #include <sstream>
 #include <vector>
 
-// --- 1. ½«½á¹¹Ìå¶¨Òå·ÅÔÚÎÄ¼ş¶¥²¿ ---
-// ÓÃÓÚ´æ´¢µ¥¸ö×Ö·ûµÄäÖÈ¾ĞÅÏ¢
+// --- 1. å°†ç»“æ„ä½“å®šä¹‰æ”¾åœ¨æ–‡ä»¶é¡¶éƒ¨ ---
+// ç”¨äºå­˜å‚¨å•ä¸ªå­—ç¬¦çš„æ¸²æŸ“ä¿¡æ¯
 struct CharInfo
 {
 	int srcX, srcY;
@@ -18,13 +18,13 @@ struct CharInfo
 	int xadvance;
 };
 
-// --- 2. ¶¨ÒåÈ«¾Ö±äÁ¿ ---
+// --- 2. å®šä¹‰å…¨å±€å˜é‡ ---
 static int g_FontTextureID = -1;
 static std::map<wchar_t, CharInfo> g_CharMap;
 
-// --- 3. ½«¸¨Öúº¯Êı·ÅÔÚËüÃÇ±»µ÷ÓÃÖ®Ç° ---
+// --- 3. å°†è¾…åŠ©å‡½æ•°æ”¾åœ¨å®ƒä»¬è¢«è°ƒç”¨ä¹‹å‰ ---
 
-// ¸¨Öúº¯Êı£º½âÎöÒ»ĞĞBMFontµÄ "char" Êı¾İ
+// è¾…åŠ©å‡½æ•°ï¼šè§£æä¸€è¡ŒBMFontçš„ "char" æ•°æ®
 static void ParseCharLine(const std::string& line)
 {
 	std::stringstream ss(line);
@@ -56,24 +56,24 @@ static void ParseCharLine(const std::string& line)
 	}
 }
 
-// ¸¨Öúº¯Êı£º»ñÈ¡µ¥¸ö×Ö·ûµÄäÖÈ¾¿í¶È
+// è¾…åŠ©å‡½æ•°ï¼šè·å–å•ä¸ªå­—ç¬¦çš„æ¸²æŸ“å®½åº¦
 static int GetCharWidth(wchar_t c)
 {
 	auto it = g_CharMap.find(c);
 	if (it != g_CharMap.end()) {
 		return it->second.xadvance;
 	}
-	return 16; // ·µ»ØÒ»¸öÄ¬ÈÏµÄ¿Õ¸ñ¿í¶È
+	return 16; // è¿”å›ä¸€ä¸ªé»˜è®¤çš„ç©ºæ ¼å®½åº¦
 }
 
 
-// --- 4. ÊµÏÖÄ£¿éµÄ¹«¹²º¯Êı ---
+// --- 4. å®ç°æ¨¡å—çš„å…¬å…±å‡½æ•° ---
 
 void Font_Initialize()
 {
 	g_FontTextureID = Texture_LoadFromFile(L"resource/texture/font.png");
 	if (g_FontTextureID < 0) {
-		MessageBoxW(NULL, L"×ÖÌåÎÆÀí 'resource/texture/font.png' ¼ÓÔØÊ§°Ü¡£", L"×ÖÌåÏµÍ³´íÎó", MB_OK | MB_ICONERROR);
+		MessageBoxW(NULL, L"å­—ä½“çº¹ç† 'resource/texture/font.png' åŠ è½½å¤±è´¥ã€‚", L"å­—ä½“ç³»ç»Ÿé”™è¯¯", MB_OK | MB_ICONERROR);
 		return;
 	}
 
@@ -82,7 +82,7 @@ void Font_Initialize()
 	std::ifstream file("resource/texture/font.fnt");
 	if (!file.is_open())
 	{
-		MessageBoxW(NULL, L"×ÖÌåÊı¾İÎÄ¼ş 'resource/texture/font.fnt' ¼ÓÔØÊ§°Ü¡£", L"×ÖÌåÏµÍ³´íÎó", MB_OK | MB_ICONERROR);
+		MessageBoxW(NULL, L"å­—ä½“æ•°æ®æ–‡ä»¶ 'resource/texture/font.fnt' åŠ è½½å¤±è´¥ã€‚", L"å­—ä½“ç³»ç»Ÿé”™è¯¯", MB_OK | MB_ICONERROR);
 		return;
 	}
 
@@ -148,7 +148,7 @@ void Font_DrawWrapped(const wchar_t* text, float dx, float dy, float maxWidth, c
 		size_t breakPos = std::wstring::npos;
 		float currentLineWidth = 0;
 
-		// ÕÒµ½ÕâÒ»ĞĞÄÜÈİÄÉµÄ×îºóÒ»¸ö×Ö·û
+		// æ‰¾åˆ°è¿™ä¸€è¡Œèƒ½å®¹çº³çš„æœ€åä¸€ä¸ªå­—ç¬¦
 		for (size_t i = 0; i < remainingText.length(); ++i) {
 			currentLineWidth += GetCharWidth(remainingText[i]);
 			if (currentLineWidth > maxWidth) {
@@ -157,9 +157,9 @@ void Font_DrawWrapped(const wchar_t* text, float dx, float dy, float maxWidth, c
 			}
 		}
 
-		// Èç¹ûÒ»ĞĞ¶¼·Å²»ÏÂ£¬¾ÍÔÚ breakPos ´¦¶Ï¿ª
+		// å¦‚æœä¸€è¡Œéƒ½æ”¾ä¸ä¸‹ï¼Œå°±åœ¨ breakPos å¤„æ–­å¼€
 		if (breakPos != std::wstring::npos) {
-			// ³¢ÊÔÔÚ¶ÏµãÇ°»ØËİ£¬ÕÒµ½×îºóÒ»¸ö¿Õ¸ñ»ò±êµã£¬ÒÔÊµÏÖ¸ü×ÔÈ»µÄµ¥´Ê»»ĞĞ
+			// å°è¯•åœ¨æ–­ç‚¹å‰å›æº¯ï¼Œæ‰¾åˆ°æœ€åä¸€ä¸ªç©ºæ ¼æˆ–æ ‡ç‚¹ï¼Œä»¥å®ç°æ›´è‡ªç„¶çš„å•è¯æ¢è¡Œ
 			size_t wordBreakPos = remainingText.find_last_of(L" \t,.", breakPos);
 			if (wordBreakPos != std::wstring::npos && wordBreakPos > 0) {
 				breakPos = wordBreakPos;
@@ -169,18 +169,18 @@ void Font_DrawWrapped(const wchar_t* text, float dx, float dy, float maxWidth, c
 			Font_Draw(lineToDraw.c_str(), dx, cursorY, color);
 			remainingText = remainingText.substr(breakPos);
 
-			// È¥µôÏÂÒ»ĞĞ¿ªÍ·µÄ¿Õ¸ñ
+			// å»æ‰ä¸‹ä¸€è¡Œå¼€å¤´çš„ç©ºæ ¼
 			while (!remainingText.empty() && (remainingText[0] == L' ' || remainingText[0] == L'\t')) {
 				remainingText.erase(0, 1);
 			}
 
 		}
-		else { // Èç¹ûÊ£ÓàµÄÎÄ±¾ÄÜÔÚÒ»ĞĞÄÚ·ÅÍê
+		else { // å¦‚æœå‰©ä½™çš„æ–‡æœ¬èƒ½åœ¨ä¸€è¡Œå†…æ”¾å®Œ
 			Font_Draw(remainingText.c_str(), dx, cursorY, color);
 			remainingText.clear();
 		}
 
-		cursorY += lineHeight; // »»ĞĞ
+		cursorY += lineHeight; // æ¢è¡Œ
 	}
 }
 

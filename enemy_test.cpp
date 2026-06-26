@@ -234,6 +234,8 @@ void EnemyTest::Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj) const
 
 void EnemyTest::DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj) const
 {
+	(void)lightView;
+	(void)lightProj;
 	if (g_pSkinningModel == nullptr) return;
 
 	// 1. 计算世界矩阵
@@ -709,9 +711,9 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 	if (XMVectorGetX(XMVector3LengthSq(vKnockVel)) > 0.01f)
 	{
 		m_pOwner->m_position.y = MeshField_GetHeight(m_pOwner->m_position.x, m_pOwner->m_position.z);
-		XMVECTOR vPlayerPos = XMLoadFloat3(&playerPos);
+		XMVECTOR knockbackPlayerPos = XMLoadFloat3(&playerPos);
 		if (distToPlayer > 0.1f) {
-			XMVECTOR dir = XMVector3Normalize(XMVectorSetY(vPlayerPos - vEnemyPos, 0.0f));
+			XMVECTOR dir = XMVector3Normalize(XMVectorSetY(knockbackPlayerPos - vEnemyPos, 0.0f));
 			float angle = atan2f(XMVectorGetX(dir), XMVectorGetZ(dir));
 			m_pOwner->SetRotationY(angle);
 		}

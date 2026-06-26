@@ -6,32 +6,32 @@
 #include "fade.h"
 #include "texture.h"
 #include "sprite.h"
-#include "Font.h"       // ÒıÈë×ÖÌåÄ£¿é
+#include "Font.h"       // å¼•å…¥å­—ä½“æ¨¡å—
 #include <string>
 #include <sstream>
-#include <iomanip>      // ÓÃÓÚ¿ØÖÆĞ¡ÊıÎ»Êı
-#include <cmath>        // ÓÃÓÚÉÁË¸¶¯»­µÄ sin º¯Êı
+#include <iomanip>      // ç”¨äºæ§åˆ¶å°æ•°ä½æ•°
+#include <cmath>        // ç”¨äºé—ªçƒåŠ¨ç”»çš„ sin å‡½æ•°
 
 namespace
 {
-	int g_ResultBGTexID = -1; // ±³¾°Í¼ÎÆÀíID
+	int g_ResultBGTexID = -1; // èƒŒæ™¯å›¾çº¹ç†ID
 }
 
 void Result_Initialize()
 {
-	// 1. ¼ÓÔØ±³¾°Í¼Æ¬
+	// 1. åŠ è½½èƒŒæ™¯å›¾ç‰‡
 	g_ResultBGTexID = Texture_LoadFromFile(L"resource/texture/RESULT.png");
 
-	// 2. ¿ªÊ¼µ­ÈëĞ§¹û (ºÚÉ« -> ÁÁÆğ)
+	// 2. å¼€å§‹æ·¡å…¥æ•ˆæœ (é»‘è‰² -> äº®èµ·)
 	Fade_Start(0.5, false, { 0.0f, 0.0f, 0.0f });
 
-	// ×¢Òâ£ºÎÒÃÇ½«ÔÚ Result_Draw ÖĞÊÖ¶¯»æÖÆ·ÖÊıÎÄ×Ö£¬
-	// ËùÒÔÕâÀï²»ĞèÒªÏñÖ®Ç°ÄÇÑùµ÷ÓÃ Score_SetPosition ÁË¡£
+	// æ³¨æ„ï¼šæˆ‘ä»¬å°†åœ¨ Result_Draw ä¸­æ‰‹åŠ¨ç»˜åˆ¶åˆ†æ•°æ–‡å­—ï¼Œ
+	// æ‰€ä»¥è¿™é‡Œä¸éœ€è¦åƒä¹‹å‰é‚£æ ·è°ƒç”¨ Score_SetPosition äº†ã€‚
 }
 
 void Result_Finalize()
 {
-	// ÊÍ·Å±³¾°Í¼Æ¬
+	// é‡Šæ”¾èƒŒæ™¯å›¾ç‰‡
 	if (g_ResultBGTexID != -1)
 	{
 		Texture_Release(g_ResultBGTexID);
@@ -41,14 +41,15 @@ void Result_Finalize()
 
 void Result_Update(double elapsed_time)
 {
-	// 1. Èç¹ûÕıÔÚµ­Èë/µ­³ö£¬²»ÔÊĞí²Ù×÷
+	(void)elapsed_time;
+	// 1. å¦‚æœæ­£åœ¨æ·¡å…¥/æ·¡å‡ºï¼Œä¸å…è®¸æ“ä½œ
 	if (Fade_GetState() != FADE_STATE_NONE) return;
 
-	// 2. °´ÏÂ»Ø³µ¼ü·µ»Ø±êÌâ
+	// 2. æŒ‰ä¸‹å›è½¦é”®è¿”å›æ ‡é¢˜
 	if (KeyLogger_IsTrigger(KK_ENTER))
 	{
-		// ´¥·¢µ­³öĞ§¹û£¬Íê³ÉºóÇĞ»»³¡¾°£¨ÔÚ Scene_Update ÖĞ´¦Àí£¬»òÕßÔÚÕâÀïÖ±½ÓÇĞ£©
-		// ÎªÁË¼òµ¥Æğ¼û£¬ÕâÀïÖ±½ÓÇĞ»»£¬»òÕßÄú¿ÉÒÔ¼ÓÒ»¸öµ­³öÂß¼­
+		// è§¦å‘æ·¡å‡ºæ•ˆæœï¼Œå®Œæˆååˆ‡æ¢åœºæ™¯ï¼ˆåœ¨ Scene_Update ä¸­å¤„ç†ï¼Œæˆ–è€…åœ¨è¿™é‡Œç›´æ¥åˆ‡ï¼‰
+		// ä¸ºäº†ç®€å•èµ·è§ï¼Œè¿™é‡Œç›´æ¥åˆ‡æ¢ï¼Œæˆ–è€…æ‚¨å¯ä»¥åŠ ä¸€ä¸ªæ·¡å‡ºé€»è¾‘
 		Scene_Change(SCENE_TITLE);
 	}
 }
@@ -59,39 +60,39 @@ void Result_Draw()
 	float screenH = (float)Direct3D_GetBackBufferHeight();
 	float centerX = screenW / 2.0f;
 
-	// --- 1. »æÖÆ±³¾°Í¼ (×îµ×²ã) ---
+	// --- 1. ç»˜åˆ¶èƒŒæ™¯å›¾ (æœ€åº•å±‚) ---
 	Direct3D_SetDepthEnable(false); 
 	if (g_ResultBGTexID != -1)
 	{
-		// À­Éì±³¾°Í¼ÆÌÂúÆÁÄ»
+		// æ‹‰ä¼¸èƒŒæ™¯å›¾é“ºæ»¡å±å¹•
 		Sprite_Draw(g_ResultBGTexID, 0.0f, 0.0f, screenW, screenH, 
-			0.0f, 0.0f, (float)Texture_GetWidth(g_ResultBGTexID), (float)Texture_GetHeight(g_ResultBGTexID));
+			0, 0, Texture_GetWidth(g_ResultBGTexID), Texture_GetHeight(g_ResultBGTexID));
 	}
 
-	// --- 2. »æÖÆ±êÌâ "RESULT" ---
-	Font_Draw(L"MISSION COMPLETE", centerX - 200.0f, 100.0f, { 1.0f, 1.0f, 0.0f, 1.0f }); // »ÆÉ«±êÌâ
+	// --- 2. ç»˜åˆ¶æ ‡é¢˜ "RESULT" ---
+	Font_Draw(L"MISSION COMPLETE", centerX - 200.0f, 100.0f, { 1.0f, 1.0f, 0.0f, 1.0f }); // é»„è‰²æ ‡é¢˜
 
-	// --- 3. »æÖÆÍ³¼ÆĞÅÏ¢ ---
+	// --- 3. ç»˜åˆ¶ç»Ÿè®¡ä¿¡æ¯ ---
 	std::wstringstream wss;
 
-	// (A) Éú´æÊ±¼ä (ÒÀÀµÓÚ score Ä£¿éµÄÀ©Õ¹)
-	// Èç¹ûÄú»¹Ã»ÔÚ score.h ÖĞ¼Ó Score_GetTime()£¬ÇëÔİÊ±×¢ÊÍµôÏÂÃæÕâ¼¸ĞĞ
+	// (A) ç”Ÿå­˜æ—¶é—´ (ä¾èµ–äº score æ¨¡å—çš„æ‰©å±•)
+	// å¦‚æœæ‚¨è¿˜æ²¡åœ¨ score.h ä¸­åŠ  Score_GetTime()ï¼Œè¯·æš‚æ—¶æ³¨é‡Šæ‰ä¸‹é¢è¿™å‡ è¡Œ
 	double time = Score_GetTime();
 	wss << L"SURVIVAL TIME :  " << std::fixed << std::setprecision(2) << time << L" s";
-	Font_Draw(wss.str().c_str(), centerX - 250.0f, 300.0f, { 1.0f, 1.0f, 1.0f, 1.0f }); // °×É«
+	Font_Draw(wss.str().c_str(), centerX - 250.0f, 300.0f, { 1.0f, 1.0f, 1.0f, 1.0f }); // ç™½è‰²
 
-	// (B) ×Ü·ÖÊı
-	wss.str(L""); // Çå¿ÕÁ÷
+	// (B) æ€»åˆ†æ•°
+	wss.str(L""); // æ¸…ç©ºæµ
 	wss << L"TOTAL SCORE   :  " << Score_GetScore();
-	Font_Draw(wss.str().c_str(), centerX - 250.0f, 380.0f, { 1.0f, 1.0f, 1.0f, 1.0f }); // °×É«
+	Font_Draw(wss.str().c_str(), centerX - 250.0f, 380.0f, { 1.0f, 1.0f, 1.0f, 1.0f }); // ç™½è‰²
 
-	// --- 4. »æÖÆµ×²¿ÌáÊ¾ (ÉÁË¸Ğ§¹û) ---
-	// ÀûÓÃÏµÍ³Ê±¼äÖÆ×÷ºôÎüµÆĞ§¹û
+	// --- 4. ç»˜åˆ¶åº•éƒ¨æç¤º (é—ªçƒæ•ˆæœ) ---
+	// åˆ©ç”¨ç³»ç»Ÿæ—¶é—´åˆ¶ä½œå‘¼å¸ç¯æ•ˆæœ
 	static float timer = 0.0f;
-	timer += 0.05f; // ¼òµ¥µÄ¼ÆÊ±Ä£Äâ£¬Èç¹ûÓĞ elapsed_time ¸üºÃ£¬ÕâÀïÓÃ¾²Ì¬±äÁ¿´ÕºÏ
-	float alpha = fabsf(sinf(timer)); // 0.0 ~ 1.0 Ñ­»·
+	timer += 0.05f; // ç®€å•çš„è®¡æ—¶æ¨¡æ‹Ÿï¼Œå¦‚æœæœ‰ elapsed_time æ›´å¥½ï¼Œè¿™é‡Œç”¨é™æ€å˜é‡å‡‘åˆ
+	float alpha = fabsf(sinf(timer)); // 0.0 ~ 1.0 å¾ªç¯
 
-	Font_Draw(L"PRESS [ENTER] TO TITLE", centerX - 220.0f, screenH - 150.0f, { 0.0f, 1.0f, 0.0f, alpha }); // ÂÌÉ«ÉÁË¸
+	Font_Draw(L"PRESS [ENTER] TO TITLE", centerX - 220.0f, screenH - 150.0f, { 0.0f, 1.0f, 0.0f, alpha }); // ç»¿è‰²é—ªçƒ
 
-	Direct3D_SetDepthEnable(true); // »Ö¸´Éî¶È²âÊÔ
+	Direct3D_SetDepthEnable(true); // æ¢å¤æ·±åº¦æµ‹è¯•
 }

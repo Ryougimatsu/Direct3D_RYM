@@ -10,12 +10,12 @@
 // ----------------------------------------------------------------
 // Configuration Constants (Global)
 // ----------------------------------------------------------------
-// ¶¨ÒåÒ»¸ö¼òµ¥µÄÍø¸ñ´óĞ¡ (ÀıÈç 20x20 Ã×)
+// å®šä¹‰ä¸€ä¸ªç®€å•çš„ç½‘æ ¼å¤§å° (ä¾‹å¦‚ 20x20 ç±³)
 const int   GRID_WIDTH = 20;
 const int   GRID_HEIGHT = 20;
-const float GRID_SIZE = 1.0f;        // Ã¿¸ö¸ñ×Ó 1Ã× x 1Ã×
+const float GRID_SIZE = 1.0f;        // æ¯ä¸ªæ ¼å­ 1ç±³ x 1ç±³
 
-// µØÍ¼Ô­µãÆ«ÒÆ (ÈÃ (0,0) ÔÚµØÍ¼ÖĞĞÄ)
+// åœ°å›¾åŸç‚¹åç§» (è®© (0,0) åœ¨åœ°å›¾ä¸­å¿ƒ)
 const float MAP_OFFSET_X = -10.0f;
 const float MAP_OFFSET_Z = -10.0f;
 
@@ -23,12 +23,12 @@ const float MAP_OFFSET_Z = -10.0f;
 // Data Structures
 // ----------------------------------------------------------------
 struct Node {
-	int x, y;           // Íø¸ñ×ø±ê
-	bool isObstacle;    // ÊÇÇ½Âğ£¿
-	bool closed;        // ÊÇ·ñÔÚ¹Ø±ÕÁĞ±íÖĞ
-	float gCost;        // Æğµãµ½ÕâÀïµÄ´ú¼Û
-	float hCost;        // ÕâÀïµ½ÖÕµãµÄÔ¤¹À´ú¼Û
-	Node* parent;       // ¸¸½Úµã (ÓÃÓÚ»ØËİÂ·¾¶)
+	int x, y;           // ç½‘æ ¼åæ ‡
+	bool isObstacle;    // æ˜¯å¢™å—ï¼Ÿ
+	bool closed;        // æ˜¯å¦åœ¨å…³é—­åˆ—è¡¨ä¸­
+	float gCost;        // èµ·ç‚¹åˆ°è¿™é‡Œçš„ä»£ä»·
+	float hCost;        // è¿™é‡Œåˆ°ç»ˆç‚¹çš„é¢„ä¼°ä»£ä»·
+	Node* parent;       // çˆ¶èŠ‚ç‚¹ (ç”¨äºå›æº¯è·¯å¾„)
 
 	float FCost() const { return gCost + hCost; }
 };
@@ -39,36 +39,36 @@ struct Node {
 class Pathfinder {
 public:
 	// ==========================================
-	// 1. ÉúÃüÖÜÆÚ (Lifecycle)
+	// 1. ç”Ÿå‘½å‘¨æœŸ (Lifecycle)
 	// ==========================================
 	static void Initialize();
-	static void Finalize(); // Èç¹ûÓĞ¶¯Ì¬·ÖÅäĞèÇåÀí
+	static void Finalize(); // å¦‚æœæœ‰åŠ¨æ€åˆ†é…éœ€æ¸…ç†
 
 	// ==========================================
-	// 2. µØÍ¼ÅäÖÃ (Map Configuration)
+	// 2. åœ°å›¾é…ç½® (Map Configuration)
 	// ==========================================
-	// ÉèÖÃÕÏ°­Îï (´«ÈëÊÀ½ç×ø±ê)
+	// è®¾ç½®éšœç¢ç‰© (ä¼ å…¥ä¸–ç•Œåæ ‡)
 	static void SetObstacle(float worldX, float worldZ, bool isBlocked);
 
 	// ==========================================
-	// 3. ºËĞÄÑ°Â· (Pathfinding Operations)
+	// 3. æ ¸å¿ƒå¯»è·¯ (Pathfinding Operations)
 	// ==========================================
-	// ÊäÈëÆğµãºÍÖÕµã(ÊÀ½ç×ø±ê)£¬·µ»ØÂ·¾¶µãÁĞ±í
+	// è¾“å…¥èµ·ç‚¹å’Œç»ˆç‚¹(ä¸–ç•Œåæ ‡)ï¼Œè¿”å›è·¯å¾„ç‚¹åˆ—è¡¨
 	static std::vector<DirectX::XMFLOAT3> FindPath(DirectX::XMFLOAT3 startPos, DirectX::XMFLOAT3 targetPos);
 
-	// ÊÓÏß¼ì²é (Raycast)
+	// è§†çº¿æ£€æŸ¥ (Raycast)
 	static bool RaycastHit(DirectX::XMFLOAT3 start, DirectX::XMFLOAT3 end);
 
 private:
 	// ==========================================
-	// ÄÚ²¿Êı¾İ (Internal Data)
+	// å†…éƒ¨æ•°æ® (Internal Data)
 	// ==========================================
-	static Node m_Grid[GRID_WIDTH][GRID_HEIGHT]; // ¾²Ì¬Íø¸ñÊı¾İ
+	static Node m_Grid[GRID_WIDTH][GRID_HEIGHT]; // é™æ€ç½‘æ ¼æ•°æ®
 
 	// ==========================================
-	// ¸¨Öúº¯Êı (Helpers)
+	// è¾…åŠ©å‡½æ•° (Helpers)
 	// ==========================================
-	// ÊÀ½ç×ø±ê <-> Íø¸ñ×ø±ê×ª»»
+	// ä¸–ç•Œåæ ‡ <-> ç½‘æ ¼åæ ‡è½¬æ¢
 	static void WorldToGrid(float wx, float wz, int& gx, int& gy);
 	static DirectX::XMFLOAT3 GridToWorld(int gx, int gy);
 };

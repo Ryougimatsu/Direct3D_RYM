@@ -99,7 +99,7 @@ std::vector<XMFLOAT3> Pathfinder::FindPath(XMFLOAT3 startPos, XMFLOAT3 targetPos
 	while (!openList.empty()) {
 		// --- 6.1 找出 F 值最小的节点 ---
 		Node* current = openList[0];
-		int currentIndex = 0;
+		size_t currentIndex = 0;
 		for (size_t i = 1; i < openList.size(); i++) {
 			if (openList[i]->FCost() < current->FCost() ||
 				(openList[i]->FCost() == current->FCost() && openList[i]->hCost < current->hCost)) {

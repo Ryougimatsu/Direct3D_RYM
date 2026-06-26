@@ -4,7 +4,7 @@
 
 enum MapKind {
 	MAP_KIND_GROUND = 0,
-	MAP_KIND_WALL = 1,  // Ïä×Ó/Ç½±Ú
+	MAP_KIND_WALL = 1,  // ç®±å­/å¢™å£
 };
 
 class MapObject

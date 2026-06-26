@@ -113,7 +113,9 @@ bool NavigationSystem::Build() {
 	cfg.cs = 0.3f; // Cell Size: 体素(Voxel)在 XZ 平面的大小 (单位: 米)
 	cfg.ch = 0.2f; // Cell Height: 体素在 Y 轴的高度
 	// 计算整个场景的包围盒
-	rcCalcBounds(&geom.verts[0], geom.verts.size() / 3, cfg.bmin, cfg.bmax);
+	const int vertCount = static_cast<int>(geom.verts.size() / 3);
+	const int triCount = static_cast<int>(geom.tris.size() / 3);
+	rcCalcBounds(&geom.verts[0], vertCount, cfg.bmin, cfg.bmax);
 
 	// 扩大包围盒范围，防止物体刚好在边缘被裁剪掉
 	cfg.bmin[0] -= 2.0f; cfg.bmin[1] -= 2.0f; cfg.bmin[2] -= 2.0f;
@@ -147,19 +149,19 @@ bool NavigationSystem::Build() {
 	}
 
 	// 3.2 标记可行走的三角形
-	unsigned char* trisAreas = new unsigned char[geom.tris.size() / 3];
-	memset(trisAreas, 0, geom.tris.size() / 3);
-	rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, &geom.verts[0], geom.verts.size() / 3, &geom.tris[0], geom.tris.size() / 3, trisAreas);
+	unsigned char* trisAreas = new unsigned char[triCount];
+	memset(trisAreas, 0, triCount);
+	rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, &geom.verts[0], vertCount, &geom.tris[0], triCount, trisAreas);
 
 	// 3.3 光栅化三角形到高度场 (Rasterization)
-	if (!rcRasterizeTriangles(&ctx, &geom.verts[0], geom.verts.size() / 3, &geom.tris[0], trisAreas, geom.tris.size() / 3, *hf, cfg.walkableClimb)) {
+	if (!rcRasterizeTriangles(&ctx, &geom.verts[0], vertCount, &geom.tris[0], trisAreas, triCount, *hf, cfg.walkableClimb)) {
 		delete[] trisAreas; return false;
 	}
 	delete[] trisAreas;
 
 	// 3.4 过滤高度场 (Filtering)
 	rcFilterLowHangingWalkableObstacles(&ctx, cfg.walkableClimb, *hf); // 过滤低矮障碍物
-	rcFilterLedgeSpans(&ctx, cfg.ch, cfg.walkableClimb, *hf);          // 过滤陡峭边缘
+	rcFilterLedgeSpans(&ctx, cfg.walkableHeight, cfg.walkableClimb, *hf); // 过滤陡峭边缘
 	rcFilterWalkableLowHeightSpans(&ctx, cfg.walkableHeight, *hf);     // 过滤高度不足以站立的空间
 
 	// 3.5 构建紧凑高度场 (Compact Heightfield) - 优化内存并计算邻接信息

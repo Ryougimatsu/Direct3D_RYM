@@ -24,6 +24,26 @@ namespace
 	// 状态控制
 	TitleMenuState g_CurrentState = MENU_MAIN;
 	int g_MainCursor = 0;      // 主菜单光标
+
+	void DrawTitleImageCentered(float screenW, float screenH)
+	{
+		if (g_TitleBG < 0) return;
+
+		const float texW = static_cast<float>(Texture_GetWidth(g_TitleBG));
+		const float texH = static_cast<float>(Texture_GetHeight(g_TitleBG));
+		if (texW <= 0.0f || texH <= 0.0f) return;
+
+		// 标题图按原图尺寸绘制，只做居中，不拉伸适配屏幕。
+		const float destX = (screenW - texW) * 0.5f;
+		const float destY = (screenH - texH) * 0.5f;
+		Sprite_Draw(g_TitleBG, destX, destY);
+	}
+
+	void DrawSolidBackground(float screenW, float screenH, const DirectX::XMFLOAT4& color)
+	{
+		if (g_TexWhite < 0) return;
+		Sprite_Draw(g_TexWhite, 0.0f, 0.0f, screenW, screenH, color);
+	}
 }
 
 void Title_Initialize()
@@ -104,34 +124,6 @@ void Title_Draw()
 	float screenW = (float)Direct3D_GetBackBufferWidth();
 	float screenH = (float)Direct3D_GetBackBufferHeight();
 
-	float texW = 1024.0f;
-	float texH = 1536.0f;
-
-	float destW, destH, destX, destY;
-
-	float screenAspectRatio = screenW / screenH;
-	float textureAspectRatio = texW / texH;
-
-	if (textureAspectRatio > screenAspectRatio)
-	{
-		// 情况 A：图片比屏幕更“扁/宽”（例如横屏电影在方屏上看）
-		// 以屏幕宽度为基准，上下留黑边
-		destW = screenW;
-		destH = screenW / textureAspectRatio;
-		destX = 0.0f;
-		destY = (screenH - destH) / 2.0f; // 垂直居中计算
-	}
-	else
-	{
-		// 情况 B：图片比屏幕更“高/窄”（这是你目前的情况，海报是竖的，屏幕是横的）
-		// 以屏幕高度为基准，左右留黑边
-		destH = screenH;
-		destW = screenH * textureAspectRatio;
-		destX = (screenW - destW) / 2.0f; // 水平居中计算
-		destY = 0.0f;
-	}
-	Sprite_Draw(g_TitleBG, destX, destY, destW, destH, 0, 0, texW, texH);
-
 	Direct3D_SetDepthEnable(false);
 
 	DirectX::XMFLOAT4 colSelected = { 1.0f, 1.0f, 0.0f, 1.0f };
@@ -144,6 +136,8 @@ void Title_Draw()
 	// ====================================================
 	if (g_CurrentState == MENU_MAIN)
 	{
+		DrawTitleImageCentered(screenW, screenH);
+
 		float menuX = (screenW / 2.0f) - 100.0f;
 
 		// 【优化】使用屏幕高度的百分比，而不是固定像素
@@ -159,6 +153,8 @@ void Title_Draw()
 	// ====================================================
 	else if (g_CurrentState == MENU_SETTINGS)
 	{
+		DrawTitleImageCentered(screenW, screenH);
+
 		float baseX = (screenW / 2.0f) - 200.0f;
 		float baseY = 400.0f;
 		// 提示信息
@@ -174,8 +170,7 @@ void Title_Draw()
 	// ====================================================
 	else if (g_CurrentState == MENU_INSTRUCTIONS)
 	{
-		Sprite_Draw(g_TitleBG, 0, 0, screenW, screenH, 1.0f, 1.0f, 1.0f, 1.0f);
-		Sprite_Draw(g_TexWhite, 0, 0, screenW, screenH, { 0.0f, 0.0f, 0.0f, 0.7f });
+		DrawSolidBackground(screenW, screenH, { 0.0f, 0.0f, 0.0f, 1.0f });
 
 		Font_Draw(L"HOW TO PLAY", (screenW / 2.0f) - 100.0f, 150, colSelected);
 
