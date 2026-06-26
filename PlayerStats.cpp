@@ -10,10 +10,27 @@ void PlayerStats::ClampCurrentHp()
 	bulletDamage = std::max(0.0f, bulletDamage);
 	bulletPierce = std::max(0, bulletPierce);
 	infiniteAmmoTimer = std::max(0.0f, infiniteAmmoTimer);
+	ClampAmmo();
 	if (infiniteAmmoTimer <= 0.0f)
 	{
 		infiniteAmmo = false;
 	}
+}
+
+void PlayerStats::ClampAmmo()
+{
+	magazineSize = std::max(1, magazineSize);
+	maxReserveAmmo = std::max(0, maxReserveAmmo);
+	currentAmmo = std::clamp(currentAmmo, 0, magazineSize);
+	reserveAmmo = std::clamp(reserveAmmo, 0, maxReserveAmmo);
+	itemDropRateBonus = std::clamp(itemDropRateBonus, 0.0f, 0.50f);
+}
+
+void PlayerStats::RefillAllAmmo()
+{
+	currentAmmo = magazineSize;
+	reserveAmmo = maxReserveAmmo;
+	ClampAmmo();
 }
 
 void PlayerStats::ApplyDamage(float damage)

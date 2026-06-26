@@ -65,6 +65,40 @@ namespace
 		DrawSolidRect(x, y, thickness, height, color);
 		DrawSolidRect(x + width - thickness, y, thickness, height, color);
 	}
+
+	const wchar_t* GetRarityLabel(SkillRarity rarity)
+	{
+		switch (rarity)
+		{
+		case SkillRarity::Common:
+			return L"[COMMON]";
+		case SkillRarity::Rare:
+			return L"[RARE]";
+		case SkillRarity::Epic:
+			return L"[EPIC]";
+		case SkillRarity::Legendary:
+			return L"[LEGENDARY]";
+		default:
+			return L"[COMMON]";
+		}
+	}
+
+	DirectX::XMFLOAT4 GetRarityColor(SkillRarity rarity)
+	{
+		switch (rarity)
+		{
+		case SkillRarity::Common:
+			return { 0.86f, 0.88f, 0.92f, 1.0f };
+		case SkillRarity::Rare:
+			return { 0.25f, 0.55f, 1.0f, 1.0f };
+		case SkillRarity::Epic:
+			return { 0.72f, 0.32f, 1.0f, 1.0f };
+		case SkillRarity::Legendary:
+			return { 1.0f, 0.72f, 0.18f, 1.0f };
+		default:
+			return COLOR_TEXT;
+		}
+	}
 }
 
 void LevelUpUI_Initialize()
@@ -150,21 +184,29 @@ void LevelUpUI_Draw(
 			cardW,
 			cardH,
 			selected ? 5.0f : 2.0f,
-			selected ? COLOR_BORDER_SELECTED : COLOR_BORDER);
+			selected ? COLOR_BORDER_SELECTED : GetRarityColor(options[i].rarity));
 
 		const SkillDefinition& skill = options[i];
+		const DirectX::XMFLOAT4 rarityColor = GetRarityColor(skill.rarity);
+		UIFont_Draw(
+			GetRarityLabel(skill.rarity),
+			cardX + 18.0f,
+			cardY + 16.0f,
+			CARD_DESCRIPTION_SCALE,
+			rarityColor);
+
 		UIFont_DrawWrapped(
 			skill.name.c_str(),
 			cardX + 18.0f,
-			cardY + 20.0f,
+			cardY + 48.0f,
 			cardW - 36.0f,
 			CARD_NAME_SCALE,
-			selected ? COLOR_TITLE : COLOR_TEXT);
+			selected ? COLOR_TITLE : rarityColor);
 
 		UIFont_DrawWrapped(
 			skill.description.c_str(),
 			cardX + 18.0f,
-			cardY + 78.0f,
+			cardY + 112.0f,
 			cardW - 36.0f,
 			CARD_DESCRIPTION_SCALE,
 			COLOR_DESCRIPTION);

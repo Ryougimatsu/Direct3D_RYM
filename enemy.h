@@ -75,3 +75,4 @@ void Enemy_ApplyMeleeDamage(const DirectX::XMFLOAT3& position, const DirectX::XM
 void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);
 void Enemy_EmitBlood(const DirectX::XMFLOAT3& pos, int count);
 void Enemy_AwardDefeatExperience(const Enemy& enemy);
+void Enemy_TryDropItemOnDefeat(const DirectX::XMFLOAT3& position);

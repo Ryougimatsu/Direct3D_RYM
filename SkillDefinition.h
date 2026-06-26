@@ -8,7 +8,18 @@ enum class SkillType
 	IncreaseMaxHp,
 	IncreaseBulletPierce,
 	IncreaseBulletDamage,
-	IncreaseMoveSpeed
+	IncreaseMoveSpeed,
+	RefillAllAmmo,
+	IncreaseItemDropRate,
+	IncreaseMagazineSize
+};
+
+enum class SkillRarity
+{
+	Common,
+	Rare,
+	Epic,
+	Legendary
 };
 
 struct SkillDefinition
@@ -19,4 +30,6 @@ struct SkillDefinition
 	int intValue = 0;
 	float floatValue = 0.0f;
 	int maxStack = 1;
+	SkillRarity rarity = SkillRarity::Common;
+	int weight = 100;
 };

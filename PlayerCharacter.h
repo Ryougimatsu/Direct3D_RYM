@@ -82,8 +82,9 @@ public:
 	// ==========================================
 	void AddAmmo(int amount); // 捡到子弹时调用
 
-	int GetCurrentAmmo() const { return m_CurrentAmmo; }
-	int GetTotalAmmo() const { return m_TotalAmmo; }
+	int GetCurrentAmmo() const { return m_Stats.currentAmmo; }
+	int GetTotalAmmo() const { return m_Stats.reserveAmmo; }
+	int GetMagazineSize() const { return m_Stats.magazineSize; }
 	bool IsReloading() const { return m_IsReloading; }
 
 	// ==========================================
@@ -138,7 +139,7 @@ private:
 	float m_FireRate = 0.1f;                 // 射击间隔（0.1秒代表1秒10发）
 
 	// 弹药参数
-	const int MAG_SIZE = 30;                 // 弹匣容量
+	const int MAG_SIZE = 30;                 // Legacy mirror; gameplay now uses m_Stats.magazineSize.
 	const float RELOAD_TIME = 2.0f;          // 换弹需要2秒
 
 	// ==========================================
@@ -170,8 +171,8 @@ private:
 	DirectX::XMFLOAT3 m_DebugLaserEnd = { 0.0f, 0.0f, 0.0f };
 
 	// 弹药数据
-	int m_CurrentAmmo = 30;  // 当前弹匣内的子弹数
-	int m_TotalAmmo = 160;   // 身上携带的备弹总数（不含弹匣内）
+	int m_CurrentAmmo = 30;  // Legacy mirror of m_Stats.currentAmmo.
+	int m_TotalAmmo = 160;   // Legacy mirror of m_Stats.reserveAmmo.
 };
 
 // ----------------------------------------------------------------

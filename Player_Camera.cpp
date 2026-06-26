@@ -1,5 +1,7 @@
 #include "Player_Camera.h"
 #include <DirectXMath.h>
+#include <algorithm>
+#include <cmath>
 #include "key_logger.h"
 #include "debug_text.h"
 #include <sstream>
@@ -15,24 +17,46 @@ using namespace DirectX;
 namespace {
 	DirectX::XMFLOAT3 g_CameraFront = { 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 g_CameraPosition = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT3 g_SmoothedTarget = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4X4 g_ViewMatrix{};
 	DirectX::XMFLOAT4X4 g_ProjectionMatrix{};
 	DirectX::XMFLOAT4X4 g_CameraMatrix;
+	bool g_HasCameraState = false;
 
 	// --- 暗黑风格参数配置 ---
 	const float CAM_HEIGHT = 14.0f;       // 相机高度 (Y)
 	const float CAM_DISTANCE = -11.0f;    // 相机后退距离 (Z)
-	const float CAM_LERP_SPEED = 0.1f;    // 跟随平滑度 (0.1 表示每帧向玩家靠近 10%)
+	const float CAMERA_FOLLOW_SHARPNESS = 8.0f; // 位置跟随响应速度，使用 dt 保持不同帧率下稳定
+	const float TARGET_FOLLOW_SHARPNESS = 14.0f; // 注视目标响应速度，抑制移动/近战时的细小抖动
+	const float CAMERA_TARGET_Y = 0.0f;   // 俯视角相机不跟随角色脚底高度的微小变化
+	const float LOOK_AHEAD_Z = 1.0f;      // 保留原本略向前看的构图
 	float g_ShakeIntensity = 0.0f;
 	float RandomFloatCam(float min, float max) {
 		return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+	}
+
+	float MakeFrameStableLerp(float sharpness, float deltaTime)
+	{
+		if (deltaTime <= 0.0f)
+		{
+			return 0.0f;
+		}
+
+		return std::clamp(
+			1.0f - std::exp(-sharpness * deltaTime),
+			0.0f,
+			1.0f);
 	}
 }
 
 
 void Player_Camera_Initialize()
 {
-
+	g_CameraFront = { 0.0f, 0.0f, 1.0f };
+	g_CameraPosition = { 0.0f, CAM_HEIGHT, CAM_DISTANCE };
+	g_SmoothedTarget = { 0.0f, CAMERA_TARGET_Y, 0.0f };
+	g_ShakeIntensity = 0.0f;
+	g_HasCameraState = false;
 }
 
 void Player_Camera_Finalize()
@@ -41,23 +65,39 @@ void Player_Camera_Finalize()
 
 void Player_Camera_Update(double elapsed_time, const DirectX::XMFLOAT3& playerPos)
 {
+	const float dt = static_cast<float>(elapsed_time);
+
 	if (g_ShakeIntensity > 0.0f) {
-		g_ShakeIntensity -= (float)elapsed_time * 3.0f; // 震动衰减速度，越大停得越快
+		g_ShakeIntensity -= dt * 3.0f; // 震动衰减速度，越大停得越快
 		if (g_ShakeIntensity < 0.0f) g_ShakeIntensity = 0.0f;
 	}
 
-	XMVECTOR targetPlayer = XMLoadFloat3(&playerPos);
-	XMVECTOR offset = { 0.0f, CAM_HEIGHT, CAM_DISTANCE };
-	XMVECTOR idealPos = XMVectorAdd(targetPlayer, offset);
+	XMVECTOR rawTarget = XMVectorSet(playerPos.x, CAMERA_TARGET_Y, playerPos.z, 0.0f);
+	XMVECTOR offset = XMVectorSet(0.0f, CAM_HEIGHT, CAM_DISTANCE, 0.0f);
 
+	if (!g_HasCameraState)
+	{
+		XMStoreFloat3(&g_SmoothedTarget, rawTarget);
+
+		XMVECTOR initialPos = XMVectorAdd(rawTarget, offset);
+		XMStoreFloat3(&g_CameraPosition, initialPos);
+		g_HasCameraState = true;
+	}
+
+	XMVECTOR smoothedTarget = XMLoadFloat3(&g_SmoothedTarget);
+	const float targetLerp = MakeFrameStableLerp(TARGET_FOLLOW_SHARPNESS, dt);
+	smoothedTarget = XMVectorLerp(smoothedTarget, rawTarget, targetLerp);
+	XMStoreFloat3(&g_SmoothedTarget, smoothedTarget);
+
+	XMVECTOR idealPos = XMVectorAdd(smoothedTarget, offset);
 	XMVECTOR currentPos = XMLoadFloat3(&g_CameraPosition);
-	XMVECTOR newPos = XMVectorLerp(currentPos, idealPos, CAM_LERP_SPEED);
+	const float cameraLerp = MakeFrameStableLerp(CAMERA_FOLLOW_SHARPNESS, dt);
+	XMVECTOR newPos = XMVectorLerp(currentPos, idealPos, cameraLerp);
 
 	XMStoreFloat3(&g_CameraPosition, newPos);
-	XMVECTOR front = XMVector3Normalize(targetPlayer - newPos);
+	XMVECTOR lookAtPoint = XMVectorAdd(smoothedTarget, XMVectorSet(0.0f, 0.0f, LOOK_AHEAD_Z, 0.0f));
+	XMVECTOR front = XMVector3Normalize(lookAtPoint - newPos);
 	XMStoreFloat3(&g_CameraFront, front);
-
-	XMVECTOR lookAtPoint = XMVectorAdd(targetPlayer, { 0.0f, 0.0f, 1.0f });
 
 	// --- 新增：将震动偏移应用到注视点 ---
 	if (g_ShakeIntensity > 0.0f) {

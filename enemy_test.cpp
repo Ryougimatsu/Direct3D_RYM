@@ -358,10 +358,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_DeathTimer = 3.5f;
 		m_KnockbackVelocity = { 0,0,0 }; // 死亡时消除所有速度
 
-		int rate = rand() % 100;
-		if (rate < 15) {
-			DropItem_Spawn(m_position, 4);
-		}
+		Enemy_TryDropItemOnDefeat(m_position);
 		return;
 	}
 

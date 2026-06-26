@@ -41,6 +41,10 @@ namespace {
 	float g_SoundIntensity = 0.0f;                   // 声音强度（等效侦测半径，越大越容易被发现）
 	float g_SoundTimer     = 0.0f;                   // 声音事件剩余有效时间（倒计时至 0 后失效）
 
+	// --- 枪火视觉修正 ---
+	// 只影响开火火焰粒子的出生点，不改变子弹、激光或武器挂载点。
+	constexpr float MUZZLE_FIRE_VISUAL_FORWARD_OFFSET = 1.4f;
+
 	// --- 输入辅助函数 ---
 	DirectX::XMVECTOR GetInputVector() {
 		using namespace DirectX;
@@ -235,6 +239,8 @@ void PlayerCharacter::SyncLegacyFieldsFromStats()
 	m_MaxHP = m_Stats.maxHp;
 	m_HP = m_Stats.currentHp;
 	m_MoveSpeed = m_Stats.moveSpeed;
+	m_CurrentAmmo = m_Stats.currentAmmo;
+	m_TotalAmmo = m_Stats.reserveAmmo;
 }
 
 PlayerCharacter::~PlayerCharacter() {
@@ -297,6 +303,10 @@ bool PlayerCharacter::Initialize() {
 	m_Stats.maxHp = m_MaxHP;
 	m_Stats.currentHp = m_HP;
 	m_Stats.moveSpeed = m_MoveSpeed;
+	m_Stats.currentAmmo = m_CurrentAmmo;
+	m_Stats.magazineSize = MAG_SIZE;
+	m_Stats.reserveAmmo = m_TotalAmmo;
+	m_Stats.maxReserveAmmo = 300;
 	m_Stats.ClampCurrentHp();
 	m_PlayerExp.Reset();
 	SyncLegacyFieldsFromStats();
@@ -424,7 +434,11 @@ void PlayerCharacter::Update(double dt) {
 	}
 
 	// --- 换弹逻辑 (R键) ---
-	if (KeyLogger_IsTrigger(KK_R) && !m_IsReloading && m_CurrentAmmo < MAG_SIZE && m_TotalAmmo > 0) {
+	if (KeyLogger_IsTrigger(KK_R) &&
+		!m_IsReloading &&
+		m_Stats.currentAmmo < m_Stats.magazineSize &&
+		m_Stats.reserveAmmo > 0)
+	{
 		m_IsReloading = true;
 		m_ReloadTimer = RELOAD_TIME;
 	}
@@ -433,10 +447,12 @@ void PlayerCharacter::Update(double dt) {
 		m_ReloadTimer -= (float)dt;
 		if (m_ReloadTimer <= 0.0f) {
 			m_IsReloading = false;
-			int needed = MAG_SIZE - m_CurrentAmmo;
-			int actualFill = (m_TotalAmmo >= needed) ? needed : m_TotalAmmo;
-			m_CurrentAmmo += actualFill;
-			m_TotalAmmo -= actualFill;
+			int needed = m_Stats.magazineSize - m_Stats.currentAmmo;
+			int actualFill = (m_Stats.reserveAmmo >= needed) ? needed : m_Stats.reserveAmmo;
+			m_Stats.currentAmmo += actualFill;
+			m_Stats.reserveAmmo -= actualFill;
+			m_Stats.ClampAmmo();
+			SyncLegacyFieldsFromStats();
 		}
 	}
 
@@ -500,7 +516,7 @@ void PlayerCharacter::Update(double dt) {
 
 		// C. 开火逻辑（条件：鼠标左键按住 + 射速冷却结束 + 未换弹 + 有子弹）
 		const bool hasAmmoToShoot =
-			m_CurrentAmmo > 0 || m_Stats.IsInfiniteAmmoActive();
+			m_Stats.currentAmmo > 0 || m_Stats.IsInfiniteAmmoActive();
 		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && hasAmmoToShoot) {
 			if (m_WeaponAttachment.IsValid()) {
 				const XMVECTOR actualMuzzlePos =
@@ -515,15 +531,21 @@ void PlayerCharacter::Update(double dt) {
 				// do not mutate bullets already in flight.
 				Bullet_Create(p, v, m_Stats.bulletDamage, m_Stats.bulletPierce);
 				if (!m_Stats.IsInfiniteAmmoActive()) {
-					m_CurrentAmmo--;
+					m_Stats.currentAmmo--;
+					m_Stats.ClampAmmo();
+					SyncLegacyFieldsFromStats();
 				}
 
-				// 粒子发射位置在枪口上方微调（视觉修正）
-				XMFLOAT3 flashPos = p;
-				flashPos.y += 0.2f;
-				m_pMuzzleFireSystem->EmitMuzzleFire(flashPos, v, 15); // 发射 15 个枪口火焰粒子
+				// 枪火粒子单独前推到可见枪管口。
+				// 注意：这里只修正视觉特效出口，不改变子弹/激光/武器挂载点。
+				XMVECTOR muzzleFireVisualPos =
+					actualMuzzlePos +
+					gunForwardDir * MUZZLE_FIRE_VISUAL_FORWARD_OFFSET;
+				XMFLOAT3 muzzleFirePos;
+				XMStoreFloat3(&muzzleFirePos, muzzleFireVisualPos);
+				m_pMuzzleFireSystem->EmitMuzzleFire(muzzleFirePos, v, 18);
 
-				Player_Camera_AddShake(0.1f);       // 开枪轻微震屏
+				Player_Camera_AddShake(0.13f);      // 开枪后坐力震屏
 				Player_EmitSound(m_Position, 25.0f); // 广播声音事件（半径 25 米，供敌人 AI 侦听）
 				m_ShootTimer = m_FireRate;           // 重置射速冷却
 			}
@@ -719,8 +741,9 @@ void PlayerCharacter::Heal(float amount)
 
 void PlayerCharacter::AddAmmo(int amount)
 {
-	m_TotalAmmo += amount;
-	if (m_TotalAmmo > 300) m_TotalAmmo = 300;
+	m_Stats.reserveAmmo += amount;
+	m_Stats.ClampAmmo();
+	SyncLegacyFieldsFromStats();
 }
 
 ExperienceGainResult PlayerCharacter::AddExperience(

@@ -3,6 +3,8 @@
 #include "DifficultyManager.h"
 #include "PlayerCharacter.h"
 #include "GameUI.h"
+#include "DropItem.h"
+#include <algorithm>
 #include <vector>
 #include <cstdlib>     
 #include <ctime>
@@ -19,7 +21,11 @@ using namespace DirectX;
 namespace {
 	std::vector<Enemy*> g_Enemies;
 
-	int g_MaxEnemiesOnScreen = 60;        // 当前屏幕最大敌人数，防止刷怪无限堆积
+	constexpr int MAX_ENEMIES_ON_SCREEN = 35;
+	constexpr float SHADOW_CULL_RANGE_X = 35.0f;
+	constexpr float SHADOW_CULL_RANGE_Z = 25.0f;
+
+	int g_MaxEnemiesOnScreen = MAX_ENEMIES_ON_SCREEN; // 当前屏幕最大敌人数，防止刷怪无限堆积
 	float g_CurrentSpawnInterval = 3.0f;  // 改为可变变量
 	float g_SpawnTimer = 0.0f;            // 计时器
 
@@ -162,7 +168,7 @@ void Enemy_Initialize()
 
 	g_EnemyCount = 0;
 	g_SpawnTimer = 0.0f;
-	g_MaxEnemiesOnScreen = 60;
+	g_MaxEnemiesOnScreen = MAX_ENEMIES_ON_SCREEN;
 	g_CurrentSpawnInterval = 2.0f;
 }
 
@@ -325,6 +331,31 @@ Enemy* Enemy_GetEnemy(int index)
 	return g_Enemies[index];
 }
 
+void Enemy_TryDropItemOnDefeat(const XMFLOAT3& position)
+{
+	constexpr float BASE_DROP_CHANCE = 0.15f;
+	constexpr float MAX_DROP_CHANCE = 0.90f;
+	constexpr int AMMO_DROP_ITEM_ID = 4;
+
+	float bonus = 0.0f;
+	if (PlayerCharacter* player = Player_GetInstance())
+	{
+		bonus = player->GetStats().itemDropRateBonus;
+	}
+
+	const float finalDropChance = std::clamp(
+		BASE_DROP_CHANCE + bonus,
+		0.0f,
+		MAX_DROP_CHANCE);
+	const float roll =
+		static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+	if (roll < finalDropChance)
+	{
+		DropItem_Spawn(position, AMMO_DROP_ITEM_ID);
+	}
+}
+
 void Enemy_AwardDefeatExperience(const Enemy& enemy)
 {
 	// Enemy defeat EXP is centralized here so Bullet and SkillSystem stay
@@ -386,9 +417,6 @@ void Enemy::MoveToTarget(const DirectX::XMFLOAT3& targetPos, double dt)
 	XMFLOAT3 newPos;
 	XMStoreFloat3(&newPos, vNewPos);
 	SetPosition(newPos); // 使用虚函数 SetPosition
-
-	// 局部避障
-	Enemy_ResolveCollisions();
 }
 
 void Enemy_ApplyMeleeDamage(const XMFLOAT3& pPos, const XMVECTOR& playerFwd, float range, float angle) {
@@ -457,7 +485,19 @@ void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRI
 	ID3D11Buffer* pBoneBuffer = SkinningShader_3D_GetBoneBuffer();
 	Direct3D_GetDeviceContext()->VSSetConstantBuffers(1, 1, &pBoneBuffer);
 
+	XMFLOAT3 centerPos = { 0.0f, 0.0f, 0.0f };
+	if (PlayerCharacter* pPlayer = Player_GetInstance()) {
+		centerPos = pPlayer->GetPosition();
+	}
+
 	for (auto* e : g_Enemies) {
+		const XMFLOAT3 ePos = e->GetPosition();
+		if (fabsf(ePos.x - centerPos.x) > SHADOW_CULL_RANGE_X ||
+			fabsf(ePos.z - centerPos.z) > SHADOW_CULL_RANGE_Z)
+		{
+			continue;
+		}
+
 		// 调用每个敌人的 DrawShadow，但只需要传简单的世界矩阵设置即可
 		// 鉴于虚函数接口已经定义为传 View/Proj，我们直接调用接口
 		e->DrawShadow(lightView, lightProj);

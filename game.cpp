@@ -385,6 +385,7 @@ void Game_Initialize()
 	g_CurrentLevelUpOptions.clear();
 	g_SelectedLevelUpOptionIndex = 0;
 	g_DifficultyManager.Reset();
+	g_SkillSystem.ResetRuntimeState();
 
 	// 场景切入时播放淡入效果（黑色 → 透明，1 秒）
 	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
@@ -773,7 +774,10 @@ void Game_Draw()
 			g_GameState != GameState::LevelUpSelect &&
 			g_Player)
 		{
-			RoguelikeDebugUI_Draw(*g_Player, g_DifficultyManager);
+			RoguelikeDebugUI_Draw(
+				*g_Player,
+				g_DifficultyManager,
+				g_SkillSystem.GetLastDrawnSkills());
 		}
 	}
 	Sprite_End();

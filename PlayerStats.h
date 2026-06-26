@@ -11,8 +11,15 @@ struct PlayerStats
 	int bulletPierce = 0;
 	bool infiniteAmmo = false;
 	float infiniteAmmoTimer = 0.0f;
+	int currentAmmo = 30;
+	int magazineSize = 30;
+	int reserveAmmo = 160;
+	int maxReserveAmmo = 300;
+	float itemDropRateBonus = 0.0f;
 
 	void ClampCurrentHp();
+	void ClampAmmo();
+	void RefillAllAmmo();
 	void ApplyDamage(float damage);
 	void Heal(float amount);
 	void UpdateTimers(float deltaTime);
