@@ -230,6 +230,13 @@ DirectX::XMVECTOR PlayerCharacter::GetWeaponAimDirection() const
 	return XMVector3Normalize(direction);
 }
 
+void PlayerCharacter::SyncLegacyFieldsFromStats()
+{
+	m_MaxHP = m_Stats.maxHp;
+	m_HP = m_Stats.currentHp;
+	m_MoveSpeed = m_Stats.moveSpeed;
+}
+
 PlayerCharacter::~PlayerCharacter() {
 	// 释放枪口粒子系统
 	if (m_pMuzzleFireSystem) {
@@ -284,6 +291,15 @@ void PlayerCharacter::UnloadAssets()
 
 bool PlayerCharacter::Initialize() {
 	g_pPlayerInstance = this;
+
+	// Keep the new centralized stats aligned with the legacy fields.  The old
+	// fields stay in place for now to avoid a broad gameplay rewrite.
+	m_Stats.maxHp = m_MaxHP;
+	m_Stats.currentHp = m_HP;
+	m_Stats.moveSpeed = m_MoveSpeed;
+	m_Stats.ClampCurrentHp();
+	m_PlayerExp.Reset();
+	SyncLegacyFieldsFromStats();
 
 	// 确保资源已加载
 	LoadAssets();
@@ -340,6 +356,8 @@ bool PlayerCharacter::Initialize() {
 // 2. 核心循环 (Update & Draw)
 // ----------------------------------------------------------------
 void PlayerCharacter::Update(double dt) {
+	m_Stats.UpdateTimers(static_cast<float>(dt));
+	SyncLegacyFieldsFromStats();
 
 	// --- 死亡逻辑处理 ---
 	if (m_CurrentState == CharacterState::Dead)
@@ -356,7 +374,7 @@ void PlayerCharacter::Update(double dt) {
 		return;
 	}
 
-	if (m_HP <= 0.0f)
+	if (m_Stats.currentHp <= 0.0f)
 	{
 		m_CurrentState = CharacterState::Dead;
 		m_Animator.PlayAnimation(m_pModel->GetAnimation("Rifle Death"), false, 0.1f);
@@ -466,7 +484,7 @@ void PlayerCharacter::Update(double dt) {
 		m_Animator.PlayAnimation(m_pModel->GetAnimation(animToPlay), true, crossfadeTime);
 
 		// B. 物理位移 (碰撞检测)
-		XMVECTOR moveVec = smoothedInput * m_MoveSpeed * (float)dt;
+		XMVECTOR moveVec = smoothedInput * m_Stats.moveSpeed * (float)dt;
 		XMFLOAT3 moveDelta;
 		XMStoreFloat3(&moveDelta, moveVec);
 
@@ -481,7 +499,9 @@ void PlayerCharacter::Update(double dt) {
 		if (Game_CheckCollisionWithWalls(this->GetAABB())) m_Position.z = oldZ;
 
 		// C. 开火逻辑（条件：鼠标左键按住 + 射速冷却结束 + 未换弹 + 有子弹）
-		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && m_CurrentAmmo > 0) {
+		const bool hasAmmoToShoot =
+			m_CurrentAmmo > 0 || m_Stats.IsInfiniteAmmoActive();
+		if (isFiring && m_ShootTimer <= 0.0f && !m_IsReloading && hasAmmoToShoot) {
 			if (m_WeaponAttachment.IsValid()) {
 				const XMVECTOR actualMuzzlePos =
 					m_WeaponAttachment.GetMuzzleWorldPosition();
@@ -491,8 +511,12 @@ void PlayerCharacter::Update(double dt) {
 				XMStoreFloat3(&v, gunForwardDir);
 
 				// 生成子弹：从枪口位置沿枪管方向飞出
-				Bullet_Create(p, v);
-				m_CurrentAmmo--;
+				// Damage/pierce are snapshotted at fire time so later stat changes
+				// do not mutate bullets already in flight.
+				Bullet_Create(p, v, m_Stats.bulletDamage, m_Stats.bulletPierce);
+				if (!m_Stats.IsInfiniteAmmoActive()) {
+					m_CurrentAmmo--;
+				}
 
 				// 粒子发射位置在枪口上方微调（视觉修正）
 				XMFLOAT3 flashPos = p;
@@ -679,7 +703,8 @@ void PlayerCharacter::ApplyDamage(float damage)
 {
 	if (m_InvincibleTimer > 0.0f) return;
 
-	m_HP -= damage;
+	m_Stats.ApplyDamage(damage);
+	SyncLegacyFieldsFromStats();
 	m_InvincibleTimer = m_InvincibleDuration;
 
 	Player_Camera_AddShake(0.3f); // 受伤震动稍微大一点
@@ -688,12 +713,8 @@ void PlayerCharacter::ApplyDamage(float damage)
 
 void PlayerCharacter::Heal(float amount)
 {
-	if (m_HP <= 0.0f) return;
-
-	m_HP += amount;
-	if (m_HP > m_MaxHP) {
-		m_HP = m_MaxHP;
-	}
+	m_Stats.Heal(amount);
+	SyncLegacyFieldsFromStats();
 }
 
 void PlayerCharacter::AddAmmo(int amount)
@@ -706,7 +727,10 @@ ExperienceGainResult PlayerCharacter::AddExperience(
 	std::uint64_t enemyBaseExperience,
 	std::uint32_t enemyLevel)
 {
-	return m_Experience.AddExperience(enemyBaseExperience, enemyLevel);
+	ExperienceGainResult result =
+		m_Experience.AddExperience(enemyBaseExperience, enemyLevel);
+	m_PlayerExp.AddExp(result.awardedExperience);
+	return result;
 }
 
 AABB PlayerCharacter::GetAABB() const {

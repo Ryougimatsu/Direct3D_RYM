@@ -9,6 +9,8 @@
 #include "fade.h"
 #include "scene.h"
 #include <DirectXMath.h>
+#include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <stdlib.h>
@@ -33,6 +35,11 @@
 #include "Player_Camera.h"
 #include "DebugCamera.h"
 #include "GameUI.h"
+#include "LevelUpUI.h"
+#include "RoguelikeDebugUI.h"
+#include "SkillSystem.h"
+#include "DifficultyManager.h"
+#include "key_logger.h"
 
 // 游戏对象与模型
 #include "model.h"
@@ -48,6 +55,7 @@
 #include "sprite_anime.h"
 #include "particle_system.h"
 #include "Font.h"
+#include "UIFont.h"
 
 using namespace DirectX;
 
@@ -56,10 +64,19 @@ using namespace DirectX;
 // ======================================================================================
 namespace
 {
+	enum class GameState
+	{
+		Playing,
+		LevelUpSelect,
+		Paused
+	};
+
 	// --- 游戏运行状态 ---
 	bool   g_IsDebugCameraMode = false; // 是否处于调试摄像机模式（TAB 切换）
+	bool   g_ShowRoguelikeDebugInfo = true; // F3 toggles upgrade stat debug overlay.
 	double g_CurrentGameTime   = 0.0;   // 当前局游戏累计时间（秒），用于计分
-	bool   g_IsPaused = false;          // 暂停标志（P 键切换）
+	GameState g_GameState = GameState::Playing;
+	int g_PendingLevelUps = 0;
 
 	// --- 核心游戏对象 ---
 	PlayerCharacter*  g_Player    = nullptr;                      // 玩家角色实例
@@ -81,6 +98,176 @@ namespace
 	// --- UI 纹理资源 ---
 	int g_TexArrow = -1; // 目标指引箭头纹理（60 秒后显示）
 	int g_TexWhite = -1; // 白色纯色纹理（暂停遮罩用）
+
+	// --- Roguelike 升级系统 ---
+	constexpr std::size_t LEVEL_UP_OPTION_COUNT = 3;
+	SkillSystem g_SkillSystem;
+	DifficultyManager g_DifficultyManager;
+	std::vector<SkillDefinition> g_CurrentLevelUpOptions;
+	int g_SelectedLevelUpOptionIndex = 0;
+
+	void LogLevelUpChoices()
+	{
+		OutputDebugStringA(
+			"[LevelUp] Player leveled up. Generated skill choices.\n");
+
+		for (size_t i = 0; i < g_CurrentLevelUpOptions.size(); ++i)
+		{
+			const SkillDefinition& skill = g_CurrentLevelUpOptions[i];
+			const std::wstring message =
+				L"[LevelUp] Choice " +
+				std::to_wstring(i + 1) +
+				L": " +
+				skill.name +
+				L" - " +
+				skill.description +
+				L"\n";
+			OutputDebugStringW(message.c_str());
+		}
+	}
+
+	void LogSelectedLevelUpOption()
+	{
+		if (g_CurrentLevelUpOptions.empty())
+		{
+			return;
+		}
+
+		g_SelectedLevelUpOptionIndex = std::clamp(
+			g_SelectedLevelUpOptionIndex,
+			0,
+			static_cast<int>(g_CurrentLevelUpOptions.size()) - 1);
+
+		const SkillDefinition& skill =
+			g_CurrentLevelUpOptions[g_SelectedLevelUpOptionIndex];
+		const std::wstring message =
+			L"[LevelUp] Selected " +
+			std::to_wstring(g_SelectedLevelUpOptionIndex + 1) +
+			L": " +
+			skill.name +
+			L"\n";
+		OutputDebugStringW(message.c_str());
+	}
+
+	void BeginLevelUpSelect()
+	{
+		if (g_GameState == GameState::LevelUpSelect ||
+			g_PendingLevelUps <= 0)
+		{
+			return;
+		}
+
+		g_CurrentLevelUpOptions =
+			g_SkillSystem.DrawRandomSkills(LEVEL_UP_OPTION_COUNT);
+		g_SelectedLevelUpOptionIndex = 0;
+		g_GameState = GameState::LevelUpSelect;
+		LogLevelUpChoices();
+		LogSelectedLevelUpOption();
+	}
+
+	void MoveLevelUpSelection(int delta)
+	{
+		if (g_CurrentLevelUpOptions.empty())
+		{
+			return;
+		}
+
+		const int optionCount =
+			static_cast<int>(g_CurrentLevelUpOptions.size());
+		g_SelectedLevelUpOptionIndex =
+			(g_SelectedLevelUpOptionIndex + delta + optionCount) %
+			optionCount;
+		LogSelectedLevelUpOption();
+	}
+
+	void ConfirmLevelUpSelection()
+	{
+		if (!g_Player || g_CurrentLevelUpOptions.empty())
+		{
+			return;
+		}
+
+		g_SelectedLevelUpOptionIndex = std::clamp(
+			g_SelectedLevelUpOptionIndex,
+			0,
+			static_cast<int>(g_CurrentLevelUpOptions.size()) - 1);
+
+		const SkillDefinition selectedSkill =
+			g_CurrentLevelUpOptions[g_SelectedLevelUpOptionIndex];
+		g_SkillSystem.ApplySkill(selectedSkill, g_Player->GetStats());
+
+		const std::wstring message =
+			L"[LevelUp] Confirmed: " +
+			selectedSkill.name +
+			L"\n";
+		OutputDebugStringW(message.c_str());
+
+		g_CurrentLevelUpOptions.clear();
+		g_SelectedLevelUpOptionIndex = 0;
+
+		if (g_PendingLevelUps > 0)
+		{
+			--g_PendingLevelUps;
+		}
+
+		if (g_PendingLevelUps > 0)
+		{
+			g_GameState = GameState::Playing;
+			BeginLevelUpSelect();
+		}
+		else
+		{
+			g_GameState = GameState::Playing;
+			OutputDebugStringA("[LevelUp] Selection complete. Back to Playing.\n");
+		}
+	}
+
+	void UpdateLevelUpSelectInput()
+	{
+		if (KeyLogger_IsTrigger(KK_LEFT) ||
+			KeyLogger_IsTrigger(KK_A))
+		{
+			MoveLevelUpSelection(-1);
+		}
+
+		if (KeyLogger_IsTrigger(KK_RIGHT) ||
+			KeyLogger_IsTrigger(KK_D))
+		{
+			MoveLevelUpSelection(1);
+		}
+
+		if (KeyLogger_IsTrigger(KK_ENTER))
+		{
+			ConfirmLevelUpSelection();
+		}
+	}
+
+	bool CheckAndConsumePlayerLevelUps()
+	{
+		if (!g_Player)
+		{
+			return false;
+		}
+
+		PlayerExp& playerExp = g_Player->GetPlayerExp();
+		while (playerExp.CanLevelUp())
+		{
+			if (!playerExp.ConsumeLevelUp())
+			{
+				break;
+			}
+			++g_PendingLevelUps;
+		}
+
+		if (g_PendingLevelUps > 0 &&
+			g_GameState == GameState::Playing)
+		{
+			BeginLevelUpSelect();
+			return true;
+		}
+
+		return false;
+	}
 }
 
 // ======================================================================================
@@ -115,7 +302,12 @@ void Game_LoadContent()
 
 	// 3. 初始化摄像机与 UI
 	Player_Camera_Initialize();      // 玩家跟随摄像机
+	UIFont_Initialize();             // Scalable bitmap font for adaptive UI
 	GameUI_Initialize();             // 游戏界面元素（血条、弹药等）
+	LevelUpUI_Initialize();          // Roguelike 升级三选一 UI
+	RoguelikeDebugUI_Initialize();   // Roguelike stat debug overlay
+	g_SkillSystem.Initialize();      // Roguelike 技能池
+	g_DifficultyManager.Reset();     // 敌人随时间成长系统
 
 	// 4. 初始化物品系统
 	Inventory_Initialize();          // 背包/道具管理
@@ -187,6 +379,12 @@ void Game_Initialize()
 
 	// 重置本局计时
 	g_CurrentGameTime = 0.0;
+	g_GameState = GameState::Playing;
+	g_ShowRoguelikeDebugInfo = true;
+	g_PendingLevelUps = 0;
+	g_CurrentLevelUpOptions.clear();
+	g_SelectedLevelUpOptionIndex = 0;
+	g_DifficultyManager.Reset();
 
 	// 场景切入时播放淡入效果（黑色 → 透明，1 秒）
 	Fade_Start(1.0, false, { 0.0f, 0.0f, 0.0f });
@@ -198,14 +396,36 @@ void Game_Initialize()
 void Game_Update(double elapsed_time)
 {
 	// 背包系统优先更新（打开背包时冻结其他逻辑）
-	Inventory_Update(elapsed_time);
-	if (Inventory_IsOpen()) {
-		return; // 背包界面打开时暂停游戏逻辑
+	if (g_GameState != GameState::LevelUpSelect)
+	{
+		Inventory_Update(elapsed_time);
+		if (KeyLogger_IsTrigger(KK_F3))
+		{
+			g_ShowRoguelikeDebugInfo = !g_ShowRoguelikeDebugInfo;
+		}
+
+		if (Inventory_IsOpen()) {
+			return; // 背包界面打开时暂停游戏逻辑
+		}
+	}
+	else if (KeyLogger_IsTrigger(KK_F3))
+	{
+		g_ShowRoguelikeDebugInfo = !g_ShowRoguelikeDebugInfo;
 	}
 
 	// P 键切换暂停
-	if (KeyLogger_IsTrigger(KK_P)) {
-		g_IsPaused = !g_IsPaused;
+	if (g_GameState != GameState::LevelUpSelect &&
+		KeyLogger_IsTrigger(KK_P))
+	{
+		g_GameState = (g_GameState == GameState::Paused)
+			? GameState::Playing
+			: GameState::Paused;
+	}
+
+	if (g_GameState == GameState::LevelUpSelect)
+	{
+		UpdateLevelUpSelectInput();
+		return;
 	}
 
 	// --- 1. 输入处理与调试模式切换 ---
@@ -236,12 +456,14 @@ void Game_Update(double elapsed_time)
 	}
 
 	// 暂停时仅更新调试摄像机，跳过所有游戏逻辑
-	if (g_IsPaused) {
+	if (g_GameState == GameState::Paused) {
 		if (g_IsDebugCameraMode) {
 			DebugCamera_Update(elapsed_time);
 		}
 		return;
 	}
+
+	g_DifficultyManager.Update(static_cast<float>(elapsed_time));
 
 	// --- 2. 摄像机更新 ---
 	DirectX::XMFLOAT3 pPos = (g_Player) ? g_Player->GetPosition() : DirectX::XMFLOAT3{ 0,0,0 };
@@ -257,7 +479,7 @@ void Game_Update(double elapsed_time)
 
 	// --- 3. 游戏实体逐一更新 ---
 	GameUI_Update(elapsed_time);            // HUD 提示动画
-	Enemy_Update(elapsed_time);             // 敌人 AI 状态机 + 移动 + 攻击
+	Enemy_Update(elapsed_time, g_DifficultyManager); // 敌人 AI 状态机 + 移动 + 攻击 + 难度刷怪
 	Bullet_Update(elapsed_time);            // 子弹飞行 + 生命周期
 	Bullet_CheckCollisionWithEnemies();     // 子弹与敌人的碰撞检测
 	DropItem_Update(elapsed_time);          // 掉落物旋转/拾取检测
@@ -278,6 +500,11 @@ void Game_Update(double elapsed_time)
 			Scene_Change(SCENE_GAMEOVER);
 			return;
 		}
+	}
+
+	if (CheckAndConsumePlayerLevelUps())
+	{
+		return;
 	}
 
 	// --- 4. 游戏胜利条件判断 ---
@@ -522,7 +749,7 @@ void Game_Draw()
 		}
 
 		// ---- 暂停画面遮罩 ----
-		if (g_IsPaused)
+		if (g_GameState == GameState::Paused)
 		{
 			float screenW = (float)Direct3D_GetBackBufferWidth();
 			float screenH = (float)Direct3D_GetBackBufferHeight();
@@ -533,6 +760,20 @@ void Game_Draw()
 			float textX = screenW / 2.0f - 60.0f;
 			float textY = screenH / 2.0f - 20.0f;
 			Font_Draw(L"PAUSED", textX, textY, {1.0f, 1.0f, 1.0f, 1.0f}); // 居中白色文字
+		}
+
+		if (g_GameState == GameState::LevelUpSelect)
+		{
+			LevelUpUI_Draw(
+				g_CurrentLevelUpOptions,
+				g_SelectedLevelUpOptionIndex);
+		}
+
+		if (g_ShowRoguelikeDebugInfo &&
+			g_GameState != GameState::LevelUpSelect &&
+			g_Player)
+		{
+			RoguelikeDebugUI_Draw(*g_Player, g_DifficultyManager);
 		}
 	}
 	Sprite_End();
@@ -545,6 +786,10 @@ void Game_Draw()
 // ======================================================================================
 void Game_Finalize()
 {
+	RoguelikeDebugUI_Finalize();
+	LevelUpUI_Finalize();
+	UIFont_Finalize();
+
 	// 释放玩家角色实例（析构函数内会自动清理粒子系统 + 清空 g_pPlayerInstance）
 	if (g_Player) {
 		delete g_Player;

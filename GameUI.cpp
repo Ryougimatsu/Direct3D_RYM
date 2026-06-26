@@ -1,9 +1,9 @@
 #include "GameUI.h"
 
-#include "Font.h"
 #include "PlayerCharacter.h"
 #include "sprite.h"
 #include "texture.h"
+#include "UIFont.h"
 
 #include <algorithm>
 #include <limits>
@@ -16,6 +16,8 @@ namespace
 	float g_ExperienceGainTimer = 0.0f;
 
 	constexpr float EXPERIENCE_GAIN_DISPLAY_TIME = 1.5f;
+	constexpr float HUD_FONT_SCALE = 0.54f;
+	constexpr float EXP_GAIN_FONT_SCALE = 0.58f;
 }
 
 void GameUI_Initialize()
@@ -81,8 +83,10 @@ void GameUI_Draw()
 
 	// Health bar.
 	const float healthHeight = 20.0f;
-	const float healthRatio =
-		std::clamp(player->GetHP() / 100.0f, 0.0f, 1.0f);
+	const PlayerStats& stats = player->GetStats();
+	const float healthRatio = stats.maxHp > 0.0f
+		? std::clamp(stats.currentHp / stats.maxHp, 0.0f, 1.0f)
+		: 0.0f;
 
 	Sprite_Draw(
 		g_TexWhite,
@@ -100,12 +104,11 @@ void GameUI_Draw()
 		{ 1.0f, 0.0f, 0.0f, 1.0f });
 
 	// Experience bar.
-	const ExperienceComponent& experience =
-		player->GetExperienceComponent();
+	const PlayerExp& experience = player->GetPlayerExp();
 	const std::uint64_t currentExperience =
-		experience.GetCurrentExperience();
+		experience.currentExp;
 	const std::uint64_t requiredExperience =
-		experience.GetRequiredExperience();
+		experience.expToNextLevel;
 
 	const float experienceRatio = requiredExperience > 0
 		? std::clamp(
@@ -135,7 +138,7 @@ void GameUI_Draw()
 		{ 0.15f, 0.65f, 1.0f, 1.0f });
 
 	std::wstring experienceText =
-		L"LV " + std::to_wstring(experience.GetLevel()) +
+		L"LV " + std::to_wstring(experience.level) +
 		L"  EXP " + std::to_wstring(currentExperience);
 	if (requiredExperience > 0)
 	{
@@ -146,10 +149,11 @@ void GameUI_Draw()
 		experienceText += L" MAX";
 	}
 
-	Font_Draw(
+	UIFont_Draw(
 		experienceText.c_str(),
 		x,
 		experienceY + experienceHeight + 4.0f,
+		HUD_FONT_SCALE,
 		{ 0.75f, 0.9f, 1.0f, 1.0f });
 
 	// Short "+EXP" notification after a kill.
@@ -161,10 +165,11 @@ void GameUI_Draw()
 		const std::wstring gainText =
 			L"+" + std::to_wstring(g_RecentExperienceGain) + L" EXP";
 
-		Font_Draw(
+		UIFont_Draw(
 			gainText.c_str(),
 			x,
-			experienceY + experienceHeight + 42.0f,
+			experienceY + experienceHeight + 30.0f,
+			EXP_GAIN_FONT_SCALE,
 			{ 0.3f, 1.0f, 0.45f, alpha });
 	}
 }

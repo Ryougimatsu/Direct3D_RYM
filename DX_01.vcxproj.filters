@@ -135,6 +135,9 @@
     <ClCompile Include="DebugCamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DifficultyManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Inventory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -142,6 +145,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GameUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelUpUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SkinningShader.cpp">
@@ -162,6 +168,12 @@
     <ClCompile Include="PlayerCharacter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PlayerExp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerStats.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Weapon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -172,6 +184,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ExperienceComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ExperienceCurve.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Pathfinder.cpp">
@@ -187,6 +202,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="result.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RoguelikeDebugUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UIFont.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRegion.cpp">
@@ -247,6 +268,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Shader_Shadow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SkillSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="particle_system.cpp">
@@ -371,6 +395,9 @@
     <ClInclude Include="DebugCamera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DifficultyManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Inventory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -378,6 +405,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GameUI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelUpUI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RoguelikeDebugUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SkinningShader.h">
@@ -404,6 +437,12 @@
     <ClInclude Include="PlayerCharacter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PlayerExp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerStats.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Weapon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -414,6 +453,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ExperienceComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExperienceCurve.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pathfinder.h">
@@ -435,6 +477,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Shader_Shadow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SkillDefinition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SkillSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UIFont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="particle_system.h">

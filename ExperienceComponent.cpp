@@ -1,5 +1,7 @@
 #include "ExperienceComponent.h"
 
+#include "ExperienceCurve.h"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -96,15 +98,7 @@ double ExperienceComponent::CalculateLevelFactor(std::uint32_t enemyLevel) const
 std::uint64_t ExperienceComponent::CalculateRequiredExperience(
 	std::uint32_t level) const
 {
-	level = std::max<std::uint32_t>(1, level);
-
-	const long double required =
-		static_cast<long double>(m_config.baseRequiredExperience) *
-		std::pow(
-			static_cast<long double>(level),
-			static_cast<long double>(m_config.growthRate));
-
-	return std::max<std::uint64_t>(1, RoundAndClampExperience(required));
+	return ExperienceCurve_CalculateRequiredExperience(level);
 }
 
 void ExperienceComponent::SetLevelUpCallback(LevelUpCallback callback)

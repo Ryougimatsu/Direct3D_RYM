@@ -1,6 +1,9 @@
 #include "bullet.h"
 #include "model.h"
 using namespace DirectX;
+#include <algorithm>
+#include <cstdint>
+#include <vector>
 #include "collision.h"
 #include "enemy.h"
 #include "map.h" // 确保包含地图检测
@@ -10,13 +13,19 @@ class Bullet
 private:
 	XMFLOAT3 m_position{};
 	XMFLOAT3 m_velocity{};
+	float m_damage{ BULLET_DEFAULT_DAMAGE };
+	int m_remainingPierce{ BULLET_DEFAULT_REMAINING_PIERCE };
+	std::vector<std::uintptr_t> m_hitEnemyIds{};
 	double m_accumulatedTime{ 0.0 };
 	static constexpr double LIFE_TIME = 3.0; // 子弹寿命（秒）
 	bool m_deleteFlag = false;
 
 public:
-	Bullet(const XMFLOAT3& pos, const XMFLOAT3& vel)
-		:m_position(pos), m_velocity(vel)
+	Bullet(const XMFLOAT3& pos, const XMFLOAT3& vel, float damage, int remainingPierce)
+		:m_position(pos),
+		m_velocity(vel),
+		m_damage(std::max(0.0f, damage)),
+		m_remainingPierce(std::max(0, remainingPierce))
 	{
 	}
 
@@ -43,6 +52,7 @@ public:
 	}
 
 	const XMFLOAT3& GetPosition() const { return m_position; }
+	float GetDamage() const { return m_damage; }
 
 	XMFLOAT3 GetFront() const
 	{
@@ -56,6 +66,31 @@ public:
 	bool isDestroy() const
 	{
 		return m_deleteFlag || (m_accumulatedTime >= LIFE_TIME);
+	}
+
+	bool HasHitEnemy(const Enemy* enemy) const
+	{
+		const std::uintptr_t enemyId = reinterpret_cast<std::uintptr_t>(enemy);
+		return std::find(m_hitEnemyIds.begin(), m_hitEnemyIds.end(), enemyId)
+			!= m_hitEnemyIds.end();
+	}
+
+	void RegisterEnemyHit(const Enemy* enemy)
+	{
+		const std::uintptr_t enemyId = reinterpret_cast<std::uintptr_t>(enemy);
+		m_hitEnemyIds.push_back(enemyId);
+	}
+
+	bool ConsumePierceOrShouldDestroy()
+	{
+		if (m_remainingPierce > 0)
+		{
+			m_remainingPierce--;
+			return false;
+		}
+
+		m_deleteFlag = true;
+		return true;
 	}
 };
 
@@ -118,14 +153,16 @@ void Bullet_CheckCollisionWithEnemies()
 			Enemy* pEnemy = Enemy_GetEnemy(j);
 			if (!pEnemy) continue;
 			if (pEnemy->IsDead()) continue;
+			if (g_Bullets[i]->HasHitEnemy(pEnemy)) continue;
 
 			// 检测子弹球体与敌人 AABB 是否碰撞
 			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
 			{
 
 				bool isAlive = !pEnemy->IsDead();
+				g_Bullets[i]->RegisterEnemyHit(pEnemy);
 				// 1. 敌人受伤/死亡逻辑
-				pEnemy->Damage(10.0f, false); // 假设每次命中造成 10 点伤害
+				pEnemy->Damage(g_Bullets[i]->GetDamage(), false);
 
 				if (isAlive)
 				{
@@ -134,12 +171,13 @@ void Bullet_CheckCollisionWithEnemies()
 					Enemy_EmitBlood(hitPos, 5);
 				}
 
-				// 2. 销毁子弹
-				Bullet_Destroy(i);
-
-				// 3. 回退索引并跳出
-				i--;
-				break;
+				// 2. 穿透次数用完才销毁；还有穿透时继续检测后续敌人
+				if (g_Bullets[i]->ConsumePierceOrShouldDestroy())
+				{
+					Bullet_Destroy(i);
+					i--;
+					break;
+				}
 			}
 		}
 	}
@@ -183,7 +221,11 @@ void Bullet_Draw()
 	}
 }
 
-void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& velocity)
+void Bullet_Create(
+	const DirectX::XMFLOAT3& position,
+	const DirectX::XMFLOAT3& velocity,
+	float damage,
+	int remainingPierce)
 {
 	if (g_BulletCount >= MAX_BULLET) return;
 
@@ -197,7 +239,11 @@ void Bullet_Create(const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& v
 	XMFLOAT3 finalVelocity;
 	XMStoreFloat3(&finalVelocity, vDir);
 
-	g_Bullets[g_BulletCount++] = new Bullet(position, finalVelocity);
+	g_Bullets[g_BulletCount++] = new Bullet(
+		position,
+		finalVelocity,
+		damage,
+		remainingPierce);
 }
 
 void Bullet_Destroy(int index)

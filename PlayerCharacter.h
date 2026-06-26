@@ -10,6 +10,8 @@
 #include "collision.h"
 #include "particle_system.h"
 #include "ExperienceComponent.h"
+#include "PlayerExp.h"
+#include "PlayerStats.h"
 #include "Weapon.h"
 #include "WeaponAttachmentComponent.h"
 #include <vector>
@@ -69,8 +71,8 @@ public:
 	void Heal(float amount);
 
 	bool IsInvincible() const { return m_InvincibleTimer > 0.0f; }
-	bool IsDead() const { return m_HP <= 0.0f; }
-	float GetHP() const { return m_HP; }
+	bool IsDead() const { return m_Stats.currentHp <= 0.0f; }
+	float GetHP() const { return m_Stats.currentHp; }
 
 	// 死亡逻辑
 	bool IsDeathAnimationFinished() const { return m_IsDeadFinished; }
@@ -92,12 +94,17 @@ public:
 		std::uint32_t enemyLevel);
 	ExperienceComponent& GetExperienceComponent() { return m_Experience; }
 	const ExperienceComponent& GetExperienceComponent() const { return m_Experience; }
+	PlayerExp& GetPlayerExp() { return m_PlayerExp; }
+	const PlayerExp& GetPlayerExp() const { return m_PlayerExp; }
+	PlayerStats& GetStats() { return m_Stats; }
+	const PlayerStats& GetStats() const { return m_Stats; }
 
 private:
 	DirectX::XMMATRIX GetCharacterWorldMatrix() const;
 	void UpdateWeaponAttachment();
 	DirectX::XMVECTOR GetWeaponAimDirection() const;
 	void DrawWeaponAttachmentDebug(const DirectX::XMMATRIX& view);
+	void SyncLegacyFieldsFromStats();
 
 	// ==========================================
 	// 资源与组件 (Components)
@@ -112,11 +119,16 @@ private:
 	ParticleSystem* m_pMuzzleFireSystem = nullptr; // 枪口火焰粒子系统（每次开枪时发射）
 	int m_MuzzleFireTexID = -1;                    // 枪口火焰粒子所用纹理 ID
 	ExperienceComponent m_Experience;              // 等级、经验和经验倍率
+	PlayerExp m_PlayerExp;                         // Roguelike 升级队列用经验数据
+	PlayerStats m_Stats;                           // 可被技能修改的集中式玩家属性
 
 	// ==========================================
 	// 配置参数 (Configuration / Settings)
 	// ==========================================
 	// 基础属性
+	// Legacy mirrors kept during the PlayerStats migration.  New gameplay code
+	// should read/write m_Stats instead; these can be removed after all old
+	// call sites are migrated.
 	float m_MaxHP = 100.0f;      // 最大生命值上限
 	float m_Scale = 0.01f;       // 角色模型缩放系数（FBX 导出单位换算至游戏单位）
 	float m_MoveSpeed = 1.15f;    // 角色移动速度（单位/秒）
@@ -141,6 +153,7 @@ private:
 	float             m_RotationY = 0.0f;                  // 绕 Y 轴的旋转角度（弧度）
 
 	// 生命值
+	// Legacy mirror of m_Stats.currentHp; kept temporarily for low-risk migration.
 	float m_HP = 100.0f; // 当前生命值（降至 0 时触发死亡状态）
 
 	// 计时器与标志位

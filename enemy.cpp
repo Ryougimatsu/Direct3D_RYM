@@ -1,6 +1,8 @@
 #include "enemy.h"
 #include "enemy_test.h"
+#include "DifficultyManager.h"
 #include "PlayerCharacter.h"
+#include "GameUI.h"
 #include <vector>
 #include <cstdlib>     
 #include <ctime>
@@ -17,10 +19,9 @@ using namespace DirectX;
 namespace {
 	std::vector<Enemy*> g_Enemies;
 
-	int g_MaxEnemiesOnScreen = 10;        // 改为可变变量
+	int g_MaxEnemiesOnScreen = 60;        // 当前屏幕最大敌人数，防止刷怪无限堆积
 	float g_CurrentSpawnInterval = 3.0f;  // 改为可变变量
 	float g_SpawnTimer = 0.0f;            // 计时器
-	float g_TotalEnemyTime = 0.0f;        // 记录战斗总时间
 
 	const float MAP_RANGE = 20.0f;        // 地图大小 (假设是 -20 到 20)
 	const float SAFE_DISTANCE = 5.0f;     // 安全距离 (玩家周围 5 米内不刷怪)
@@ -161,12 +162,11 @@ void Enemy_Initialize()
 
 	g_EnemyCount = 0;
 	g_SpawnTimer = 0.0f;
-	g_TotalEnemyTime = 0.0f;
-	g_MaxEnemiesOnScreen = 10;
-	g_CurrentSpawnInterval = 3.0f;
+	g_MaxEnemiesOnScreen = 60;
+	g_CurrentSpawnInterval = 2.0f;
 }
 
-void Enemy_Update(double elapsed_time)
+void Enemy_Update(double elapsed_time, const DifficultyManager& difficultyManager)
 {
 	if (m_pBleedSystem) {
 		m_pBleedSystem->Update(elapsed_time);
@@ -193,69 +193,64 @@ void Enemy_Update(double elapsed_time)
 	// 随机生成逻辑
 	// ==========================================
 	g_SpawnTimer += (float)elapsed_time;
-
-	g_TotalEnemyTime += (float)elapsed_time;
-
-	if (g_TotalEnemyTime < 45.0f) {
-		// 45秒内：保持初始设定
-		g_MaxEnemiesOnScreen = 15;
-		g_CurrentSpawnInterval = 2.0f;
-	}
-	else if (g_TotalEnemyTime <= 180.0f) {
-		// 45秒 到 180秒(3分钟)：线性增加难度
-		// 进度 t 的范围是 0.0 到 1.0
-		float t = (g_TotalEnemyTime - 45.0f) / (180.0f - 45.0f);
-
-		// 数量从 10 增加到 40 (原先的4倍)
-		g_MaxEnemiesOnScreen = 15 + (int)(t * 30.0f);
-
-		// 刷新间隔从 3.0秒 缩短到 0.5秒 (刷新越来越快)
-		g_CurrentSpawnInterval = 3.0f - (t * 2.5f);
-	}
-	else {
-		// 3分钟以后：维持最高难度
-		g_MaxEnemiesOnScreen = 50;
-		g_CurrentSpawnInterval = 0.5f;
-	}
+	g_CurrentSpawnInterval = difficultyManager.GetSpawnInterval();
 
 	// 只有当敌人数量未达上限时，才开始计时
 	if (g_SpawnTimer > g_CurrentSpawnInterval && g_Enemies.size() < g_MaxEnemiesOnScreen)
 	{
-		// 尝试生成敌人 (尝试 10 次，如果都找不到合适的位置就放弃，等下一帧)
-		for (int i = 0; i < 10; i++)
+		int spawnedThisWave = 0;
+		const int enemiesPerWave = difficultyManager.GetEnemiesPerWave();
+
+		for (int waveIndex = 0;
+			waveIndex < enemiesPerWave &&
+			g_Enemies.size() < g_MaxEnemiesOnScreen;
+			++waveIndex)
 		{
-			float x = RandomFloat(-MAP_RANGE, MAP_RANGE);
-			float z = RandomFloat(-MAP_RANGE, MAP_RANGE);
+			// 尝试生成敌人 (尝试 10 次，如果都找不到合适的位置就放弃这个名额)
+			for (int i = 0; i < 10; i++)
+			{
+				float x = RandomFloat(-MAP_RANGE, MAP_RANGE);
+				float z = RandomFloat(-MAP_RANGE, MAP_RANGE);
 
-			// (A) 检查是否离玩家太近
-			XMFLOAT3 playerPos = { 0,0,0 };
-			if (PlayerCharacter* pPlayer = Player_GetInstance()) {
-				playerPos = pPlayer->GetPosition();
+				// (A) 检查是否离玩家太近
+				XMFLOAT3 playerPos = { 0,0,0 };
+				if (PlayerCharacter* pPlayer = Player_GetInstance()) {
+					playerPos = pPlayer->GetPosition();
+				}
+
+				float dx = x - playerPos.x;
+				float dz = z - playerPos.z;
+				if (dx * dx + dz * dz < SAFE_DISTANCE * SAFE_DISTANCE) {
+					continue; // 太近了，重试
+				}
+
+				// (B) 【新增】检查是否生成在墙壁/掩体里
+				// 构造一个临时的敌人包围盒 (假设敌人高2.0, 宽1.0)
+				AABB enemyAABB;
+				enemyAABB.min = { x - 0.5f, 0.0f, z - 0.5f };
+				enemyAABB.max = { x + 0.5f, 2.0f, z + 0.5f };
+
+				// 如果和地图上的墙壁碰撞，则位置无效
+				if (Map_CheckCollision(enemyAABB)) {
+					continue; // 撞墙了，重试
+				}
+
+				// --- 位置合法，生成敌人 ---
+				Enemy_Create(
+					{ x, 0.0f, z },
+					static_cast<std::uint32_t>(difficultyManager.GetDifficultyLevel()),
+					10,
+					difficultyManager.GetEnemyHpMultiplier(),
+					difficultyManager.GetEnemyDamageMultiplier(),
+					difficultyManager.GetEnemySpeedMultiplier());
+				++spawnedThisWave;
+				break; // 当前名额生成成功，继续尝试下一只
 			}
+		}
 
-			float dx = x - playerPos.x;
-			float dz = z - playerPos.z;
-			if (dx * dx + dz * dz < SAFE_DISTANCE * SAFE_DISTANCE) {
-				continue; // 太近了，重试
-			}
-
-			// (B) 【新增】检查是否生成在墙壁/掩体里
-			// 构造一个临时的敌人包围盒 (假设敌人高2.0, 宽1.0)
-			AABB enemyAABB;
-			enemyAABB.min = { x - 0.5f, 0.0f, z - 0.5f };
-			enemyAABB.max = { x + 0.5f, 2.0f, z + 0.5f };
-
-			// 如果和地图上的墙壁碰撞，则位置无效
-			if (Map_CheckCollision(enemyAABB)) {
-				continue; // 撞墙了，重试
-			}
-
-			// --- 位置合法，生成敌人 ---
-			EnemyTest* newEnemy = new EnemyTest({ x, 0.0f, z });
-			g_Enemies.push_back(newEnemy);
-
+		if (spawnedThisWave > 0)
+		{
 			g_SpawnTimer = 0.0f; // 重置计时器
-			break; // 生成成功，跳出循环
 		}
 	}
 }
@@ -309,9 +304,13 @@ void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj)
 void Enemy_Create(
 	const XMFLOAT3& position,
 	std::uint32_t level,
-	std::uint64_t baseExperience)
+	std::uint64_t baseExperience,
+	float hpMultiplier,
+	float damageMultiplier,
+	float speedMultiplier)
 {
 	Enemy* newEnemy = new EnemyTest(position, level, baseExperience);
+	newEnemy->ApplyDifficultyScaling(hpMultiplier, damageMultiplier, speedMultiplier);
 	g_Enemies.push_back(newEnemy);
 }
 
@@ -324,6 +323,19 @@ Enemy* Enemy_GetEnemy(int index)
 {
 	if (index < 0 || index >= g_Enemies.size()) return nullptr;
 	return g_Enemies[index];
+}
+
+void Enemy_AwardDefeatExperience(const Enemy& enemy)
+{
+	// Enemy defeat EXP is centralized here so Bullet and SkillSystem stay
+	// independent from progression rules.
+	if (PlayerCharacter* player = Player_GetInstance()) {
+		const ExperienceGainResult result =
+			player->AddExperience(
+				enemy.GetBaseExperience(),
+				enemy.GetLevel());
+		GameUI_ShowExperienceGain(result.awardedExperience);
+	}
 }
 
 void Enemy::MoveToTarget(const DirectX::XMFLOAT3& targetPos, double dt)

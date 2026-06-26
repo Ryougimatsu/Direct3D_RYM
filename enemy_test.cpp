@@ -4,7 +4,6 @@
 #include "shader_3d.h"
 #include "Meshfield.h"
 #include "PlayerCharacter.h"
-#include "GameUI.h"
 #include <algorithm>
 #include <cmath> 
 #include <cstdlib>
@@ -353,11 +352,7 @@ void EnemyTest::Damage(float damage, bool isMelee)
 		m_bIsDead = true;
 
 		// This death transition runs only once, so EXP cannot be granted twice.
-		if (PlayerCharacter* player = Player_GetInstance()) {
-			const ExperienceGainResult result =
-				player->AddExperience(m_BaseExperience, m_Level);
-			GameUI_ShowExperienceGain(result.awardedExperience);
-		}
+		Enemy_AwardDefeatExperience(*this);
 
 		m_Animator.PlayAnimation(g_pDyingAnim, false, 0.2f);
 		m_DeathTimer = 3.5f;
@@ -404,6 +399,21 @@ void EnemyTest::Damage(float damage, bool isMelee)
 float EnemyTest::GetHP() const
 {
 	return m_HP;
+}
+
+void EnemyTest::ApplyDifficultyScaling(
+	float hpMultiplier,
+	float damageMultiplier,
+	float speedMultiplier)
+{
+	constexpr float MIN_HP = 1.0f;
+	constexpr float MIN_DAMAGE = 1.0f;
+	constexpr float MIN_SPEED = 0.01f;
+
+	m_MaxHP = std::max(MIN_HP, m_MaxHP * hpMultiplier);
+	m_HP = m_MaxHP;
+	m_AttackDamage = std::max(MIN_DAMAGE, m_AttackDamage * damageMultiplier);
+	m_MoveSpeed = std::max(MIN_SPEED, m_MoveSpeed * speedMultiplier);
 }
 
 bool EnemyTest::IsDead() const
@@ -726,7 +736,7 @@ void EnemyTest::EnemyTest_StateChase::Update(double elapsed_time)
 			if (progress < 0.2f) m_HasDealtDamageInThisCycle = false;
 			if (progress > 0.3f && !m_HasDealtDamageInThisCycle) {
 				if (distToPlayer < m_pOwner->m_AttackRadius + 1.0f) {
-					Player_Damage(10.0f);
+					Player_Damage(m_pOwner->m_AttackDamage);
 				}
 				m_HasDealtDamageInThisCycle = true;
 			}

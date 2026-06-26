@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <vector>
 #include "particle_system.h"
+
+class DifficultyManager;
+
 class Enemy {
 
 protected:
@@ -51,19 +54,24 @@ public:
 	virtual bool IsDestroyed() const = 0;
 	virtual std::uint32_t GetLevel() const = 0;
 	virtual std::uint64_t GetBaseExperience() const = 0;
+	virtual void ApplyDifficultyScaling(float hpMultiplier, float damageMultiplier, float speedMultiplier) = 0;
 	virtual Sphere GetCollisionSphere() const { return {}; }
 };
 void Enemy_ResolveCollisions();
 void Enemy_Initialize();
 void Enemy_Finalize();
-void Enemy_Update(double elapsed_time);
+void Enemy_Update(double elapsed_time, const DifficultyManager& difficultyManager);
 void Enemy_Draw(DirectX::FXMMATRIX view, DirectX::CXMMATRIX proj);
 void Enemy_Create(
 	const DirectX::XMFLOAT3& position,
 	std::uint32_t level = 1,
-	std::uint64_t baseExperience = 25);
+	std::uint64_t baseExperience = 10,
+	float hpMultiplier = 1.0f,
+	float damageMultiplier = 1.0f,
+	float speedMultiplier = 1.0f);
 int Enemy_GetEnemyCount();
 Enemy* Enemy_GetEnemy(int index);
 void Enemy_ApplyMeleeDamage(const DirectX::XMFLOAT3& position, const DirectX::XMVECTOR& forward, float radius, float angle);
 void Enemy_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj);
 void Enemy_EmitBlood(const DirectX::XMFLOAT3& pos, int count);
+void Enemy_AwardDefeatExperience(const Enemy& enemy);
