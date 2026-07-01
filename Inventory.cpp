@@ -35,6 +35,20 @@ namespace
 
 	std::map<int, ItemDefinition> g_ItemDatabase;
 	std::vector<InventorySlot> g_Inventory;
+
+	std::string ToDebugAscii(const std::wstring& text)
+	{
+		std::string result;
+		result.reserve(text.size());
+		for (wchar_t character : text)
+		{
+			result.push_back(
+				(character >= 0 && character <= 127)
+				? static_cast<char>(character)
+				: '?');
+		}
+		return result;
+	}
 }
 
 
@@ -59,7 +73,7 @@ void DrawDebugText(float x, float y, const char* fmt, ...)
 	vsnprintf(buffer, 256, fmt, args);
 	va_end(args);
 
-	float srcSize = 32.0f;
+	const int srcSize = 32;
 
 	
 	float drawW = 16.0f;
@@ -79,8 +93,8 @@ void DrawDebugText(float x, float y, const char* fmt, ...)
 		int col = index % 16;
 		int row = index / 16;
 
-		float srcX = col * srcSize;
-		float srcY = row * srcSize;
+		int srcX = col * srcSize;
+		int srcY = row * srcSize;
 
 	
 		Sprite_Draw(g_FontTexId, currentX, y, drawW, drawH, srcX, srcY, srcSize, srcSize);
@@ -229,9 +243,9 @@ void Inventory_Draw()
 			ItemDefinition& def = g_ItemDatabase[slot.itemId];
 
 			// 计算 UV 裁剪
-			float iconRawSize = 32.0f;
-			float srcX = (def.uvIndex * iconRawSize);
-			float srcY = 0.0f;
+			const int iconRawSize = 32;
+			const int srcX = def.uvIndex * iconRawSize;
+			const int srcY = 0;
 
 			// 绘制图标
 			if (g_TexIcons != -1) {
@@ -253,11 +267,11 @@ void Inventory_Draw()
 				ItemDefinition& def = g_ItemDatabase[slot.itemId];
 
 				
-				std::string nameStr(def.name.begin(), def.name.end());
+				std::string nameStr = ToDebugAscii(def.name);
 				DrawDebugText(panelX + 20, panelY + panelH - 60, "Name: %s", nameStr.c_str());
 
 			
-				std::string descStr(def.desc.begin(), def.desc.end());
+				std::string descStr = ToDebugAscii(def.desc);
 				DrawDebugText(panelX + 20, panelY + panelH - 30, "Desc: %s", descStr.c_str());
 			}
 			else {

@@ -2,7 +2,10 @@
 #include "model.h"
 using namespace DirectX;
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include "collision.h"
 #include "enemy.h"
@@ -15,18 +18,26 @@ private:
 	XMFLOAT3 m_velocity{};
 	float m_damage{ BULLET_DEFAULT_DAMAGE };
 	int m_remainingPierce{ BULLET_DEFAULT_REMAINING_PIERCE };
-	std::vector<std::uintptr_t> m_hitEnemyIds{};
+	static constexpr int MAX_HIT_ENEMY_IDS = 16;
+	std::array<std::uintptr_t, MAX_HIT_ENEMY_IDS> m_hitEnemyIds{};
+	int m_hitEnemyCount = 0;
 	double m_accumulatedTime{ 0.0 };
 	static constexpr double LIFE_TIME = 3.0; // 子弹寿命（秒）
 	bool m_deleteFlag = false;
 
 public:
-	Bullet(const XMFLOAT3& pos, const XMFLOAT3& vel, float damage, int remainingPierce)
-		:m_position(pos),
-		m_velocity(vel),
-		m_damage(std::max(0.0f, damage)),
-		m_remainingPierce(std::max(0, remainingPierce))
+	Bullet() = default;
+
+	void Reset(const XMFLOAT3& pos, const XMFLOAT3& vel, float damage, int remainingPierce)
 	{
+		m_position = pos;
+		m_velocity = vel;
+		m_damage = std::max(0.0f, damage);
+		m_remainingPierce = std::max(0, remainingPierce);
+		m_hitEnemyIds.fill(0);
+		m_hitEnemyCount = 0;
+		m_accumulatedTime = 0.0;
+		m_deleteFlag = false;
 	}
 
 	void Update(double elapsed_time)
@@ -71,14 +82,18 @@ public:
 	bool HasHitEnemy(const Enemy* enemy) const
 	{
 		const std::uintptr_t enemyId = reinterpret_cast<std::uintptr_t>(enemy);
-		return std::find(m_hitEnemyIds.begin(), m_hitEnemyIds.end(), enemyId)
-			!= m_hitEnemyIds.end();
+		return std::find(
+			m_hitEnemyIds.begin(),
+			m_hitEnemyIds.begin() + m_hitEnemyCount,
+			enemyId) != m_hitEnemyIds.begin() + m_hitEnemyCount;
 	}
 
 	void RegisterEnemyHit(const Enemy* enemy)
 	{
+		if (m_hitEnemyCount >= MAX_HIT_ENEMY_IDS) return;
+
 		const std::uintptr_t enemyId = reinterpret_cast<std::uintptr_t>(enemy);
-		m_hitEnemyIds.push_back(enemyId);
+		m_hitEnemyIds[m_hitEnemyCount++] = enemyId;
 	}
 
 	bool ConsumePierceOrShouldDestroy()
@@ -97,20 +112,68 @@ public:
 namespace
 {
 	constexpr int MAX_BULLET = 1024;
+	constexpr float COLLISION_GRID_CELL_SIZE = 4.0f;
+	std::array<Bullet, MAX_BULLET> g_BulletPool{};
+	std::array<bool, MAX_BULLET> g_BulletPoolUsed{};
 	Bullet* g_Bullets[MAX_BULLET]{ nullptr };
 	int g_BulletCount = 0;
 	MODEL* g_BulletModel{ nullptr };
 	constexpr float BULLET_SPEED = 60.0f;
+
+	struct CellCoord
+	{
+		int x = 0;
+		int z = 0;
+
+		bool operator==(const CellCoord& other) const
+		{
+			return x == other.x && z == other.z;
+		}
+	};
+
+	struct CellCoordHash
+	{
+		std::size_t operator()(const CellCoord& coord) const
+		{
+			const std::uint64_t x = static_cast<std::uint32_t>(coord.x);
+			const std::uint64_t z = static_cast<std::uint32_t>(coord.z);
+			return static_cast<std::size_t>((x << 32) ^ z);
+		}
+	};
+
+	CellCoord ToCollisionCell(const XMFLOAT3& position)
+	{
+		return {
+			static_cast<int>(std::floor(position.x / COLLISION_GRID_CELL_SIZE)),
+			static_cast<int>(std::floor(position.z / COLLISION_GRID_CELL_SIZE))
+		};
+	}
+
+	using EnemyCollisionGrid =
+		std::unordered_map<CellCoord, std::vector<Enemy*>, CellCoordHash>;
+
+	EnemyCollisionGrid BuildEnemyCollisionGrid()
+	{
+		EnemyCollisionGrid grid;
+		grid.reserve(static_cast<std::size_t>(Enemy_GetEnemyCount()) * 2);
+
+		for (int i = 0; i < Enemy_GetEnemyCount(); ++i)
+		{
+			Enemy* enemy = Enemy_GetEnemy(i);
+			if (!enemy || enemy->IsDead()) continue;
+
+			grid[ToCollisionCell(enemy->GetPosition())].push_back(enemy);
+		}
+
+		return grid;
+	}
 }
 
 void Bullet_Initialize()
 {
 	g_BulletModel = ModelLoadS("resource/model/Bullet.fbx", 0.1f);
-	for (int i = 0; i < g_BulletCount; i++)
-	{
-		delete g_Bullets[i];
-		g_Bullets[i] = nullptr;
-	}
+	g_BulletPoolUsed.fill(false);
+	std::fill(std::begin(g_Bullets), std::end(g_Bullets), nullptr);
 	g_BulletCount = 0;
 }
 
@@ -119,11 +182,8 @@ void Bullet_Finalize()
 	ModelRelease(g_BulletModel);
 	g_BulletModel = nullptr;
 
-	for (int i = 0; i < g_BulletCount; i++)
-	{
-		delete g_Bullets[i];
-		g_Bullets[i] = nullptr;
-	}
+	g_BulletPoolUsed.fill(false);
+	std::fill(std::begin(g_Bullets), std::end(g_Bullets), nullptr);
 	g_BulletCount = 0;
 }
 
@@ -144,39 +204,53 @@ void Bullet_Update(double elapsed_time)
 
 void Bullet_CheckCollisionWithEnemies()
 {
+	const EnemyCollisionGrid enemyGrid = BuildEnemyCollisionGrid();
+
 	for (int i = 0; i < Bullet_GetCount(); i++)
 	{
+		Bullet* bullet = g_Bullets[i];
 		Sphere bulletSphere = Bullet_GetSphere(i);
+		const CellCoord bulletCell = ToCollisionCell(bulletSphere.center);
+		bool bulletDestroyed = false;
 
-		for (int j = 0; j < Enemy_GetEnemyCount(); j++)
+		for (int cellZ = bulletCell.z - 1; cellZ <= bulletCell.z + 1 && !bulletDestroyed; ++cellZ)
 		{
-			Enemy* pEnemy = Enemy_GetEnemy(j);
-			if (!pEnemy) continue;
-			if (pEnemy->IsDead()) continue;
-			if (g_Bullets[i]->HasHitEnemy(pEnemy)) continue;
-
-			// 检测子弹球体与敌人 AABB 是否碰撞
-			if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
+			for (int cellX = bulletCell.x - 1; cellX <= bulletCell.x + 1 && !bulletDestroyed; ++cellX)
 			{
+				const auto found = enemyGrid.find({ cellX, cellZ });
+				if (found == enemyGrid.end()) continue;
 
-				bool isAlive = !pEnemy->IsDead();
-				g_Bullets[i]->RegisterEnemyHit(pEnemy);
-				// 1. 敌人受伤/死亡逻辑
-				pEnemy->Damage(g_Bullets[i]->GetDamage(), false);
-
-				if (isAlive)
+				for (Enemy* pEnemy : found->second)
 				{
-					XMFLOAT3 hitPos = g_Bullets[i]->GetPosition();
-					hitPos.y -= 1.5f;
-					Enemy_EmitBlood(hitPos, 5);
-				}
+					if (!pEnemy) continue;
+					if (pEnemy->IsDead()) continue;
+					if (bullet->HasHitEnemy(pEnemy)) continue;
 
-				// 2. 穿透次数用完才销毁；还有穿透时继续检测后续敌人
-				if (g_Bullets[i]->ConsumePierceOrShouldDestroy())
-				{
-					Bullet_Destroy(i);
-					i--;
-					break;
+					// 检测子弹球体与敌人 AABB 是否碰撞
+					if (Collision_IsOverlapSphereAABB(bulletSphere, pEnemy->GetAABB()))
+					{
+						bool isAlive = !pEnemy->IsDead();
+						bullet->RegisterEnemyHit(pEnemy);
+
+						// 1. 敌人受伤/死亡逻辑
+						pEnemy->Damage(bullet->GetDamage(), false);
+
+						if (isAlive)
+						{
+							XMFLOAT3 hitPos = bullet->GetPosition();
+							hitPos.y -= 1.5f;
+							Enemy_EmitBlood(hitPos, 5);
+						}
+
+						// 2. 穿透次数用完才销毁；还有穿透时继续检测后续敌人
+						if (bullet->ConsumePierceOrShouldDestroy())
+						{
+							Bullet_Destroy(i);
+							i--;
+							bulletDestroyed = true;
+							break;
+						}
+					}
 				}
 			}
 		}
@@ -239,19 +313,35 @@ void Bullet_Create(
 	XMFLOAT3 finalVelocity;
 	XMStoreFloat3(&finalVelocity, vDir);
 
-	g_Bullets[g_BulletCount++] = new Bullet(
-		position,
-		finalVelocity,
-		damage,
-		remainingPierce);
+	for (int poolIndex = 0; poolIndex < MAX_BULLET; ++poolIndex)
+	{
+		if (g_BulletPoolUsed[poolIndex]) continue;
+
+		g_BulletPoolUsed[poolIndex] = true;
+		g_BulletPool[poolIndex].Reset(
+			position,
+			finalVelocity,
+			damage,
+			remainingPierce);
+		g_Bullets[g_BulletCount++] = &g_BulletPool[poolIndex];
+		return;
+	}
 }
 
 void Bullet_Destroy(int index)
 {
 	if (index < 0 || index >= g_BulletCount) return;
 
-	delete g_Bullets[index];
+	Bullet* bullet = g_Bullets[index];
+	if (bullet >= g_BulletPool.data() &&
+		bullet < g_BulletPool.data() + g_BulletPool.size())
+	{
+		const std::ptrdiff_t poolIndex = bullet - g_BulletPool.data();
+		g_BulletPoolUsed[static_cast<std::size_t>(poolIndex)] = false;
+	}
+
 	g_Bullets[index] = g_Bullets[g_BulletCount - 1];
+	g_Bullets[g_BulletCount - 1] = nullptr;
 	g_BulletCount--;
 }
 

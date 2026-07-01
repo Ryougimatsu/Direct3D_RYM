@@ -65,6 +65,9 @@ void DropItem_Spawn(XMFLOAT3 position, int itemId)
 
 void DropItem_DrawShadow(const DirectX::XMMATRIX& lightView, const DirectX::XMMATRIX& lightProj)
 {
+	(void)lightView;
+	(void)lightProj;
+
 	// 1. 【绝对关键】强制恢复阴影 Shader 和 光栅化状态(CullMode=None)
 	// 这能解决因状态残留导致的闪烁问题
 	Shader_Shadow_Apply();

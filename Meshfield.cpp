@@ -77,11 +77,11 @@ void MeshField_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 		for (int x = 0; x < FIELD_MESH_H_COUNT; x++)
 		{
 			index = (x + z * FIELD_MESH_H_COUNT) * 6;
-			g_MeshFieldVertexIndex[index + 0] = x + (z + 0) * FIELD_MESH_H_VERTEX_COUNT;      //0 1    5
-			g_MeshFieldVertexIndex[index + 1] = x + (z + 1) * FIELD_MESH_H_VERTEX_COUNT + 1;  //5 6    10
-			g_MeshFieldVertexIndex[index + 2] = g_MeshFieldVertexIndex[index + 0] + 1;		  //1 2    6
+			g_MeshFieldVertexIndex[index + 0] = static_cast<unsigned short>(x + (z + 0) * FIELD_MESH_H_VERTEX_COUNT);      //0 1    5
+			g_MeshFieldVertexIndex[index + 1] = static_cast<unsigned short>(x + (z + 1) * FIELD_MESH_H_VERTEX_COUNT + 1);  //5 6    10
+			g_MeshFieldVertexIndex[index + 2] = static_cast<unsigned short>(g_MeshFieldVertexIndex[index + 0] + 1);		  //1 2    6
 			g_MeshFieldVertexIndex[index + 3] = g_MeshFieldVertexIndex[index + 0];			  //0 1    5
-			g_MeshFieldVertexIndex[index + 4] = g_MeshFieldVertexIndex[index + 1] - 1;		  //4 5    9
+			g_MeshFieldVertexIndex[index + 4] = static_cast<unsigned short>(g_MeshFieldVertexIndex[index + 1] - 1);		  //4 5    9
 			g_MeshFieldVertexIndex[index + 5] = g_MeshFieldVertexIndex[index + 1];			  //5 6    10
 			index += 6;
 		}
@@ -114,6 +114,8 @@ void MeshField_Finalize()
 
 void MeshField_Draw(const DirectX::XMMATRIX& mtxW, const DirectX::XMMATRIX& lightViewProj, ID3D11ShaderResourceView* shadowSRV)
 {
+	(void)mtxW;
+
 	// シェーダーを描画パイプラインに設定
 	Shader_field_Begin();
 	Shader_field_SetLightData(lightViewProj, shadowSRV);
@@ -155,5 +157,7 @@ float MeshField_GetDepth()
 
 float MeshField_GetHeight(float x, float z)
 {
+	(void)x;
+	(void)z;
 	return 0.0f;
 }

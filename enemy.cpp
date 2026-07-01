@@ -5,6 +5,9 @@
 #include "GameUI.h"
 #include "DropItem.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include <cstdlib>     
 #include <ctime>
@@ -22,6 +25,7 @@ namespace {
 	std::vector<Enemy*> g_Enemies;
 
 	constexpr int MAX_ENEMIES_ON_SCREEN = 35;
+	constexpr float ENEMY_COLLISION_GRID_CELL_SIZE = 1.5f;
 	constexpr float SHADOW_CULL_RANGE_X = 35.0f;
 	constexpr float SHADOW_CULL_RANGE_Z = 25.0f;
 
@@ -37,6 +41,52 @@ namespace {
 		float RandomFloat(float min, float max) {
 		return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
 
+	}
+
+	struct CellCoord
+	{
+		int x = 0;
+		int z = 0;
+
+		bool operator==(const CellCoord& other) const
+		{
+			return x == other.x && z == other.z;
+		}
+	};
+
+	struct CellCoordHash
+	{
+		std::size_t operator()(const CellCoord& coord) const
+		{
+			const std::uint64_t x = static_cast<std::uint32_t>(coord.x);
+			const std::uint64_t z = static_cast<std::uint32_t>(coord.z);
+			return static_cast<std::size_t>((x << 32) ^ z);
+		}
+	};
+
+	CellCoord ToEnemyCollisionCell(const XMFLOAT3& position)
+	{
+		return {
+			static_cast<int>(std::floor(position.x / ENEMY_COLLISION_GRID_CELL_SIZE)),
+			static_cast<int>(std::floor(position.z / ENEMY_COLLISION_GRID_CELL_SIZE))
+		};
+	}
+
+	using EnemyIndexGrid =
+		std::unordered_map<CellCoord, std::vector<std::size_t>, CellCoordHash>;
+
+	EnemyIndexGrid BuildEnemyIndexGrid()
+	{
+		EnemyIndexGrid grid;
+		grid.reserve(g_Enemies.size() * 2);
+
+		for (std::size_t i = 0; i < g_Enemies.size(); ++i)
+		{
+			if (!g_Enemies[i] || g_Enemies[i]->IsDead()) continue;
+			grid[ToEnemyCollisionCell(g_Enemies[i]->GetPosition())].push_back(i);
+		}
+
+		return grid;
 	}
 
 		ParticleSystem* m_pBleedSystem = nullptr;
@@ -70,33 +120,47 @@ void Enemy_ResolveCollisions() {
 	const float PLAYER_RADIUS = 0.5f;
 	const float MIN_DIST_E2E = ENEMY_RADIUS * 2.0f;
 	const float MIN_DIST_E2P = ENEMY_RADIUS + PLAYER_RADIUS;
+	const EnemyIndexGrid enemyGrid = BuildEnemyIndexGrid();
 
 	// 获取玩家当前位置
 	XMFLOAT3 pPos = Player_GetPosition();
 	XMVECTOR vPlayerPos = XMLoadFloat3(&pPos);
 
 	for (size_t i = 0; i < g_Enemies.size(); ++i) {
+		if (!g_Enemies[i] || g_Enemies[i]->IsDead()) continue;
+
 		// --- 1. 敌人与敌人之间的排斥 (保持不变，防止敌人重叠) ---
-		for (size_t j = i + 1; j < g_Enemies.size(); ++j) {
-			XMVECTOR posA = XMLoadFloat3(&g_Enemies[i]->GetPosition());
-			XMVECTOR posB = XMLoadFloat3(&g_Enemies[j]->GetPosition());
+		const CellCoord cell = ToEnemyCollisionCell(g_Enemies[i]->GetPosition());
+		for (int cellZ = cell.z - 1; cellZ <= cell.z + 1; ++cellZ) {
+			for (int cellX = cell.x - 1; cellX <= cell.x + 1; ++cellX) {
+				const auto found = enemyGrid.find({ cellX, cellZ });
+				if (found == enemyGrid.end()) continue;
 
-			XMVECTOR diff = XMVectorSubtract(posA, posB);
-			diff = XMVectorSetY(diff, 0.0f);
+				for (const std::size_t j : found->second) {
+					if (j <= i || j >= g_Enemies.size()) continue;
+					if (!g_Enemies[j] || g_Enemies[j]->IsDead()) continue;
 
-			float distSq = XMVectorGetX(XMVector3LengthSq(diff));
-			if (distSq < MIN_DIST_E2E * MIN_DIST_E2E && distSq > 0.00001f) {
-				float dist = sqrtf(distSq);
-				float overlap = MIN_DIST_E2E - dist;
-				XMVECTOR pushDir = XMVector3Normalize(diff);
+					XMVECTOR posA = XMLoadFloat3(&g_Enemies[i]->GetPosition());
+					XMVECTOR posB = XMLoadFloat3(&g_Enemies[j]->GetPosition());
 
-				// 互相推开
-				XMFLOAT3 newA, newB;
-				XMStoreFloat3(&newA, posA + pushDir * overlap * 0.5f);
-				XMStoreFloat3(&newB, posB - pushDir * overlap * 0.5f);
+					XMVECTOR diff = XMVectorSubtract(posA, posB);
+					diff = XMVectorSetY(diff, 0.0f);
 
-				g_Enemies[i]->SetPosition(newA);
-				g_Enemies[j]->SetPosition(newB);
+					float distSq = XMVectorGetX(XMVector3LengthSq(diff));
+					if (distSq < MIN_DIST_E2E * MIN_DIST_E2E && distSq > 0.00001f) {
+						float dist = sqrtf(distSq);
+						float overlap = MIN_DIST_E2E - dist;
+						XMVECTOR pushDir = XMVector3Normalize(diff);
+
+						// 互相推开
+						XMFLOAT3 newA, newB;
+						XMStoreFloat3(&newA, posA + pushDir * overlap * 0.5f);
+						XMStoreFloat3(&newB, posB - pushDir * overlap * 0.5f);
+
+						g_Enemies[i]->SetPosition(newA);
+						g_Enemies[j]->SetPosition(newB);
+					}
+				}
 			}
 		}
 
