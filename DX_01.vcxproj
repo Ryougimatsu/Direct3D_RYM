@@ -230,6 +230,7 @@
     <ClCompile Include="system_timer.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="title.cpp" />
+    <ClCompile Include="UIDraw.cpp" />
     <ClCompile Include="UIFont.cpp" />
     <ClCompile Include="Weapon.cpp" />
     <ClCompile Include="WeaponAttachmentComponent.cpp" />
@@ -324,7 +325,9 @@
     <ClInclude Include="system_timer.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="title.h" />
+    <ClInclude Include="UIDraw.h" />
     <ClInclude Include="UIFont.h" />
+    <ClInclude Include="UITheme.h" />
     <ClInclude Include="Weapon.h" />
     <ClInclude Include="WeaponAttachmentComponent.h" />
     <ClInclude Include="WeaponSocket.h" />

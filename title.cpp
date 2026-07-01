@@ -5,6 +5,8 @@
 #include "sprite.h"
 #include "texture.h"
 #include "Font.h"
+#include "UITheme.h"
+#include <algorithm>
 #include <string>
 #include "direct3d.h"
 #include "score.h"
@@ -19,7 +21,6 @@ enum TitleMenuState {
 namespace
 {
 	int g_TitleBG = -1;       // 标题背景图
-	int g_TexWhite = -1;      // 纯白图片
 
 	// 状态控制
 	TitleMenuState g_CurrentState = MENU_MAIN;
@@ -38,19 +39,12 @@ namespace
 		const float destY = (screenH - texH) * 0.5f;
 		Sprite_Draw(g_TitleBG, destX, destY);
 	}
-
-	void DrawSolidBackground(float screenW, float screenH, const DirectX::XMFLOAT4& color)
-	{
-		if (g_TexWhite < 0) return;
-		Sprite_Draw(g_TexWhite, 0.0f, 0.0f, screenW, screenH, color);
-	}
 }
 
 void Title_Initialize()
 {
 	Score_Reset();
 	g_TitleBG = Texture_LoadFromFile(L"resource/texture/Title.png");
-	g_TexWhite = Texture_LoadFromFile(L"resource/texture/white.png");
 
 	g_CurrentState = MENU_MAIN;
 	g_MainCursor = 0;
@@ -59,7 +53,6 @@ void Title_Initialize()
 void Title_Finalize()
 {
 	Texture_Release(g_TitleBG);
-	Texture_Release(g_TexWhite);
 }
 
 void Title_Update(double)
@@ -126,10 +119,10 @@ void Title_Draw()
 
 	Direct3D_SetDepthEnable(false);
 
-	DirectX::XMFLOAT4 colSelected = { 1.0f, 1.0f, 0.0f, 1.0f };
-	DirectX::XMFLOAT4 colNormal = { 1.0f, 1.0f, 1.0f, 1.0f };
-	DirectX::XMFLOAT4 colGray = { 0.5f, 0.5f, 0.5f, 1.0f };
-	DirectX::XMFLOAT4 colRed = { 1.0f, 0.2f, 0.2f, 1.0f };
+	DirectX::XMFLOAT4 colSelected = UITheme::Primary;
+	DirectX::XMFLOAT4 colNormal = UITheme::Text;
+	DirectX::XMFLOAT4 colGray = UITheme::Disabled;
+	DirectX::XMFLOAT4 colRed = UITheme::Danger;
 
 	// ====================================================
 	// 绘制: 主菜单
@@ -157,6 +150,7 @@ void Title_Draw()
 
 		float baseX = (screenW / 2.0f) - 200.0f;
 		float baseY = 400.0f;
+
 		// 提示信息
 		Font_Draw(L"SETTINGS UNAVAILABLE", baseX + 50, baseY + 100, colGray);
 
@@ -170,26 +164,62 @@ void Title_Draw()
 	// ====================================================
 	else if (g_CurrentState == MENU_INSTRUCTIONS)
 	{
-		DrawSolidBackground(screenW, screenH, { 0.0f, 0.0f, 0.0f, 1.0f });
+		const float titleY = screenH * 0.16f;
+		const float textYStart = screenH * 0.27f;
+		const float spacing = std::clamp(screenH * 0.055f, 48.0f, 60.0f);
+		const float keyX = screenW * 0.34f;
+		const float colonX = screenW * 0.50f;
+		const float actionX = screenW * 0.55f;
+		float textY = textYStart;
 
-		Font_Draw(L"HOW TO PLAY", (screenW / 2.0f) - 100.0f, 150, colSelected);
+		Font_Draw(L"HOW TO PLAY", (screenW / 2.0f) - 100.0f, titleY, colSelected);
 
-		float textX = (screenW / 2.0f) - 300.0f;
-		float textY = 250.0f;
-		float spacing = 60.0f;
+		Font_Draw(L"W A S D", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"MOVE CHARACTER", actionX, textY, colNormal);
+		textY += spacing;
 
-		Font_Draw(L"W A S D       :   MOVE CHARACTER", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"MOUSE         :   AIM / ROTATE", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"LEFT CLICK    :   SHOOT", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"R KEY         :   RELOAD WEAPON", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"F KEY         :   MELEE ATTACK", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"I KEY         :   OPEN BAG", textX, textY, colNormal); textY += spacing;
-		Font_Draw(L"ENTER KEY     :   USE ITEM", textX, textY, colNormal); textY += spacing;
+		Font_Draw(L"MOUSE", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"AIM / ROTATE", actionX, textY, colNormal);
+		textY += spacing;
 
-		textY += 40.0f;
-		Font_Draw(L"OBJECTIVE     :   SURVIVE AND DEFEAT ENEMIES", textX, textY, colRed);
+		Font_Draw(L"LEFT CLICK", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"SHOOT", actionX, textY, colNormal);
+		textY += spacing;
 
-		Font_Draw(L"PRESS [ENTER] TO START MISSION", (screenW / 2.0f) - 250.0f, 800, { 1.0f, 1.0f, 0.0f, (float)(abs(sin(GetTickCount() * 0.005))) });
+		Font_Draw(L"R KEY", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"RELOAD WEAPON", actionX, textY, colNormal);
+		textY += spacing;
+
+		Font_Draw(L"F KEY", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"MELEE ATTACK", actionX, textY, colNormal);
+		textY += spacing;
+
+		Font_Draw(L"I KEY", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"OPEN BAG", actionX, textY, colNormal);
+		textY += spacing;
+
+		Font_Draw(L"ENTER KEY", keyX, textY, colNormal);
+		Font_Draw(L":", colonX, textY, colNormal);
+		Font_Draw(L"USE ITEM", actionX, textY, colNormal);
+		textY += spacing * 1.3f;
+
+		Font_Draw(L"OBJECTIVE", keyX, textY, colRed);
+		Font_Draw(L":", colonX, textY, colRed);
+		Font_Draw(L"SURVIVE", actionX, textY, colRed);
+		textY += spacing;
+		Font_Draw(L"DEFEAT ENEMIES", actionX, textY, colRed);
+
+		Font_Draw(
+			L"PRESS [ENTER] TO START MISSION",
+			(screenW / 2.0f) - 250.0f,
+			screenH * 0.86f,
+			UITheme::WithAlpha(UITheme::Primary, (float)(abs(sin(GetTickCount() * 0.005)))));
 	}
 	Direct3D_SetDepthEnable(true);
 }

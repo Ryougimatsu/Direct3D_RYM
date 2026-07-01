@@ -210,6 +210,9 @@
     <ClCompile Include="UIFont.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UIDraw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Vendor\RecastDetour\Recast\Source\RecastRegion.cpp">
       <Filter>RecastDetour</Filter>
     </ClCompile>
@@ -486,6 +489,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="UIFont.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UIDraw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UITheme.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="particle_system.h">

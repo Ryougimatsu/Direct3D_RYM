@@ -8,6 +8,7 @@
 #include "score.h"
 #include "fade.h"
 #include "scene.h"
+#include "result.h"
 #include <DirectXMath.h>
 #include <algorithm>
 #include <cstddef>
@@ -498,7 +499,9 @@ void Game_Update(double elapsed_time)
 		{
 			//delete g_Player;
 			//g_Player = nullptr;
-			Scene_Change(SCENE_GAMEOVER);
+			Score_SetTime(g_CurrentGameTime);
+			Result_SetOutcome(ResultOutcome::GameOver);
+			Scene_Change(SCENE_RESULT);
 			return;
 		}
 	}
@@ -526,6 +529,7 @@ void Game_Update(double elapsed_time)
 		if (Collision_IsOverLapAABB(playerAABB, goalAABB))
 		{
 			Score_SetTime(g_CurrentGameTime); // 记录通关时间
+			Result_SetOutcome(ResultOutcome::MissionComplete);
 			Scene_Change(SCENE_RESULT);       // 切换到结算场景
 		}
 	}
