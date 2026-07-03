@@ -695,7 +695,7 @@ void Game_Draw()
 
 	Sprite_Begin();
 	{
-		GameUI_Draw();           // 游戏 UI（血条、弹药显示等）
+		GameUI_Draw(view, proj); // 游戏 UI（血条、弹药显示等）
 		Score_Draw();            // 右上角分数
 		Inventory_Draw();        // 背包界面（如果打开的话）
 		UI_DrawHUD();            // HUD 抬头显示

@@ -1,12 +1,15 @@
 #include "GameUI.h"
 
+#include "direct3d.h"
 #include "PlayerCharacter.h"
 #include "sprite.h"
 #include "texture.h"
 #include "UIFont.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <string>
 
 namespace
@@ -18,6 +21,79 @@ namespace
 	constexpr float EXPERIENCE_GAIN_DISPLAY_TIME = 1.5f;
 	constexpr float HUD_FONT_SCALE = 0.54f;
 	constexpr float EXP_GAIN_FONT_SCALE = 0.58f;
+	constexpr float INFINITE_AMMO_TIMER_SCALE = 0.68f;
+	constexpr float INFINITE_AMMO_HEAD_HEIGHT = 2.55f;
+	constexpr float INFINITE_AMMO_SCREEN_Y_OFFSET = -28.0f;
+
+	void DrawInfiniteAmmoWorldTimer(
+		const PlayerCharacter& player,
+		const DirectX::XMMATRIX& view,
+		const DirectX::XMMATRIX& proj)
+	{
+		const PlayerStats& stats = player.GetStats();
+		if (!stats.IsInfiniteAmmoActive() ||
+			stats.infiniteAmmoTimer <= 0.0f)
+		{
+			return;
+		}
+
+		D3D11_VIEWPORT viewport{};
+		UINT viewportCount = 1;
+		Direct3D_GetDeviceContext()->RSGetViewports(&viewportCount, &viewport);
+		if (viewportCount == 0 ||
+			viewport.Width <= 0.0f ||
+			viewport.Height <= 0.0f)
+		{
+			return;
+		}
+
+		DirectX::XMFLOAT3 playerPosition = player.GetPosition();
+		playerPosition.y += INFINITE_AMMO_HEAD_HEIGHT;
+
+		const DirectX::XMVECTOR screenPosition =
+			DirectX::XMVector3Project(
+				DirectX::XMLoadFloat3(&playerPosition),
+				viewport.TopLeftX,
+				viewport.TopLeftY,
+				viewport.Width,
+				viewport.Height,
+				viewport.MinDepth,
+				viewport.MaxDepth,
+				proj,
+				view,
+				DirectX::XMMatrixIdentity());
+
+		const float screenZ = DirectX::XMVectorGetZ(screenPosition);
+		if (screenZ < 0.0f || screenZ > 1.0f)
+		{
+			return;
+		}
+
+		std::wostringstream stream;
+		stream << std::fixed << std::setprecision(1)
+			<< stats.infiniteAmmoTimer << L"s";
+		const std::wstring timerText = stream.str();
+
+		const float textWidth =
+			UIFont_MeasureText(timerText.c_str(), INFINITE_AMMO_TIMER_SCALE);
+		const float screenX =
+			DirectX::XMVectorGetX(screenPosition) - textWidth * 0.5f;
+		const float screenY =
+			DirectX::XMVectorGetY(screenPosition) + INFINITE_AMMO_SCREEN_Y_OFFSET;
+
+		UIFont_Draw(
+			timerText.c_str(),
+			screenX + 2.0f,
+			screenY + 2.0f,
+			INFINITE_AMMO_TIMER_SCALE,
+			{ 0.0f, 0.0f, 0.0f, 0.85f });
+		UIFont_Draw(
+			timerText.c_str(),
+			screenX,
+			screenY,
+			INFINITE_AMMO_TIMER_SCALE,
+			{ 1.0f, 0.05f, 0.05f, 1.0f });
+	}
 }
 
 void GameUI_Initialize()
@@ -64,7 +140,9 @@ void GameUI_ShowExperienceGain(std::uint64_t amount)
 	g_ExperienceGainTimer = EXPERIENCE_GAIN_DISPLAY_TIME;
 }
 
-void GameUI_Draw()
+void GameUI_Draw(
+	const DirectX::XMMATRIX& view,
+	const DirectX::XMMATRIX& proj)
 {
 	if (g_TexWhite == -1)
 	{
@@ -172,4 +250,6 @@ void GameUI_Draw()
 			EXP_GAIN_FONT_SCALE,
 			{ 0.3f, 1.0f, 0.45f, alpha });
 	}
+
+	DrawInfiniteAmmoWorldTimer(*player, view, proj);
 }
