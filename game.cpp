@@ -74,7 +74,7 @@ namespace
 
 	// --- 游戏运行状态 ---
 	bool   g_IsDebugCameraMode = false; // 是否处于调试摄像机模式（TAB 切换）
-	bool   g_ShowRoguelikeDebugInfo = true; // F3 toggles upgrade stat debug overlay.
+	bool   g_ShowRoguelikeDebugInfo = false; // F3 toggles upgrade stat debug overlay.
 	double g_CurrentGameTime   = 0.0;   // 当前局游戏累计时间（秒），用于计分
 	GameState g_GameState = GameState::Playing;
 	int g_PendingLevelUps = 0;
@@ -381,7 +381,7 @@ void Game_Initialize()
 	// 重置本局计时
 	g_CurrentGameTime = 0.0;
 	g_GameState = GameState::Playing;
-	g_ShowRoguelikeDebugInfo = true;
+	g_ShowRoguelikeDebugInfo = false;
 	g_PendingLevelUps = 0;
 	g_CurrentLevelUpOptions.clear();
 	g_SelectedLevelUpOptionIndex = 0;

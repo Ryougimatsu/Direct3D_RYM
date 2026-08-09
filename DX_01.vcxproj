@@ -423,8 +423,8 @@
     <None Include="DirectXTex.inl" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="DirectXTex_Debug.lib" />
-    <Library Include="DirectXTex_Release.lib" />
+    <Library Include="DirectXTex_Debug.lib" Condition="'$(Configuration)'=='Debug'" />
+    <Library Include="DirectXTex_Release.lib" Condition="'$(Configuration)'=='Release'" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
